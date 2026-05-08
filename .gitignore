@@ -31,6 +31,9 @@ dist/
 build/
 coverage/
 .cache/
+.auth/
+playwright-report/
+test-results/
 tmp/
 temp/
 *.log

@@ -42,6 +42,21 @@ The local development bind host defaults to `127.0.0.1`. To test from another de
 
 For local initialization and persistence rules, read `docs/local-development-state.md` before deleting containers or volumes.
 
+If you need Uptime Kuma locally, use host port `3011` unless you know `3001` is free:
+
+```powershell
+$env:KUMA_PORT="3011"
+docker compose --env-file .env -f docker-compose.yml up -d uptime-kuma
+```
+
+Before restarting local services or browser E2E, check host port ownership:
+
+```bash
+bash ops/check-local-ports.sh
+```
+
+If Windows + WSL reports `wslrelay.exe` holding `3100`, do not assume New API is down. Check the actual Docker-published port with `docker port relay-new-api 3000`, then either free the Windows host port or temporarily run browser checks with `NEW_API_BASE_URL=http://localhost:<published-port>`.
+
 ## WSL Network Proxy
 
 If package downloads or image pulls require the local Windows proxy, set it only in the current WSL shell:
@@ -110,3 +125,32 @@ During local setup and channel experiments, keep the profile in `mode: developme
 Use Uptime Kuma for the user-facing status page. Keep monitors and any low-quota test token inside the Kuma UI/volume, not in git. Follow `docs/kuma-status-runbook.md`.
 
 To publish the status page, set `STATUS_DOMAIN` on the server and merge the example status-domain block from `Caddyfile.status.example` into the active production Caddyfile. The active base `Caddyfile` does not expose Kuma by default.
+
+## Live E2E
+
+For real API billing validation without printing token secrets, use a named low-quota test token:
+
+```bash
+NEW_API_TEST_TOKEN_NAME=test_2505081251 NEW_API_TEST_MODEL=glm-5.1 bash ops/live-e2e-billing-from-db-token.sh
+```
+
+The wrapper reads the token key from PostgreSQL and passes it only as a child-process environment variable to `ops/e2e-api-billing.sh`.
+
+For browser-level validation, run:
+
+```bash
+npm run e2e:web:new-api
+KUMA_BASE_URL=http://localhost:3011 npm run e2e:web:kuma
+```
+
+If New API was temporarily moved away from `3100`, pass the actual published port:
+
+```bash
+NEW_API_BASE_URL=http://localhost:3102 npm run e2e:web:new-api
+```
+
+For shell E2E from Windows PowerShell into WSL, set runtime variables inside the `bash` command so WSL receives them:
+
+```powershell
+bash -lc 'NEW_API_BASE_URL=http://localhost:3102 ./ops/live-e2e-billing-from-db-token.sh test_2505081251'
+```

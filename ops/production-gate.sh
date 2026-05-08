@@ -36,6 +36,9 @@ run bash -n ops/validate-ops-profile.sh
 run bash tests/ai-dev-check.test.sh
 run bash tests/spec-kit-init.test.sh
 run bash tests/channel-health-advisor.test.sh
+run bash tests/live-e2e-token-wrapper.test.sh
+run bash tests/check-local-ports.test.sh
+run bash tests/browser-e2e-scaffold.test.sh
 run bash tests/e2e-api-billing.test.sh
 run bash tests/wrapper-infra.test.sh
 run bash tests/ops-profile.test.sh

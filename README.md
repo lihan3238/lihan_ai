@@ -69,6 +69,7 @@ bash ops/backup-postgres.sh
 bash ops/phase1-smoke-test.sh
 bash ops/relay-diagnostics.sh
 NEW_API_TEST_TOKEN=... NEW_API_TEST_MODEL=glm-5.1 bash ops/e2e-api-billing.sh
+bash ops/live-e2e-billing-from-db-token.sh <test-token-name>
 bash ops/export-config-snapshot.sh
 bash ops/validate-ops-profile.sh config/ops-profiles/glm-standard.example.json
 bash ops/channel-health-advisor.sh config/ops-profiles/glm-standard-health.example.json
@@ -108,6 +109,9 @@ On Windows, run repository verification from PowerShell:
 ```powershell
 ./scripts/verify-repo.ps1
 ```
+
+For browser-level E2E, read `docs/browser-e2e-runbook.md`. The local Kuma port defaults to `3011` to avoid common `3001` conflicts.
+Run `bash ops/check-local-ports.sh` before restarting or testing browser flows; on Windows + WSL it detects host-side port holders such as stale `wslrelay.exe`.
 
 If WSL needs outbound network proxying during setup, use the Windows host proxy on port `10808` temporarily:
 

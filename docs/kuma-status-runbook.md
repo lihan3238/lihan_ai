@@ -48,3 +48,12 @@ bash ops/channel-health-advisor.sh config/ops-profiles/glm-standard-health.examp
 ```
 
 Use the advisor output for internal decisions. Translate it into a short user-facing status update.
+
+## Local Port
+
+Use local host port `3011` for Kuma on this workstation because `3001` may already be used by other Docker projects:
+
+```powershell
+$env:KUMA_PORT="3011"
+docker compose --env-file .env -f docker-compose.yml up -d uptime-kuma
+```
