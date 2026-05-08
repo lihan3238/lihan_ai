@@ -36,6 +36,8 @@ docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml u
 
 This starts PostgreSQL, Redis, and New API, then exposes New API at `http://localhost:$NEW_API_DEV_PORT`. Caddy and Uptime Kuma are not required for the local smoke test.
 
+The local development bind host defaults to `127.0.0.1`. To test from another device on the LAN, set `NEW_API_DEV_HOST=0.0.0.0` in `.env` and recreate the `new-api` container. Only do this on a trusted network because the development port exposes the New API admin console and relay API directly.
+
 For local initialization and persistence rules, read `docs/local-development-state.md` before deleting containers or volumes.
 
 ## WSL Network Proxy

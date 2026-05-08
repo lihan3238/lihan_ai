@@ -70,7 +70,7 @@ cp .env.example .env
 docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml up -d new-api
 ```
 
-Open `http://localhost:$NEW_API_DEV_PORT`. If 3000 is occupied locally, set `NEW_API_DEV_PORT=3100` in `.env`. For production, use the base `docker-compose.yml` and access through Caddy on `https://$DOMAIN`.
+Open `http://localhost:$NEW_API_DEV_PORT`. If 3000 is occupied locally, set `NEW_API_DEV_PORT=3100` in `.env`. The development override binds to `127.0.0.1` by default so the admin console and API keys are not exposed to the LAN. If you intentionally need LAN access, set `NEW_API_DEV_HOST=0.0.0.0`, restart the `new-api` container, and make sure the Windows firewall only allows trusted networks. For production, use the base `docker-compose.yml` and access through Caddy on `https://$DOMAIN`.
 
 On first login, New API will ask you to initialize the system and create the root/admin account. It is safe to follow that prompt in local development. The account, settings, channels, tokens, and payment configuration are stored in PostgreSQL and will survive container restarts and container deletion. Do not run `docker compose down -v` unless you intentionally want to erase local state.
 
