@@ -1,5 +1,13 @@
 # Development Workflow
 
+This repository uses a lightweight Spec Kit style workflow for AI-assisted development:
+
+```text
+Research -> Spec -> Plan -> Tasks -> Implement -> Verify -> Commit
+```
+
+The goal is continuity. Requirements, decisions, execution tasks, verification results, and handoff context must live in files, not only in chat.
+
 ## Research Gate
 
 Every new product or operations requirement starts with a short external research pass before design or implementation.
@@ -18,6 +26,47 @@ Each design must record:
 - What this repository will copy, avoid, or simplify.
 
 Research is mandatory for payment, backup, restore, upgrade, configuration migration, health checks, cache billing, and production deployment work.
+
+## Feature Document Set
+
+Each new feature or operations change gets a directory:
+
+```text
+docs/ai-dev/<YYYY-MM-DD>-<topic>/
+  research.md
+  spec.md
+  plan.md
+  tasks.md
+  handoff.md
+```
+
+Use the templates in `docs/templates/ai-dev/`.
+
+Before implementation, run:
+
+```bash
+bash ops/ai-dev-check.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
+```
+
+`tasks.md` must contain exactly:
+
+```text
+Approved for implementation: yes
+```
+
+Without that approval line, agents may continue planning but must not change repo-tracked files.
+
+## Implementation Gate
+
+After approval, implementation may proceed continuously in the local development environment. Stop and ask before:
+
+- Destructive database operations.
+- Production deployment or DNS changes.
+- Payment, webhook, or secret changes.
+- Deleting user data, backups, logs, or snapshots.
+- Modifying core `vendor/new-api` relay, billing, auth, or payment source.
+
+Every implementation must update the feature `handoff.md` or final response with commands run, E2E status, skipped checks, and residual risk.
 
 ## Wrapper-First Rule
 
@@ -41,6 +90,7 @@ bash ops/production-gate.sh
 For lighter local edits, at least run:
 
 ```bash
+bash ops/ai-dev-check.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
 bash tests/e2e-api-billing.test.sh
 bash tests/wrapper-infra.test.sh
 bash ops/preflight.sh

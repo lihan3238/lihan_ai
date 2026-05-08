@@ -48,6 +48,7 @@ docker compose up -d
 - `docs/backup-strategy.md`: database backup, verification, and restore rules.
 - `docs/server-buying-guide.md`: VPS sizing and purchase checklist.
 - `docs/development-workflow.md`: research-first development workflow.
+- `docs/templates/ai-dev/`: Spec Kit style templates for AI-assisted development.
 - `docs/wrapper-infra-runbook.md`: wrapper build, snapshot, restore drill, and production gate runbook.
 - `ops/`: preflight, backup, and restore scripts.
 - `tests/`: lightweight script tests for local ops tooling.
