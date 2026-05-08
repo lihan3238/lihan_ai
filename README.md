@@ -42,6 +42,7 @@ docker compose up -d
 - `.env.example`: deployment variables and operating policy flags.
 - `config/`: example model catalog and monthly package definitions.
 - `docs/`: requirements, runbook, payment safety, and cache observability notes.
+- `docs/server-buying-guide.md`: VPS sizing and purchase checklist.
 - `ops/`: preflight, backup, and restore scripts.
 - `scripts/verify-repo.ps1`: local repository verification.
 - `vendor/new-api`: upstream New API source as a git submodule for audit and future customization.
