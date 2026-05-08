@@ -8,7 +8,17 @@ Research -> Spec -> Plan -> Tasks -> Implement -> Verify -> Commit
 
 The goal is continuity. Requirements, decisions, execution tasks, verification results, and handoff context must live in files, not only in chat.
 
-Official GitHub Spec Kit integration is tracked separately in `docs/spec-kit-integration-runbook.md`. Do not run `specify init --here` in this repository until the sandbox process in that runbook has been completed.
+Official GitHub Spec Kit `v0.8.7` is initialized in Codex skills mode. Its generated assets live in `.specify/`, `.agents/skills/speckit-*`, and `AGENTS.md`; operational details are tracked in `docs/spec-kit-integration-runbook.md`.
+
+## Spec Kit And Superpowers
+
+Spec Kit provides the upstream specification workflow and Codex skills:
+
+```text
+$speckit-constitution -> $speckit-specify -> $speckit-plan -> $speckit-tasks -> $speckit-implement
+```
+
+Superpowers remains the execution discipline layer for brainstorming, TDD, systematic debugging, verification, and branch finishing. If the two workflows disagree, this repository's safety gates win: Research Gate, `Approved for implementation: yes`, wrapper-first, high-risk stops, and production gate.
 
 ## Research Gate
 

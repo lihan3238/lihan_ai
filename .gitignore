@@ -2,6 +2,10 @@
 .env.*
 !.env.example
 .envrc
+.agents/**
+!.agents/
+!.agents/skills/
+!.agents/skills/**
 data/
 logs/
 backups/

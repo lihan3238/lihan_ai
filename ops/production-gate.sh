@@ -34,6 +34,8 @@ run bash -n ops/drill-restore-postgres.sh
 run bash -n ops/ai-dev-check.sh
 run bash -n ops/validate-ops-profile.sh
 run bash tests/ai-dev-check.test.sh
+run bash tests/spec-kit-init.test.sh
+run bash tests/channel-health-advisor.test.sh
 run bash tests/e2e-api-billing.test.sh
 run bash tests/wrapper-infra.test.sh
 run bash tests/ops-profile.test.sh
@@ -42,6 +44,9 @@ if [ -n "${AI_DEV_FEATURE_DIR:-}" ]; then
 fi
 if [ -n "${OPS_PROFILE_FILE:-}" ]; then
   run bash ops/validate-ops-profile.sh "$OPS_PROFILE_FILE"
+fi
+if [ -n "${OPS_HEALTH_PROFILE_FILE:-}" ]; then
+  run bash ops/channel-health-advisor.sh "$OPS_HEALTH_PROFILE_FILE"
 fi
 run bash ops/preflight.sh
 run docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml config
