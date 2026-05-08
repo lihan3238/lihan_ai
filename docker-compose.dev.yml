@@ -1,6 +1,6 @@
 services:
   new-api:
     ports:
-      - "${NEW_API_DEV_HOST:-127.0.0.1}:${NEW_API_DEV_PORT:-3000}:3000"
+      - "${NEW_API_DEV_HOST:-127.0.0.1}:${NEW_API_DEV_PORT:-3100}:3000"
     environment:
       NODE_TYPE: "master"

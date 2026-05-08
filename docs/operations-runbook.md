@@ -36,7 +36,7 @@ cp .env.example .env
 docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml up -d new-api
 ```
 
-This starts PostgreSQL, Redis, and New API, then exposes New API at `http://localhost:$NEW_API_DEV_PORT`. Caddy and Uptime Kuma are not required for the local smoke test.
+This starts PostgreSQL, Redis, and New API, then exposes New API at `http://localhost:$NEW_API_DEV_PORT`. The local default is `3100`; container-internal New API still listens on `3000`. Caddy and Uptime Kuma are not required for the local smoke test.
 
 The local development bind host defaults to `127.0.0.1`. To test from another device on the LAN, set `NEW_API_DEV_HOST=0.0.0.0` in `.env` and recreate the `new-api` container. Only do this on a trusted network because the development port exposes the New API admin console and relay API directly.
 
@@ -50,6 +50,15 @@ If package downloads or image pulls require the local Windows proxy, set it only
 export host_ip="$(grep nameserver /etc/resolv.conf | awk '{print $2}')"
 export http_proxy="http://$host_ip:10808"
 export https_proxy="$http_proxy"
+```
+
+If the WSL gateway address does not work, use the known working Windows host proxy fallback:
+
+```bash
+export HTTP_PROXY=http://10.88.0.6:10808
+export HTTPS_PROXY=http://10.88.0.6:10808
+export http_proxy=http://10.88.0.6:10808
+export https_proxy=http://10.88.0.6:10808
 ```
 
 Do not put local proxy values into `.env`, `docker-compose.yml`, or committed config files.

@@ -35,9 +35,12 @@ assert_contains ".gitignore" "^snapshots/$"
 assert_contains ".env.example" "LOCAL_NEW_API_IMAGE="
 assert_contains ".env.example" "CONFIG_SNAPSHOT_DIR="
 assert_contains ".env.example" "CONFIG_SNAPSHOT_GPG_RECIPIENT="
+assert_contains ".env.example" "NEW_API_DEV_PORT=3100"
 assert_contains "docker-compose.local-build.yml" "vendor/new-api"
 assert_contains "docker-compose.local-build.yml" "LOCAL_NEW_API_IMAGE"
 assert_contains "docs/development-workflow.md" "Research Gate"
+assert_contains "ops/production-gate.sh" "tests/ai-dev-check.test.sh"
+assert_contains "ops/production-gate.sh" "AI_DEV_FEATURE_DIR"
 
 set +e
 private_output="$(env -u CONFIG_SNAPSHOT_GPG_RECIPIENT "$ROOT_DIR/ops/export-config-snapshot.sh" --private 2>&1)"

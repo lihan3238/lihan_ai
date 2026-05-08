@@ -86,8 +86,11 @@ Only modify upstream New API source after:
 Before pushing changes that affect operations or billing:
 
 ```bash
+export AI_DEV_FEATURE_DIR="docs/ai-dev/<YYYY-MM-DD>-<topic>"
 bash ops/production-gate.sh
 ```
+
+`AI_DEV_FEATURE_DIR` is optional for emergency diagnostics, but required for planned feature or workflow changes. It makes the production gate verify that the current feature documents still satisfy the Research -> Spec -> Plan -> Tasks approval contract.
 
 For lighter local edits, at least run:
 

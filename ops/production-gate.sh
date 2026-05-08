@@ -31,8 +31,13 @@ run bash -n ops/build-local-new-api.sh
 run bash -n ops/start-local-new-api.sh
 run bash -n ops/export-config-snapshot.sh
 run bash -n ops/drill-restore-postgres.sh
+run bash -n ops/ai-dev-check.sh
+run bash tests/ai-dev-check.test.sh
 run bash tests/e2e-api-billing.test.sh
 run bash tests/wrapper-infra.test.sh
+if [ -n "${AI_DEV_FEATURE_DIR:-}" ]; then
+  run bash ops/ai-dev-check.sh "$AI_DEV_FEATURE_DIR"
+fi
 run bash ops/preflight.sh
 run docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml config
 run docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local-build.yml config

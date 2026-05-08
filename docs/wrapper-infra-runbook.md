@@ -26,6 +26,17 @@ bash ops/build-local-new-api.sh
 
 If the build fails while fetching `https://auth.docker.io/token`, configure the Docker daemon or Docker Desktop proxy. Shell-level `HTTP_PROXY` may not affect base image pulls because those requests are made by the Docker builder.
 
+In this WSL setup, the known working Windows host proxy fallback is:
+
+```bash
+export HTTP_PROXY=http://10.88.0.6:10808
+export HTTPS_PROXY=http://10.88.0.6:10808
+export http_proxy=http://10.88.0.6:10808
+export https_proxy=http://10.88.0.6:10808
+```
+
+Use the shell proxy first for `uv`, `git`, and Docker build attempts. If Docker base image pulls still fail, configure the Docker Desktop daemon proxy and retry the build.
+
 Start the local build image:
 
 ```bash
@@ -83,3 +94,12 @@ bash ops/production-gate.sh
 ```
 
 The gate calls real upstream APIs and can consume a small amount of quota.
+
+When validating a specific AI development feature directory, include it in the gate:
+
+```bash
+export AI_DEV_FEATURE_DIR="docs/ai-dev/<YYYY-MM-DD>-<topic>"
+bash ops/production-gate.sh
+```
+
+`AI_DEV_FEATURE_DIR` must point to a directory that passes `ops/ai-dev-check.sh`, including `Approved for implementation: yes` in `tasks.md`.

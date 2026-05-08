@@ -83,6 +83,7 @@ Assert-File "vendor/new-api/README.md"
 
 Assert-Contains "docker-compose.yml" "calciumion/new-api" "New API image"
 Assert-Contains "docker-compose.dev.yml" "NEW_API_DEV_PORT" "development port override"
+Assert-Contains "docker-compose.dev.yml" "3100" "development host port default"
 Assert-Contains "docker-compose.local-build.yml" "vendor/new-api" "local New API build context"
 Assert-Contains ".gitmodules" "QuantumNous/new-api" "New API upstream submodule"
 Assert-Contains "docker-compose.yml" "postgres" "PostgreSQL service"
@@ -101,6 +102,7 @@ Assert-Contains "docs/spec-kit-integration-runbook.md" "spec-kit.git@v0.8.7" "pi
 Assert-Contains "docs/spec-kit-integration-runbook.md" "specify init my-project" "sandbox Spec Kit init"
 Assert-Contains "docs/templates/ai-dev/tasks.md" "Approved for implementation: no" "implementation approval default"
 Assert-Contains "ops/ai-dev-check.sh" "Approved for implementation: yes" "implementation approval gate"
+Assert-Contains "ops/production-gate.sh" "AI_DEV_FEATURE_DIR" "feature document production gate"
 Assert-Contains ".gitignore" "snapshots/" "configuration snapshots ignored"
 
 Assert-NotContains ".env.example" "sk-[A-Za-z0-9]" "real-looking API keys"
