@@ -13,22 +13,28 @@ This repository is a deployable starter for a small, paid AI API relay built on 
 
 1. Use WSL Ubuntu 24.04 or a Linux VPS shell.
 2. Install Docker and Docker Compose on the VPS.
-3. Copy `.env.example` to `.env`.
-4. Replace every `CHANGE_ME` value and set `DOMAIN` to the production hostname.
-5. Point the domain A/AAAA record to the VPS.
-6. Run the preflight check:
+3. Initialize the New API source submodule if it is not already present:
+
+```bash
+git submodule update --init --recursive
+```
+
+4. Copy `.env.example` to `.env`.
+5. Replace every `CHANGE_ME` value and set `DOMAIN` to the production hostname.
+6. Point the domain A/AAAA record to the VPS.
+7. Run the preflight check:
 
 ```bash
 bash ops/preflight.sh
 ```
 
-7. Start the stack:
+8. Start the stack:
 
 ```bash
 docker compose up -d
 ```
 
-8. Open `https://$DOMAIN`, create the first admin user, then immediately configure invite-only registration, model groups, channel pools, model ratios, and manual top-up workflow.
+9. Open `https://$DOMAIN`, create the first admin user, then immediately configure invite-only registration, model groups, channel pools, model ratios, and manual top-up workflow.
 
 ## Repository Layout
 
@@ -38,6 +44,7 @@ docker compose up -d
 - `docs/`: requirements, runbook, payment safety, and cache observability notes.
 - `ops/`: preflight, backup, and restore scripts.
 - `scripts/verify-repo.ps1`: local repository verification.
+- `vendor/new-api`: upstream New API source as a git submodule for audit and future customization.
 
 ## Useful Commands
 

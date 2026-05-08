@@ -3,12 +3,26 @@
 ## First Deployment
 
 1. Work from WSL Ubuntu 24.04 or the Linux VPS shell.
-2. Copy `.env.example` to `.env`.
-3. Replace all `CHANGE_ME` values with generated secrets.
-4. Set `DOMAIN` and `ACME_EMAIL`.
-5. Run `bash ops/preflight.sh`.
-6. Run `docker compose up -d`.
-7. Open the site, create the admin user, and disable public self-serve access until invite rules are configured.
+2. Run `git submodule update --init --recursive` to fetch the pinned New API source.
+3. Copy `.env.example` to `.env`.
+4. Replace all `CHANGE_ME` values with generated secrets.
+5. Set `DOMAIN` and `ACME_EMAIL`.
+6. Run `bash ops/preflight.sh`.
+7. Run `docker compose up -d`.
+8. Open the site, create the admin user, and disable public self-serve access until invite rules are configured.
+
+## New API Source Management
+
+The deployment uses the official New API Docker image by default, while `vendor/new-api` keeps the upstream source available for audit, diffs, and future customization. To update the pinned upstream source:
+
+```bash
+git -C vendor/new-api fetch origin
+git -C vendor/new-api checkout origin/main
+git add vendor/new-api
+git commit -m "chore: update new-api upstream"
+```
+
+Only switch `docker-compose.yml` from the official image to a locally built image after custom changes have a separate test and rollback plan.
 
 ## WSL Network Proxy
 
