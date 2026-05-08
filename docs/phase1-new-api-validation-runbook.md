@@ -132,6 +132,29 @@ If the script fails, inspect New API usage logs and container logs:
 docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml logs --tail=200 new-api
 ```
 
+## Relay Diagnostics
+
+When a coding client or upstream adapter behaves differently from the basic smoke test, run the broader relay diagnostic:
+
+```bash
+export NEW_API_TEST_TOKEN="sk-..."
+export NEW_API_TEST_MODEL="glm-5.1"
+bash ops/relay-diagnostics.sh
+```
+
+Model names are case-sensitive. Use the exact model name shown in New API's channel and model list; for the current direct GLM channel this is `glm-5.1`, not `GLM-5.1`.
+
+The diagnostic checks:
+
+- New API `/api/status`.
+- OpenAI-compatible `/v1/models`.
+- OpenAI-compatible chat, non-stream and stream.
+- Anthropic-compatible `/v1/messages`, non-stream and stream.
+- Anthropic-compatible `/v1/messages?beta=true` stream, which is commonly used by Claude Code style clients.
+- Anthropic token counting via `/v1/messages/count_tokens?beta=true`, reported as a warning if unsupported.
+
+Use this before changing New API code. If OpenAI-compatible tests pass but Anthropic-compatible stream tests fail, the likely problem is protocol conversion or upstream streaming behavior. If all relay paths fail, inspect token, user quota, model routing, and channel status first.
+
 ## Billing And Log Reconciliation
 
 After successful calls, verify in the admin console:

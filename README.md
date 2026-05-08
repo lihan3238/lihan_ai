@@ -58,6 +58,7 @@ docker compose ps
 docker compose logs -f new-api
 bash ops/backup-postgres.sh
 bash ops/phase1-smoke-test.sh
+bash ops/relay-diagnostics.sh
 ```
 
 ## Local Development
