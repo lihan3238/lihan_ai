@@ -24,6 +24,8 @@ git commit -m "chore: update new-api upstream"
 
 Only switch `docker-compose.yml` from the official image to a locally built image after custom changes have a separate test and rollback plan.
 
+For wrapper-level local image builds, configuration snapshots, restore drills, and production gates, follow `docs/wrapper-infra-runbook.md`.
+
 ## Local Development
 
 Use WSL for development commands. Use Docker for the runtime and the repository for source/config work:
@@ -54,6 +56,8 @@ Do not put local proxy values into `.env`, `docker-compose.yml`, or committed co
 
 ## Initial Admin Exploration
 
+Before each new feature or operations change, follow the Research Gate in `docs/development-workflow.md`.
+
 Before designing local extensions, inspect the original admin console areas for users, tokens, groups, channels, pricing, payment, subscriptions, logs, settings, and model ratios. Record gaps in `docs/new-api-code-map.md` before adding any local code.
 
 For the first paid API relay validation, follow `docs/phase1-new-api-validation-runbook.md`. That runbook keeps Phase 1 on upstream New API, with GPT first, manual admin crediting, local WSL validation, and no automatic payment.
@@ -64,6 +68,7 @@ For the first paid API relay validation, follow `docs/phase1-new-api-validation-
 - PostgreSQL and Redis containers are healthy.
 - `bash ops/relay-diagnostics.sh` passes for the primary paid-test model after setting `NEW_API_TEST_TOKEN`.
 - `bash ops/e2e-api-billing.sh` passes before and after channel changes, model additions, or New API image upgrades. Use a low-quota test token because it calls the real upstream.
+- `bash ops/export-config-snapshot.sh` creates a current redacted configuration snapshot before risky changes.
 - Upstream provider balances are above alert thresholds.
 - Error rate and failed relay count are not increasing.
 - Last database backup exists and is restorable.

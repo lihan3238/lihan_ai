@@ -5,6 +5,7 @@
 data/
 logs/
 backups/
+snapshots/
 caddy_data/
 caddy_config/
 postgres_data/

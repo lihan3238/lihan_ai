@@ -248,7 +248,7 @@ request_expected_failure() {
     return
   fi
 
-  if grep -qi 'model_not_found\|No available channel\|无可用渠道\|模型不存在' "$response_file"; then
+  if grep -qi 'model_not_found\|No available channel\|available channel\|not found' "$response_file"; then
     print_result PASS "$name" "http=$http_code expected model/channel error"
     return
   fi

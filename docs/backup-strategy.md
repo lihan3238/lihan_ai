@@ -22,6 +22,14 @@ Restore is intentionally explicit and destructive:
 bash ops/restore-postgres.sh backups/postgres/<backup>.dump
 ```
 
+Run an isolated restore drill without touching the active database:
+
+```bash
+bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
+```
+
+The drill restores into a temporary PostgreSQL container with `--no-owner`, checks key New API tables, and removes the container afterwards.
+
 ## What Must Be Preserved
 
 - PostgreSQL database: users, root account, tokens, channels, settings, logs, billing data, OAuth/payment configuration.

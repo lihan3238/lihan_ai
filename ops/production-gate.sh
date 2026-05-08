@@ -1,0 +1,48 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+if [ -z "${NEW_API_TEST_TOKEN:-}" ]; then
+  echo "NEW_API_TEST_TOKEN is not set" >&2
+  exit 2
+fi
+
+if [ -z "${CONFIG_SNAPSHOT_GPG_RECIPIENT:-}" ]; then
+  echo "CONFIG_SNAPSHOT_GPG_RECIPIENT is not set" >&2
+  exit 2
+fi
+
+run() {
+  echo "+ $*"
+  "$@"
+}
+
+cd "$ROOT_DIR"
+
+run git diff --check
+run bash -n ops/preflight.sh
+run bash -n ops/backup-postgres.sh
+run bash -n ops/verify-postgres-backup.sh
+run bash -n ops/restore-postgres.sh
+run bash -n ops/relay-diagnostics.sh
+run bash -n ops/e2e-api-billing.sh
+run bash -n ops/build-local-new-api.sh
+run bash -n ops/start-local-new-api.sh
+run bash -n ops/export-config-snapshot.sh
+run bash -n ops/drill-restore-postgres.sh
+run bash tests/e2e-api-billing.test.sh
+run bash tests/wrapper-infra.test.sh
+run bash ops/preflight.sh
+run docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml config
+run docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local-build.yml config
+
+backup="$(bash ops/backup-postgres.sh)"
+run bash ops/verify-postgres-backup.sh "$backup"
+run bash ops/drill-restore-postgres.sh "$backup"
+run bash ops/export-config-snapshot.sh
+run bash ops/export-config-snapshot.sh --private
+run bash ops/relay-diagnostics.sh
+run bash ops/e2e-api-billing.sh
+
+echo "production gate passed"

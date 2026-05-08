@@ -47,6 +47,8 @@ docker compose up -d
 - `docs/local-development-state.md`: local initialization and persistent state rules.
 - `docs/backup-strategy.md`: database backup, verification, and restore rules.
 - `docs/server-buying-guide.md`: VPS sizing and purchase checklist.
+- `docs/development-workflow.md`: research-first development workflow.
+- `docs/wrapper-infra-runbook.md`: wrapper build, snapshot, restore drill, and production gate runbook.
 - `ops/`: preflight, backup, and restore scripts.
 - `tests/`: lightweight script tests for local ops tooling.
 - `scripts/verify-repo.ps1`: local repository verification.
@@ -61,6 +63,8 @@ bash ops/backup-postgres.sh
 bash ops/phase1-smoke-test.sh
 bash ops/relay-diagnostics.sh
 NEW_API_TEST_TOKEN=... NEW_API_TEST_MODEL=glm-5.1 bash ops/e2e-api-billing.sh
+bash ops/export-config-snapshot.sh
+bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
 ```
 
 ## Local Development

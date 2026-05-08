@@ -224,6 +224,18 @@ bash ops/verify-postgres-backup.sh backups/postgres/<newest-backup>.dump
 
 Do not test restore against the active paid-test database unless you intend to overwrite it. Restore drills should use a separate Docker project or temporary machine.
 
+For local restore drills, use:
+
+```bash
+bash ops/drill-restore-postgres.sh backups/postgres/<newest-backup>.dump
+```
+
+For configuration review before and after changes, use:
+
+```bash
+bash ops/export-config-snapshot.sh
+```
+
 ## Phase 1 Exit Criteria
 
 Phase 1 is complete when all of these are true:
