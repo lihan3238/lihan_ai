@@ -49,6 +49,7 @@ docker compose up -d
 - `docs/server-buying-guide.md`: VPS sizing and purchase checklist.
 - `docs/development-workflow.md`: research-first development workflow.
 - `docs/templates/ai-dev/`: Spec Kit style templates for AI-assisted development.
+- `docs/spec-kit-integration-runbook.md`: preparation steps for optional GitHub Spec Kit CLI integration.
 - `docs/wrapper-infra-runbook.md`: wrapper build, snapshot, restore drill, and production gate runbook.
 - `ops/`: preflight, backup, and restore scripts.
 - `tests/`: lightweight script tests for local ops tooling.

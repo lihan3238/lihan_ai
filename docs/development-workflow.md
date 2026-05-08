@@ -8,6 +8,8 @@ Research -> Spec -> Plan -> Tasks -> Implement -> Verify -> Commit
 
 The goal is continuity. Requirements, decisions, execution tasks, verification results, and handoff context must live in files, not only in chat.
 
+Official GitHub Spec Kit integration is tracked separately in `docs/spec-kit-integration-runbook.md`. Do not run `specify init --here` in this repository until the sandbox process in that runbook has been completed.
+
 ## Research Gate
 
 Every new product or operations requirement starts with a short external research pass before design or implementation.
