@@ -167,6 +167,34 @@ After successful calls, verify in the admin console:
 
 For a failure-path test, temporarily use a token with insufficient quota or disable the channel, then call the API again. Re-enable the channel immediately after the test.
 
+## API And Billing E2E
+
+Before changing channel config, model names, client routing, or New API image versions, run the API plus billing E2E against a low-quota test token:
+
+```bash
+export NEW_API_TEST_TOKEN="sk-..."
+export NEW_API_TEST_MODEL="glm-5.1"
+bash ops/e2e-api-billing.sh
+```
+
+Defaults:
+
+- `NEW_API_BASE_URL`: `http://localhost:${NEW_API_DEV_PORT:-3100}`.
+- `NEW_API_TEST_MODEL`: `glm-5.1`.
+- `NEW_API_TEST_MAX_TOKENS`: `24`.
+
+The script calls real upstream APIs and can consume a small amount of quota. It checks OpenAI-compatible chat and Anthropic-compatible messages in non-stream and stream modes, then reconciles PostgreSQL `users`, `tokens`, `channels`, and `logs`.
+
+Expected result is zero FAIL lines. A WARN for `failure db error log` is acceptable with current upstream New API behavior: route misses such as `No available channel for model ...` are written to the container log, but may not be persisted as database error logs. The E2E still requires the failed request to return an error and confirms user, token, and channel used quota do not increase.
+
+If it fails, check:
+
+- Token exists in New API and has enough quota.
+- Model casing exactly matches the channel model, for example `glm-5.1`.
+- Channel is enabled and includes the user's group.
+- Stream failures reproduce in `bash ops/relay-diagnostics.sh`.
+- Database accounting is not still settling from previous long-running stream requests.
+
 ## Cache And Cost Observation
 
 For GPT first-pass validation, only observe upstream/New API fields. Do not rewrite prompts and do not build response caching.

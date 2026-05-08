@@ -48,6 +48,7 @@ docker compose up -d
 - `docs/backup-strategy.md`: database backup, verification, and restore rules.
 - `docs/server-buying-guide.md`: VPS sizing and purchase checklist.
 - `ops/`: preflight, backup, and restore scripts.
+- `tests/`: lightweight script tests for local ops tooling.
 - `scripts/verify-repo.ps1`: local repository verification.
 - `vendor/new-api`: upstream New API source as a git submodule for audit and future customization.
 
@@ -59,6 +60,7 @@ docker compose logs -f new-api
 bash ops/backup-postgres.sh
 bash ops/phase1-smoke-test.sh
 bash ops/relay-diagnostics.sh
+NEW_API_TEST_TOKEN=... NEW_API_TEST_MODEL=glm-5.1 bash ops/e2e-api-billing.sh
 ```
 
 ## Local Development

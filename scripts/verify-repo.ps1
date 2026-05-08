@@ -60,6 +60,8 @@ Assert-File "ops/preflight.sh"
 Assert-File "ops/backup-postgres.sh"
 Assert-File "ops/verify-postgres-backup.sh"
 Assert-File "ops/restore-postgres.sh"
+Assert-File "ops/e2e-api-billing.sh"
+Assert-File "tests/e2e-api-billing.test.sh"
 Assert-File "vendor/new-api/README.md"
 
 Assert-Contains "docker-compose.yml" "calciumion/new-api" "New API image"
@@ -74,6 +76,7 @@ Assert-Contains "docs/new-api-code-map.md" "New API" "upstream feature map"
 Assert-Contains "docs/new-api-full-research.md" "BillingSession" "billing research"
 Assert-Contains "docs/local-development-state.md" "docker compose down -v" "state deletion warning"
 Assert-Contains "docs/backup-strategy.md" "off-server" "off-server backup guidance"
+Assert-Contains "docs/phase1-new-api-validation-runbook.md" "e2e-api-billing" "API billing e2e runbook"
 
 Assert-NotContains ".env.example" "sk-[A-Za-z0-9]" "real-looking API keys"
 

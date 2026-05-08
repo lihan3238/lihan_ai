@@ -63,6 +63,7 @@ For the first paid API relay validation, follow `docs/phase1-new-api-validation-
 - New API health endpoint is up.
 - PostgreSQL and Redis containers are healthy.
 - `bash ops/relay-diagnostics.sh` passes for the primary paid-test model after setting `NEW_API_TEST_TOKEN`.
+- `bash ops/e2e-api-billing.sh` passes before and after channel changes, model additions, or New API image upgrades. Use a low-quota test token because it calls the real upstream.
 - Upstream provider balances are above alert thresholds.
 - Error rate and failed relay count are not increasing.
 - Last database backup exists and is restorable.
