@@ -9,11 +9,11 @@
 5. Set `DOMAIN` and `ACME_EMAIL`.
 6. Run `bash ops/preflight.sh`.
 7. Run `docker compose up -d`.
-8. Open the site, create the admin user, and disable public self-serve access until invite rules are configured.
+8. Open the site, create the admin user, and configure New API from its original admin console.
 
 ## New API Source Management
 
-The deployment uses the official New API Docker image by default, while `vendor/new-api` keeps the upstream source available for audit, diffs, and future customization. To update the pinned upstream source:
+The deployment uses the official New API Docker image by default, while `vendor/new-api` keeps the upstream source available for audit, diffs, and future customization. Do not add local business logic until the relevant upstream implementation has been checked first. To update the pinned upstream source:
 
 ```bash
 git -C vendor/new-api fetch origin
@@ -26,15 +26,15 @@ Only switch `docker-compose.yml` from the official image to a locally built imag
 
 ## Local Development
 
-Use Docker for the runtime and the repository for source/config work:
+Use WSL for development commands. Use Docker for the runtime and the repository for source/config work:
 
 ```bash
 cp .env.example .env
 # replace CHANGE_ME values first
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d new-api
+docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml up -d new-api
 ```
 
-This starts PostgreSQL, Redis, and New API, then exposes New API at `http://localhost:3000`. Caddy and Uptime Kuma are not required for the local smoke test.
+This starts PostgreSQL, Redis, and New API, then exposes New API at `http://localhost:$NEW_API_DEV_PORT`. Caddy and Uptime Kuma are not required for the local smoke test.
 
 ## WSL Network Proxy
 
@@ -48,17 +48,9 @@ export https_proxy="$http_proxy"
 
 Do not put local proxy values into `.env`, `docker-compose.yml`, or committed config files.
 
-## New User Flow
+## Initial Admin Exploration
 
-1. Issue an invite code to a known user.
-2. User registers with email.
-3. Admin confirms payment manually.
-4. Admin grants the selected monthly quota package.
-5. User creates an API key and selects standard or economy models.
-
-## Channel Setup
-
-Configure GLM, DeepSeek, GPT, and Claude channels in New API. Use `config/model-catalog.example.json` as the operating policy source. Keep standard and economy channels in separate groups. Never place unproven low-cost channels in the default group.
+Before designing local extensions, inspect the original admin console areas for users, tokens, groups, channels, pricing, payment, subscriptions, logs, settings, and model ratios. Record gaps in `docs/new-api-code-map.md` before adding any local code.
 
 ## Daily Checks
 
@@ -66,7 +58,6 @@ Configure GLM, DeepSeek, GPT, and Claude channels in New API. Use `config/model-
 - PostgreSQL and Redis containers are healthy.
 - Upstream provider balances are above alert thresholds.
 - Error rate and failed relay count are not increasing.
-- Economy channels are not leaking traffic into standard routes.
 - Last database backup exists and is restorable.
 
 ## Incident Response

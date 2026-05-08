@@ -1,13 +1,14 @@
-# AI API Relay V1
+# Lihan AI Relay
 
-This repository is a deployable starter for a small, paid AI API relay built on New API. It targets invite-only users, monthly quota packages, balance-based token billing, standard/economy channel pools, manual payment confirmation, and upstream prompt-cache observability.
+This repository is currently a clean New API deployment and study workspace. The first milestone is to run upstream New API as-is, understand its built-in features, and only then decide whether any local customization is needed.
 
 ## Boundaries
 
-- Use official APIs, authorized aggregators, or explicitly resale-allowed capacity only.
-- Do not use subscription account pools, OAuth bridges, reverse-engineered clients, or shared personal plans as upstream supply.
-- Keep unstable low-cost supply in the `economy` pool. Do not silently route standard users to it.
-- Phase one payments are manually confirmed. Automatic payment webhooks require the controls in `docs/payment-safety.md`.
+- Runtime uses the official `calciumion/new-api:latest` image.
+- Upstream source is tracked as a submodule at `vendor/new-api`.
+- Local development is WSL-first.
+- Production deployment stays Docker-based.
+- Custom business features are intentionally deferred until New API's existing capabilities are reviewed.
 
 ## Quick Start
 
@@ -22,7 +23,7 @@ git submodule update --init --recursive
 4. Copy `.env.example` to `.env`.
 5. Replace every `CHANGE_ME` value and set `DOMAIN` to the production hostname.
 6. Point the domain A/AAAA record to the VPS.
-7. Run the preflight check:
+7. Run the preflight check from WSL or Linux:
 
 ```bash
 bash ops/preflight.sh
@@ -34,14 +35,13 @@ bash ops/preflight.sh
 docker compose up -d
 ```
 
-9. Open `https://$DOMAIN`, create the first admin user, then immediately configure invite-only registration, model groups, channel pools, model ratios, and manual top-up workflow.
+9. Open `https://$DOMAIN`, create the first admin user, then configure New API using its original admin console.
 
 ## Repository Layout
 
 - `docker-compose.yml`: New API, PostgreSQL, Redis, Caddy, and Uptime Kuma.
-- `.env.example`: deployment variables and operating policy flags.
-- `config/`: example model catalog and monthly package definitions.
-- `docs/`: requirements, runbook, payment safety, and cache observability notes.
+- `.env.example`: deployment variables and required secrets.
+- `docs/new-api-code-map.md`: current upstream New API feature and source map.
 - `docs/server-buying-guide.md`: VPS sizing and purchase checklist.
 - `ops/`: preflight, backup, and restore scripts.
 - `scripts/verify-repo.ps1`: local repository verification.
@@ -57,15 +57,15 @@ bash ops/backup-postgres.sh
 
 ## Local Development
 
-Development still runs New API through Docker, but exposes the app directly on localhost so you can inspect it without a public domain:
+Development runs the original New API Docker image, but exposes it directly on localhost so you can inspect it without a public domain:
 
 ```bash
 cp .env.example .env
 # replace CHANGE_ME values first
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d new-api
+docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml up -d new-api
 ```
 
-Open `http://localhost:3000`. For production, use the base `docker-compose.yml` and access through Caddy on `https://$DOMAIN`.
+Open `http://localhost:$NEW_API_DEV_PORT`. If 3000 is occupied locally, set `NEW_API_DEV_PORT=3100` in `.env`. For production, use the base `docker-compose.yml` and access through Caddy on `https://$DOMAIN`.
 
 On Windows, run repository verification from PowerShell:
 
