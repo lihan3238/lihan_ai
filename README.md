@@ -43,6 +43,7 @@ docker compose up -d
 - `.env.example`: deployment variables and required secrets.
 - `docs/new-api-code-map.md`: current upstream New API feature and source map.
 - `docs/local-development-state.md`: local initialization and persistent state rules.
+- `docs/backup-strategy.md`: database backup, verification, and restore rules.
 - `docs/server-buying-guide.md`: VPS sizing and purchase checklist.
 - `ops/`: preflight, backup, and restore scripts.
 - `scripts/verify-repo.ps1`: local repository verification.
