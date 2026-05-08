@@ -54,6 +54,8 @@ Do not put local proxy values into `.env`, `docker-compose.yml`, or committed co
 
 Before designing local extensions, inspect the original admin console areas for users, tokens, groups, channels, pricing, payment, subscriptions, logs, settings, and model ratios. Record gaps in `docs/new-api-code-map.md` before adding any local code.
 
+For the first paid API relay validation, follow `docs/phase1-new-api-validation-runbook.md`. That runbook keeps Phase 1 on upstream New API, with GPT first, manual admin crediting, local WSL validation, and no automatic payment.
+
 ## Daily Checks
 
 - New API health endpoint is up.

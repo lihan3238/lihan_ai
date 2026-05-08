@@ -43,6 +43,7 @@ docker compose up -d
 - `.env.example`: deployment variables and required secrets.
 - `docs/new-api-code-map.md`: current upstream New API feature and source map.
 - `docs/new-api-full-research.md`: deeper upstream feature inventory for development planning.
+- `docs/phase1-new-api-validation-runbook.md`: Phase 1 GPT-first configuration and validation checklist.
 - `docs/local-development-state.md`: local initialization and persistent state rules.
 - `docs/backup-strategy.md`: database backup, verification, and restore rules.
 - `docs/server-buying-guide.md`: VPS sizing and purchase checklist.
@@ -56,6 +57,7 @@ docker compose up -d
 docker compose ps
 docker compose logs -f new-api
 bash ops/backup-postgres.sh
+bash ops/phase1-smoke-test.sh
 ```
 
 ## Local Development

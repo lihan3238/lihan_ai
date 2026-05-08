@@ -18,7 +18,7 @@ if [ "$missing" -ne 0 ]; then
   exit 1
 fi
 
-if grep -q "CHANGE_ME" .env; then
+if grep -v '^[[:space:]]*#' .env | grep -q "CHANGE_ME"; then
   echo ".env still contains CHANGE_ME placeholders" >&2
   exit 1
 fi
