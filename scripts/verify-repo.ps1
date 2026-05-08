@@ -52,6 +52,7 @@ Assert-Directory "vendor/new-api"
 
 Assert-File "docs/operations-runbook.md"
 Assert-File "docs/new-api-code-map.md"
+Assert-File "docs/local-development-state.md"
 Assert-File "docs/server-buying-guide.md"
 Assert-File "ops/preflight.sh"
 Assert-File "ops/backup-postgres.sh"
@@ -67,6 +68,7 @@ Assert-Contains "docker-compose.yml" "caddy" "HTTPS reverse proxy"
 Assert-Contains "docker-compose.yml" "uptime-kuma" "monitoring service"
 Assert-Contains ".env.example" "CHANGE_ME" "explicit placeholder secrets"
 Assert-Contains "docs/new-api-code-map.md" "New API" "upstream feature map"
+Assert-Contains "docs/local-development-state.md" "docker compose down -v" "state deletion warning"
 
 Assert-NotContains ".env.example" "sk-[A-Za-z0-9]" "real-looking API keys"
 

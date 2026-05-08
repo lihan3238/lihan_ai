@@ -42,6 +42,7 @@ docker compose up -d
 - `docker-compose.yml`: New API, PostgreSQL, Redis, Caddy, and Uptime Kuma.
 - `.env.example`: deployment variables and required secrets.
 - `docs/new-api-code-map.md`: current upstream New API feature and source map.
+- `docs/local-development-state.md`: local initialization and persistent state rules.
 - `docs/server-buying-guide.md`: VPS sizing and purchase checklist.
 - `ops/`: preflight, backup, and restore scripts.
 - `scripts/verify-repo.ps1`: local repository verification.
@@ -66,6 +67,8 @@ docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml u
 ```
 
 Open `http://localhost:$NEW_API_DEV_PORT`. If 3000 is occupied locally, set `NEW_API_DEV_PORT=3100` in `.env`. For production, use the base `docker-compose.yml` and access through Caddy on `https://$DOMAIN`.
+
+On first login, New API will ask you to initialize the system and create the root/admin account. It is safe to follow that prompt in local development. The account, settings, channels, tokens, and payment configuration are stored in PostgreSQL and will survive container restarts and container deletion. Do not run `docker compose down -v` unless you intentionally want to erase local state.
 
 On Windows, run repository verification from PowerShell:
 

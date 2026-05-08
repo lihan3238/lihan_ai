@@ -36,6 +36,8 @@ docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml u
 
 This starts PostgreSQL, Redis, and New API, then exposes New API at `http://localhost:$NEW_API_DEV_PORT`. Caddy and Uptime Kuma are not required for the local smoke test.
 
+For local initialization and persistence rules, read `docs/local-development-state.md` before deleting containers or volumes.
+
 ## WSL Network Proxy
 
 If package downloads or image pulls require the local Windows proxy, set it only in the current WSL shell:
