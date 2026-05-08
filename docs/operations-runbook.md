@@ -75,6 +75,7 @@ For the first paid API relay validation, follow `docs/phase1-new-api-validation-
 
 - New API health endpoint is up.
 - PostgreSQL and Redis containers are healthy.
+- `bash ops/validate-ops-profile.sh config/ops-profiles/glm-standard.example.json` confirms the expected GLM standard-pool configuration before live tests.
 - `bash ops/relay-diagnostics.sh` passes for the primary paid-test model after setting `NEW_API_TEST_TOKEN`.
 - `bash ops/e2e-api-billing.sh` passes before and after channel changes, model additions, or New API image upgrades. Use a low-quota test token because it calls the real upstream.
 - `bash ops/export-config-snapshot.sh` creates a current redacted configuration snapshot before risky changes.
@@ -85,3 +86,14 @@ For the first paid API relay validation, follow `docs/phase1-new-api-validation-
 ## Incident Response
 
 For suspected billing, payment, or provider failure incidents: disable the affected channel or payment path first, export the relevant logs, then reconcile user balances. Do not delete failed orders or usage logs; mark them with an administrative note.
+
+## Operations Profiles
+
+Use an operations profile before channel changes, model additions, image upgrades, or handoff to another operator:
+
+```bash
+bash ops/export-config-snapshot.sh
+bash ops/validate-ops-profile.sh config/ops-profiles/glm-standard.example.json
+```
+
+The profile validator is read-only. It checks channels and abilities in PostgreSQL, gives warnings for missing support data such as test tokens or subscription plans, and only calls `/v1/models` when `NEW_API_TEST_TOKEN` is set. For full quota accounting, run `NEW_API_TEST_MODEL=glm-5.1 bash ops/e2e-api-billing.sh` separately with a low-quota test token.

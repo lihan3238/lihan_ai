@@ -66,6 +66,17 @@ bash ops/export-config-snapshot.sh --private
 
 Snapshots are written under `snapshots/config/` by default and are ignored by git. The redacted snapshot is for review and comparison. The private snapshot may contain API keys, token keys, user data, and payment configuration; keep the GPG private key and passphrase separate from the server.
 
+## Operations Profile Validation
+
+Validate the expected GLM standard pool without changing New API data:
+
+```bash
+bash ops/export-config-snapshot.sh
+bash ops/validate-ops-profile.sh config/ops-profiles/glm-standard.example.json
+```
+
+The validator checks PostgreSQL channels and abilities for `standard` + `glm-5.1`, reports safe counts for users, tokens, subscriptions, and payment-looking options, and does not print secrets. Set `NEW_API_TEST_TOKEN` only if you also want a read-only `/v1/models` visibility check. Run `ops/e2e-api-billing.sh` separately for real upstream and quota-accounting validation.
+
 ## Restore Drill
 
 Create a normal PostgreSQL backup first:
@@ -90,6 +101,7 @@ Run the full gate before New API upgrades, channel changes, production deploymen
 export NEW_API_TEST_TOKEN="sk-..."
 export NEW_API_TEST_MODEL="glm-5.1"
 export CONFIG_SNAPSHOT_GPG_RECIPIENT="<gpg-key-id-or-email>"
+export OPS_PROFILE_FILE="config/ops-profiles/glm-standard.example.json"
 bash ops/production-gate.sh
 ```
 

@@ -51,6 +51,7 @@ docker compose up -d
 - `docs/templates/ai-dev/`: Spec Kit style templates for AI-assisted development.
 - `docs/spec-kit-integration-runbook.md`: preparation steps for optional GitHub Spec Kit CLI integration.
 - `docs/wrapper-infra-runbook.md`: wrapper build, snapshot, restore drill, and production gate runbook.
+- `config/ops-profiles/`: committed read-only operations profiles for expected New API configuration.
 - `ops/`: preflight, backup, and restore scripts.
 - `tests/`: lightweight script tests for local ops tooling.
 - `scripts/verify-repo.ps1`: local repository verification.
@@ -66,6 +67,7 @@ bash ops/phase1-smoke-test.sh
 bash ops/relay-diagnostics.sh
 NEW_API_TEST_TOKEN=... NEW_API_TEST_MODEL=glm-5.1 bash ops/e2e-api-billing.sh
 bash ops/export-config-snapshot.sh
+bash ops/validate-ops-profile.sh config/ops-profiles/glm-standard.example.json
 bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
 ```
 
@@ -107,3 +109,13 @@ export https_proxy=http://10.88.0.6:10808
 ```
 
 Do not commit local proxy variables into `.env`.
+
+## Operations Profiles
+
+The first wrapper-level customization is a read-only GLM standard-pool profile:
+
+```bash
+bash ops/validate-ops-profile.sh config/ops-profiles/glm-standard.example.json
+```
+
+It checks the current PostgreSQL-backed New API configuration for an enabled `standard` group channel serving `glm-5.1`, then reports users, tokens, subscriptions, payment-looking options, and optional `/v1/models` visibility. It never creates or edits New API data. Set `NEW_API_TEST_TOKEN` only when you want the optional model-list check.
