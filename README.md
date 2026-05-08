@@ -54,6 +54,18 @@ docker compose logs -f new-api
 bash ops/backup-postgres.sh
 ```
 
+## Local Development
+
+Development still runs New API through Docker, but exposes the app directly on localhost so you can inspect it without a public domain:
+
+```bash
+cp .env.example .env
+# replace CHANGE_ME values first
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d new-api
+```
+
+Open `http://localhost:3000`. For production, use the base `docker-compose.yml` and access through Caddy on `https://$DOMAIN`.
+
 On Windows, run repository verification from PowerShell:
 
 ```powershell

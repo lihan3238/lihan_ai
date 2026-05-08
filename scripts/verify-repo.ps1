@@ -41,6 +41,7 @@ function Assert-NotContains {
 
 Assert-File "README.md"
 Assert-File "docker-compose.yml"
+Assert-File "docker-compose.dev.yml"
 Assert-File ".env.example"
 Assert-File ".gitmodules"
 Assert-File "Caddyfile"
@@ -62,6 +63,7 @@ Assert-File "ops/restore-postgres.sh"
 Assert-File "vendor/new-api/README.md"
 
 Assert-Contains "docker-compose.yml" "calciumion/new-api" "New API image"
+Assert-Contains "docker-compose.dev.yml" "NEW_API_DEV_PORT" "development port override"
 Assert-Contains ".gitmodules" "QuantumNous/new-api" "New API upstream submodule"
 Assert-Contains "docker-compose.yml" "postgres" "PostgreSQL service"
 Assert-Contains "docker-compose.yml" "redis" "Redis service"

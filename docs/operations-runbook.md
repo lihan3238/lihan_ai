@@ -24,6 +24,18 @@ git commit -m "chore: update new-api upstream"
 
 Only switch `docker-compose.yml` from the official image to a locally built image after custom changes have a separate test and rollback plan.
 
+## Local Development
+
+Use Docker for the runtime and the repository for source/config work:
+
+```bash
+cp .env.example .env
+# replace CHANGE_ME values first
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d new-api
+```
+
+This starts PostgreSQL, Redis, and New API, then exposes New API at `http://localhost:3000`. Caddy and Uptime Kuma are not required for the local smoke test.
+
 ## WSL Network Proxy
 
 If package downloads or image pulls require the local Windows proxy, set it only in the current WSL shell:
