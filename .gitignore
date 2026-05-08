@@ -1,0 +1,14 @@
+.env
+data/
+logs/
+backups/
+caddy_data/
+caddy_config/
+postgres_data/
+redis_data/
+uptime-kuma/
+*.dump
+*.sql
+*.tar
+*.tar.gz
+*.zip
