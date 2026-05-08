@@ -42,6 +42,7 @@ docker compose up -d
 - `docker-compose.yml`: New API, PostgreSQL, Redis, Caddy, and Uptime Kuma.
 - `.env.example`: deployment variables and required secrets.
 - `docs/new-api-code-map.md`: current upstream New API feature and source map.
+- `docs/new-api-full-research.md`: deeper upstream feature inventory for development planning.
 - `docs/local-development-state.md`: local initialization and persistent state rules.
 - `docs/backup-strategy.md`: database backup, verification, and restore rules.
 - `docs/server-buying-guide.md`: VPS sizing and purchase checklist.
