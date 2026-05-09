@@ -4,6 +4,8 @@
 
 Use one Linux origin server for New API, PostgreSQL, Redis, Caddy, and Uptime Kuma.
 
+Production deploys from `main`. The deployment wrapper refuses non-`main` production deploys unless `ALLOW_NON_MAIN_PROD_DEPLOY=1` is explicitly set for a documented emergency.
+
 1. Clone this repository to `/opt/lihan_ai`.
 2. Copy `.env.production.example` to `.env.production`.
 3. Replace every `CHANGE_ME` value and set `DOMAIN` plus `ACME_EMAIL`.

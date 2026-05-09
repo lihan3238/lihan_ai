@@ -4,6 +4,8 @@
 
 使用一台 Linux origin 服务器运行 New API、PostgreSQL、Redis、Caddy 和 Uptime Kuma。
 
+生产环境从 `main` 部署。部署 wrapper 会拒绝非 `main` 的生产部署，除非为了已记录的紧急情况显式设置 `ALLOW_NON_MAIN_PROD_DEPLOY=1`。
+
 1. 将本仓库 clone 到 `/opt/lihan_ai`。
 2. 复制 `.env.production.example` 为 `.env.production`。
 3. 替换所有 `CHANGE_ME`，并设置 `DOMAIN` 和 `ACME_EMAIL`。

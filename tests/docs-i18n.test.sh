@@ -27,6 +27,7 @@ production-deployment-runbook.md
 edge-proxy-runbook.md
 migration-runbook.md
 disaster-recovery-runbook.md
+git-branching-runbook.md
 backup-strategy.md
 operations-runbook.md
 server-buying-guide.md

@@ -47,6 +47,7 @@ run bash tests/check-local-ports.test.sh
 run bash tests/browser-e2e-scaffold.test.sh
 run bash tests/prod-deploy-migration.test.sh
 run bash tests/docs-i18n.test.sh
+run bash tests/git-branching-policy.test.sh
 run bash tests/e2e-api-billing.test.sh
 run bash tests/wrapper-infra.test.sh
 run bash tests/ops-profile.test.sh
