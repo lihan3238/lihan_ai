@@ -16,6 +16,7 @@
 bash ops/bootstrap-server.sh
 ENV_FILE=.env.production bash ops/preflight.sh
 docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d
+ENV_FILE=.env.production bash ops/check-production-runtime.sh
 ```
 
 ## 从本地远程部署

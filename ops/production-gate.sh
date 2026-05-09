@@ -31,8 +31,11 @@ run bash -n ops/build-local-new-api.sh
 run bash -n ops/start-local-new-api.sh
 run bash -n ops/export-config-snapshot.sh
 run bash -n ops/drill-restore-postgres.sh
+run bash -n ops/drill-restore-stack.sh
 run bash -n ops/ai-dev-check.sh
 run bash -n ops/validate-ops-profile.sh
+run bash -n ops/check-production-runtime.sh
+run bash -n ops/sync-cpa-upstream-assets.sh
 run bash -n ops/bootstrap-server.sh
 run bash -n ops/deploy-prod.sh
 run bash -n ops/verify-remote-prod.sh
@@ -46,6 +49,8 @@ run bash tests/live-e2e-token-wrapper.test.sh
 run bash tests/check-local-ports.test.sh
 run bash tests/browser-e2e-scaffold.test.sh
 run bash tests/prod-deploy-migration.test.sh
+run bash tests/prod-deploy-hardening.test.sh
+run bash tests/cpa-compose.test.sh
 run bash tests/docs-i18n.test.sh
 run bash tests/git-branching-policy.test.sh
 run bash tests/e2e-api-billing.test.sh
@@ -64,6 +69,7 @@ run bash ops/preflight.sh
 run docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml config
 run docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local-build.yml config
 run docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.prod.yml config
+run docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml config
 run docker compose --env-file .env.production.example -f docker-compose.edge.yml config
 
 backup="$(bash ops/backup-postgres.sh)"

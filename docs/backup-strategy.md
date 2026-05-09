@@ -5,21 +5,21 @@
 The project stores New API state in PostgreSQL. The primary backup mechanism is:
 
 ```bash
-bash ops/backup-postgres.sh
+ENV_FILE=.env.production bash ops/backup-postgres.sh
 ```
 
-The script creates a custom-format PostgreSQL dump under `backups/postgres/`, verifies that `pg_restore` can read the dump, and writes a `.sha256` checksum when `sha256sum` is available. The backup directory is ignored by git.
+The script creates a custom-format PostgreSQL dump under `backups/postgres/`, verifies that `pg_restore` can read the dump, and writes a `.sha256` checksum when `sha256sum` is available. The backup directory is ignored by git. Production commands should pass `ENV_FILE=.env.production` so Compose expands the same variables as the running stack.
 
 Verify a backup without restoring it:
 
 ```bash
-bash ops/verify-postgres-backup.sh backups/postgres/<backup>.dump
+ENV_FILE=.env.production bash ops/verify-postgres-backup.sh backups/postgres/<backup>.dump
 ```
 
 Restore is intentionally explicit and destructive:
 
 ```bash
-bash ops/restore-postgres.sh backups/postgres/<backup>.dump
+ENV_FILE=.env.production bash ops/restore-postgres.sh backups/postgres/<backup>.dump
 ```
 
 Run an isolated restore drill without touching the active database:
@@ -29,6 +29,14 @@ bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
 ```
 
 The drill restores into a temporary PostgreSQL container with `--no-owner`, checks key New API tables, and removes the container afterwards.
+
+Run a fuller isolated stack drill when you need higher confidence:
+
+```bash
+ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<backup>.dump
+```
+
+The stack drill starts temporary PostgreSQL, Redis, and New API containers on a private Docker network, restores the dump, checks `/api/status`, and then removes the temporary resources.
 
 ## What Must Be Preserved
 

@@ -44,6 +44,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docker-compose.yml`：New API、PostgreSQL、Redis、Caddy 和 Uptime Kuma。
 - `docker-compose.prod.yml`：生产覆盖文件，用于日志轮转并移除开发端口。
 - `docker-compose.edge.yml`：无状态 edge 反向代理。
+- `docker-compose.cpa.yml`：可选 CPA 内部服务，给 New API 做上游适配。
 - `.env.example`：本地开发变量示例。
 - `.env.production.example`：生产 origin 和离线备份变量示例。
 - `docs/zh-CN/`：部署和运维文档中文版。
@@ -59,6 +60,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docs/migration-runbook.md`：无损迁移流程。
 - `docs/disaster-recovery-runbook.md`：离线备份和灾难恢复流程。
 - `docs/kuma-status-runbook.md`：Uptime Kuma 公开状态页配置。
+- `docs/cpa-runbook.md`：可选 CPA 部署和 SSH 隧道管理 UI。
 - `docs/development-workflow.md`：research-first 开发流程。
 - `docs/templates/ai-dev/`：AI 辅助开发模板。
 - `docs/spec-kit-integration-runbook.md`：GitHub Spec Kit Codex skills 集成说明。
@@ -90,6 +92,8 @@ DEPLOY_HOST=root@x.x.x.x bash ops/deploy-prod.sh
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ENV_FILE=.env.production bash ops/offsite-backup.sh
 SOURCE_SSH=root@old TARGET_SSH=root@new bash ops/migration-preflight.sh
+ENV_FILE=.env.production bash ops/check-production-runtime.sh
+bash ops/sync-cpa-upstream-assets.sh
 ```
 
 ## Spec Kit 工作流
@@ -137,6 +141,8 @@ DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ```
 
 面向国内访问时，建议在 origin 前增加中国优化 edge VPS，并按 `docs/zh-CN/edge-proxy-runbook.md` 配置。未来迁移到新生产服务器时，按 `docs/zh-CN/migration-runbook.md` 执行。
+
+如果需要把 CPA 作为 New API 后面的内部适配层，按 `docs/zh-CN/cpa-runbook.md` 操作。不要把 CPA `8317` 端口暴露到公网；管理 UI 使用 SSH 隧道访问。
 
 Windows 上运行仓库校验：
 

@@ -46,4 +46,11 @@ ENV_FILE=.env.production bash ops/offsite-backup.sh
 ```bash
 ENV_FILE=.env.production bash ops/backup-postgres.sh
 bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
+ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<backup>.dump
+```
+
+恢复后运行：
+
+```bash
+ENV_FILE=.env.production bash ops/check-production-runtime.sh
 ```

@@ -32,6 +32,7 @@ For production deployment, edge proxying, off-server backup, server migration, a
 
 - `docs/production-deployment-runbook.md`
 - `docs/edge-proxy-runbook.md`
+- `docs/cpa-runbook.md`
 - `docs/migration-runbook.md`
 - `docs/disaster-recovery-runbook.md`
 - `docs/git-branching-runbook.md`
@@ -111,6 +112,12 @@ For the first paid API relay validation, follow `docs/phase1-new-api-validation-
 - Last off-server restic backup exists and can be listed with `restic snapshots`.
 - Uptime Kuma public status page is updated with coarse service state only; do not expose provider names, channel IDs, balances, or internal error details.
 
+After deployment, DNS changes, or Caddy changes, run:
+
+```bash
+ENV_FILE=.env.production bash ops/check-production-runtime.sh
+```
+
 ## Incident Response
 
 For suspected billing, payment, or provider failure incidents: disable the affected channel or payment path first, export the relevant logs, then reconcile user balances. Do not delete failed orders or usage logs; mark them with an administrative note.
@@ -136,6 +143,10 @@ During local setup and channel experiments, keep the profile in `mode: developme
 Use Uptime Kuma for the user-facing status page. Keep monitors and any low-quota test token inside the Kuma UI/volume, not in git. Follow `docs/kuma-status-runbook.md`.
 
 To publish the status page, set `STATUS_DOMAIN` on the server and merge the example status-domain block from `Caddyfile.status.example` into the active production Caddyfile. The active base `Caddyfile` does not expose Kuma by default.
+
+## CPA Adapter
+
+CPA is optional and must stay behind New API. Use `docker-compose.cpa.yml` to place it on the same Docker network as New API, and use `docker-compose.cpa.ui.yml` only when you need the management UI through an SSH tunnel. Do not expose `8317` publicly. Follow `docs/cpa-runbook.md`.
 
 ## Live E2E
 

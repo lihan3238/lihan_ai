@@ -16,6 +16,7 @@ Production deploys from `main`. The deployment wrapper refuses non-`main` produc
 bash ops/bootstrap-server.sh
 ENV_FILE=.env.production bash ops/preflight.sh
 docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d
+ENV_FILE=.env.production bash ops/check-production-runtime.sh
 ```
 
 ## Remote Deploy From Local

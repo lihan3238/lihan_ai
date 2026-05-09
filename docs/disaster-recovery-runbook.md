@@ -36,6 +36,7 @@ Use cron on the origin:
 4. Restore the latest dump from restic.
 5. Start PostgreSQL and Redis.
 6. Run `ENV_FILE=.env.production bash ops/restore-postgres.sh <backup.dump>`.
+7. Run `ENV_FILE=.env.production bash ops/check-production-runtime.sh` after the stack starts.
 7. Start the full production stack.
 8. Run `DEPLOY_HOST=<new-server> bash ops/verify-remote-prod.sh`.
 
@@ -46,4 +47,5 @@ Run an isolated restore drill monthly and before major New API upgrades:
 ```bash
 ENV_FILE=.env.production bash ops/backup-postgres.sh
 bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
+ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<backup>.dump
 ```
