@@ -10,6 +10,10 @@ The goal is continuity. Requirements, decisions, execution tasks, verification r
 
 Official GitHub Spec Kit `v0.8.7` is initialized in Codex skills mode. Its generated assets live in `.specify/`, `.agents/skills/speckit-*`, and `AGENTS.md`; operational details are tracked in `docs/spec-kit-integration-runbook.md`.
 
+## Branch And Environment Policy
+
+This repository uses a simple GitHub Flow style policy: `main = production`. Production origin servers deploy `main` by default, while local development happens on short-lived `codex/<topic>`, `feature/<topic>`, or `hotfix/<topic>` branches. See `docs/git-branching-runbook.md` for the full policy.
+
 ## Spec Kit And Superpowers
 
 Spec Kit provides the upstream specification workflow and Codex skills:

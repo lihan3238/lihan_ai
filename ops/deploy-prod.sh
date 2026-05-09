@@ -13,10 +13,19 @@ DEPLOY_ENV_FILE="${DEPLOY_ENV_FILE:-.env.production}"
 DEPLOY_REF="${DEPLOY_REF:-main}"
 DEPLOY_REPO="${DEPLOY_REPO:-$(git -C "$ROOT_DIR" config --get remote.origin.url 2>/dev/null || true)}"
 RUN_REMOTE_BACKUP="${RUN_REMOTE_BACKUP:-1}"
+ALLOW_NON_MAIN_PROD_DEPLOY="${ALLOW_NON_MAIN_PROD_DEPLOY:-0}"
 
 if [ -z "$DEPLOY_REPO" ]; then
   echo "DEPLOY_REPO is not set and git remote origin is unavailable" >&2
   exit 2
+fi
+
+if [ "$DEPLOY_ENV" = "production" ] && [ "$DEPLOY_REF" != "main" ]; then
+  if [ "$ALLOW_NON_MAIN_PROD_DEPLOY" != "1" ]; then
+    echo "production deploy requires DEPLOY_REF=main; set ALLOW_NON_MAIN_PROD_DEPLOY=1 only for a documented emergency override" >&2
+    exit 2
+  fi
+  echo "WARN non-main production deploy override: DEPLOY_REF=$DEPLOY_REF" >&2
 fi
 
 remote_compose="docker compose --env-file $DEPLOY_ENV_FILE -f docker-compose.yml -f docker-compose.prod.yml"

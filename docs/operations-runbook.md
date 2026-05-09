@@ -11,6 +11,8 @@
 7. Run `docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d`.
 8. Open the site, create the admin user, and configure New API from its original admin console.
 
+Production tracks `main`. Do not deploy long-lived feature branches to the production origin; follow `docs/git-branching-runbook.md`.
+
 ## New API Source Management
 
 The deployment uses the official New API Docker image by default, while `vendor/new-api` keeps the upstream source available for audit, diffs, and future customization. Do not add local business logic until the relevant upstream implementation has been checked first. To update the pinned upstream source:
@@ -32,6 +34,7 @@ For production deployment, edge proxying, off-server backup, server migration, a
 - `docs/edge-proxy-runbook.md`
 - `docs/migration-runbook.md`
 - `docs/disaster-recovery-runbook.md`
+- `docs/git-branching-runbook.md`
 
 ## Local Development
 

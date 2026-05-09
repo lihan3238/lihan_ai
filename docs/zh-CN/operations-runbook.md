@@ -11,6 +11,8 @@
 7. 运行 `docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d`。
 8. 打开站点，创建管理员用户，并在 New API 原生后台配置系统。
 
+生产环境跟踪 `main`。不要把长期功能分支部署到生产 origin；分支规则参考 `docs/zh-CN/git-branching-runbook.md`。
+
 ## New API 源码管理
 
 默认部署使用官方 New API Docker 镜像，`vendor/new-api` 只用于审计、diff 和未来二开。新增本地业务逻辑前，必须先确认上游实现。更新固定的上游源码：
@@ -32,6 +34,7 @@ wrapper 层本地镜像、配置快照、恢复演练和 production gate 参考 
 - `docs/edge-proxy-runbook.md`
 - `docs/migration-runbook.md`
 - `docs/disaster-recovery-runbook.md`
+- `docs/git-branching-runbook.md`
 
 ## 本地开发
 
