@@ -1,5 +1,7 @@
 # Lihan AI Relay
 
+中文文档：[README.zh-CN.md](README.zh-CN.md)
+
 This repository is currently a clean New API deployment and study workspace. The first milestone is to run upstream New API as-is, understand its built-in features, and only then decide whether any local customization is needed.
 
 ## Boundaries
