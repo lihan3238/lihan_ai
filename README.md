@@ -20,19 +20,19 @@ This repository is currently a clean New API deployment and study workspace. The
 git submodule update --init --recursive
 ```
 
-4. Copy `.env.example` to `.env`.
+4. Copy `.env.production.example` to `.env.production`.
 5. Replace every `CHANGE_ME` value and set `DOMAIN` to the production hostname.
 6. Point the domain A/AAAA record to the VPS.
 7. Run the preflight check from WSL or Linux:
 
 ```bash
-bash ops/preflight.sh
+ENV_FILE=.env.production bash ops/preflight.sh
 ```
 
 8. Start the stack:
 
 ```bash
-docker compose up -d
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
 9. Open `https://$DOMAIN`, create the first admin user, then configure New API using its original admin console.
@@ -40,13 +40,20 @@ docker compose up -d
 ## Repository Layout
 
 - `docker-compose.yml`: New API, PostgreSQL, Redis, Caddy, and Uptime Kuma.
+- `docker-compose.prod.yml`: production override for log rotation and no development ports.
+- `docker-compose.edge.yml`: stateless edge reverse proxy.
 - `.env.example`: deployment variables and required secrets.
+- `.env.production.example`: production origin and off-server backup variables.
 - `docs/new-api-code-map.md`: current upstream New API feature and source map.
 - `docs/new-api-full-research.md`: deeper upstream feature inventory for development planning.
 - `docs/phase1-new-api-validation-runbook.md`: Phase 1 GPT-first configuration and validation checklist.
 - `docs/local-development-state.md`: local initialization and persistent state rules.
 - `docs/backup-strategy.md`: database backup, verification, and restore rules.
 - `docs/server-buying-guide.md`: VPS sizing and purchase checklist.
+- `docs/production-deployment-runbook.md`: production origin bootstrap and SSH deploy flow.
+- `docs/edge-proxy-runbook.md`: China-optimized edge reverse proxy setup.
+- `docs/migration-runbook.md`: no-loss server migration flow.
+- `docs/disaster-recovery-runbook.md`: off-server backup and restore flow.
 - `docs/kuma-status-runbook.md`: Uptime Kuma public status-page setup.
 - `docs/development-workflow.md`: research-first development workflow.
 - `docs/templates/ai-dev/`: Spec Kit style templates for AI-assisted development.
@@ -74,6 +81,11 @@ bash ops/export-config-snapshot.sh
 bash ops/validate-ops-profile.sh config/ops-profiles/glm-standard.example.json
 bash ops/channel-health-advisor.sh config/ops-profiles/glm-standard-health.example.json
 bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
+bash ops/bootstrap-server.sh
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-prod.sh
+DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
+ENV_FILE=.env.production bash ops/offsite-backup.sh
+SOURCE_SSH=root@old TARGET_SSH=root@new bash ops/migration-preflight.sh
 ```
 
 ## Spec Kit Workflow
@@ -103,6 +115,24 @@ docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml u
 Open `http://localhost:$NEW_API_DEV_PORT`. The local default is `3100` so it does not collide with software that commonly uses host port `3000`; container-internal New API still listens on `3000`. The development override binds to `127.0.0.1` by default so the admin console and API keys are not exposed to the LAN. If you intentionally need LAN access, set `NEW_API_DEV_HOST=0.0.0.0`, restart the `new-api` container, and make sure the Windows firewall only allows trusted networks. For production, use the base `docker-compose.yml` and access through Caddy on `https://$DOMAIN`.
 
 On first login, New API will ask you to initialize the system and create the root/admin account. It is safe to follow that prompt in local development. The account, settings, channels, tokens, and payment configuration are stored in PostgreSQL and will survive container restarts and container deletion. Do not run `docker compose down -v` unless you intentionally want to erase local state.
+
+## Production And Migration
+
+The production origin uses `.env.production` and `docker-compose.prod.yml`. The edge proxy uses `docker-compose.edge.yml` and must stay stateless:
+
+```bash
+ENV_FILE=.env.production bash ops/preflight.sh
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+Remote deploy and verification:
+
+```bash
+DEPLOY_HOST=root@x.x.x.x DEPLOY_PATH=/opt/lihan_ai DEPLOY_REF=main bash ops/deploy-prod.sh
+DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
+```
+
+For China-optimized access, publish an edge VPS in front of the origin and follow `docs/edge-proxy-runbook.md`. For moving to a new production server without losing data, follow `docs/migration-runbook.md`.
 
 On Windows, run repository verification from PowerShell:
 

@@ -1,0 +1,22 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+services:
+  new-api:
+    logging: *default-logging
+
+  postgres:
+    logging: *default-logging
+
+  redis:
+    logging: *default-logging
+
+  caddy:
+    logging: *default-logging
+
+  uptime-kuma:
+    ports: !reset []
+    logging: *default-logging

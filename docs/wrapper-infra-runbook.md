@@ -115,3 +115,21 @@ bash ops/production-gate.sh
 ```
 
 `AI_DEV_FEATURE_DIR` must point to a directory that passes `ops/ai-dev-check.sh`, including `Approved for implementation: yes` in `tasks.md`.
+
+## Production Deployment Kit
+
+For server bootstrap, SSH deploy, off-server restic backup, edge proxying, and no-loss migration, use:
+
+```bash
+bash ops/bootstrap-server.sh
+DEPLOY_HOST=root@x.x.x.x DEPLOY_PATH=/opt/lihan_ai bash ops/deploy-prod.sh
+DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
+ENV_FILE=.env.production bash ops/offsite-backup.sh
+SOURCE_SSH=root@old TARGET_SSH=root@new bash ops/migration-preflight.sh
+```
+
+Final migration requires an explicit maintenance-window confirmation:
+
+```bash
+CONFIRM_FINAL_CUTOVER=yes SOURCE_SSH=root@old TARGET_SSH=root@new bash ops/migrate-prod.sh
+```

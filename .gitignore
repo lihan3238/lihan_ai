@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+!.env.production.example
 .envrc
 .agents/**
 !.agents/
@@ -37,3 +38,4 @@ test-results/
 tmp/
 temp/
 *.log
+reference_file/

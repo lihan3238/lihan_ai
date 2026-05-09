@@ -4,11 +4,11 @@
 
 1. Work from WSL Ubuntu 24.04 or the Linux VPS shell.
 2. Run `git submodule update --init --recursive` to fetch the pinned New API source.
-3. Copy `.env.example` to `.env`.
+3. Copy `.env.production.example` to `.env.production`.
 4. Replace all `CHANGE_ME` values with generated secrets.
 5. Set `DOMAIN` and `ACME_EMAIL`.
-6. Run `bash ops/preflight.sh`.
-7. Run `docker compose up -d`.
+6. Run `ENV_FILE=.env.production bash ops/preflight.sh`.
+7. Run `docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d`.
 8. Open the site, create the admin user, and configure New API from its original admin console.
 
 ## New API Source Management
@@ -25,6 +25,13 @@ git commit -m "chore: update new-api upstream"
 Only switch `docker-compose.yml` from the official image to a locally built image after custom changes have a separate test and rollback plan.
 
 For wrapper-level local image builds, configuration snapshots, restore drills, and production gates, follow `docs/wrapper-infra-runbook.md`.
+
+For production deployment, edge proxying, off-server backup, server migration, and disaster recovery, follow:
+
+- `docs/production-deployment-runbook.md`
+- `docs/edge-proxy-runbook.md`
+- `docs/migration-runbook.md`
+- `docs/disaster-recovery-runbook.md`
 
 ## Local Development
 
@@ -98,6 +105,7 @@ For the first paid API relay validation, follow `docs/phase1-new-api-validation-
 - Upstream provider balances are above alert thresholds.
 - Error rate and failed relay count are not increasing.
 - Last database backup exists and is restorable.
+- Last off-server restic backup exists and can be listed with `restic snapshots`.
 - Uptime Kuma public status page is updated with coarse service state only; do not expose provider names, channel IDs, balances, or internal error details.
 
 ## Incident Response
@@ -154,3 +162,19 @@ For shell E2E from Windows PowerShell into WSL, set runtime variables inside the
 ```powershell
 bash -lc 'NEW_API_BASE_URL=http://localhost:3102 ./ops/live-e2e-billing-from-db-token.sh test_2505081251'
 ```
+
+## Production Migration
+
+Before moving to another origin server:
+
+```bash
+SOURCE_SSH=root@old TARGET_SSH=root@new DEPLOY_PATH=/opt/lihan_ai bash ops/migration-preflight.sh
+```
+
+During the final maintenance window:
+
+```bash
+CONFIRM_FINAL_CUTOVER=yes SOURCE_SSH=root@old TARGET_SSH=root@new DEPLOY_PATH=/opt/lihan_ai bash ops/migrate-prod.sh
+```
+
+Do not update DNS or edge upstream until the target passes `ops/verify-remote-prod.sh`.
