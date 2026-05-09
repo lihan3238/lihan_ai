@@ -1,0 +1,13 @@
+{
+  "name": "glm-standard",
+  "description": "Read-only validation profile for the GLM standard pool in local New API development.",
+  "group": "standard",
+  "model": "glm-5.1",
+  "min_enabled_channels": 1,
+  "manual_billing": true,
+  "automatic_payment": "disabled",
+  "e2e": {
+    "model": "glm-5.1",
+    "max_tokens": 24
+  }
+}

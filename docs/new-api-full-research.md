@@ -457,3 +457,14 @@ Avoid initially:
 - How much cached-token detail is visible in current logs for OpenAI/Claude/DeepSeek/Zhipu channels?
 - Does New API's Codex/coding-plan support fit our compliance boundary, or should it remain disabled?
 - Which admin workflows are too manual for operation and should become scripts or presets?
+
+## 16. Health Monitoring Strategy
+
+New API already exposes `/api/status`, stores channel `response_time` and `test_time`, records consume/error logs, and can automatically disable channels based on configured errors. Uptime Kuma is already present in this wrapper deployment and is better suited for a simple public status page than a custom V1 frontend.
+
+Development implication:
+
+- Internal health should be read from New API's existing channel, ability, and log tables before adding new runtime code.
+- Public health should be coarse-grained: API Gateway, model pool, billing/account, and maintenance.
+- Do not expose provider names, channel IDs, balances, quota sources, or internal errors on the public page.
+- Avoid automatic wrapper-side channel disabling until the read-only advisor has produced enough operational history.

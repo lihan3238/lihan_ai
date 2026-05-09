@@ -1,10 +1,16 @@
 .env
 .env.*
 !.env.example
+!.env.production.example
 .envrc
+.agents/**
+!.agents/
+!.agents/skills/
+!.agents/skills/**
 data/
 logs/
 backups/
+snapshots/
 caddy_data/
 caddy_config/
 postgres_data/
@@ -26,6 +32,10 @@ dist/
 build/
 coverage/
 .cache/
+.auth/
+playwright-report/
+test-results/
 tmp/
 temp/
 *.log
+reference_file/

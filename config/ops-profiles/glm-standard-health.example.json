@@ -1,0 +1,26 @@
+{
+  "name": "glm-standard-health",
+  "description": "Read-only health advisor profile for the GLM standard pool.",
+  "group": "standard",
+  "model": "glm-5.1",
+  "mode": "development",
+  "window_hours": 24,
+  "min_enabled_channels": 1,
+  "min_sample_count": 20,
+  "thresholds": {
+    "max_error_rate": 0.2,
+    "min_error_count_for_rate": 10,
+    "max_recent_errors": 20,
+    "max_p95_use_time_seconds": 20,
+    "max_response_time_ms": 10000,
+    "max_test_age_hours": 24
+  },
+  "public_status": {
+    "kuma_components": [
+      "API Gateway",
+      "GLM Standard",
+      "Account & Billing",
+      "Maintenance Notice"
+    ]
+  }
+}

@@ -22,6 +22,14 @@ Restore is intentionally explicit and destructive:
 bash ops/restore-postgres.sh backups/postgres/<backup>.dump
 ```
 
+Run an isolated restore drill without touching the active database:
+
+```bash
+bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
+```
+
+The drill restores into a temporary PostgreSQL container with `--no-owner`, checks key New API tables, and removes the container afterwards.
+
 ## What Must Be Preserved
 
 - PostgreSQL database: users, root account, tokens, channels, settings, logs, billing data, OAuth/payment configuration.
@@ -55,10 +63,37 @@ For a small paid service, use at least:
 - Daily PostgreSQL backup.
 - Backup after every New API upgrade and before payment/channel configuration changes.
 - 14-30 days local retention.
-- One off-server copy, for example another VPS, object storage, or a private backup machine.
+- One encrypted off-server copy, for example restic over SFTP, S3-compatible object storage, or a private backup machine.
 - Monthly restore drill on a separate machine or temporary Docker project.
 
 Local backups alone are not enough. If the VPS disk is lost, local dumps are lost with it.
+
+## Off-Server Restic Backup
+
+After `.env.production` is prepared on the production origin, configure restic credentials outside git:
+
+```bash
+export RESTIC_REPOSITORY=sftp:user@backup-host:/srv/restic/lihan-ai
+export RESTIC_PASSWORD='<store outside the server>'
+export CONFIG_SNAPSHOT_GPG_RECIPIENT='<optional-gpg-recipient>'
+ENV_FILE=.env.production bash ops/offsite-backup.sh
+```
+
+The wrapper creates a PostgreSQL dump, exports a redacted config snapshot, optionally exports a GPG-encrypted private snapshot, backs those files up with restic, applies retention, and runs `restic check`.
+
+Keep `RESTIC_PASSWORD` somewhere other than the production server. Without it, the off-server repository is not recoverable.
+
+## Off-Server Encrypted Backup
+
+Use restic for encrypted off-server copies:
+
+```bash
+export RESTIC_REPOSITORY=sftp:user@backup-host:/srv/restic/lihan-ai
+export RESTIC_PASSWORD="<store outside the server>"
+ENV_FILE=.env.production bash ops/offsite-backup.sh
+```
+
+`ops/offsite-backup.sh` creates a PostgreSQL dump, exports a redacted configuration snapshot, includes the selected env file, and backs them up to `RESTIC_REPOSITORY`. If `CONFIG_SNAPSHOT_GPG_RECIPIENT` is set, it also includes a GPG-encrypted private configuration snapshot.
 
 ## Suggested Cron
 
@@ -68,7 +103,13 @@ Run this on the VPS from the repository directory:
 15 3 * * * cd /opt/lihan_ai && bash ops/backup-postgres.sh >> logs/backup.log 2>&1
 ```
 
-Then sync `backups/postgres/` and `.env` to an off-server location using your preferred encrypted backup tool. Do not commit either to git.
+Then run `ops/offsite-backup.sh` or sync `backups/postgres/` and `.env.production` to an off-server location using your preferred encrypted backup tool. Do not commit either to git.
+
+For restic-based off-server backup:
+
+```cron
+20 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/offsite-backup.sh >> logs/offsite-backup.log 2>&1
+```
 
 ## Recovery Order
 
@@ -79,3 +120,5 @@ Then sync `backups/postgres/` and `.env` to an off-server location using your pr
 5. Run `bash ops/restore-postgres.sh <backup.dump>`.
 6. Start New API.
 7. Verify login, admin settings, token list, channel list, and `/api/status`.
+
+For a full fresh-server disaster recovery flow, follow `docs/disaster-recovery-runbook.md`.
