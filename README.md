@@ -44,6 +44,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docker-compose.yml`: New API, PostgreSQL, Redis, Caddy, and Uptime Kuma.
 - `docker-compose.prod.yml`: production override for log rotation and no development ports.
 - `docker-compose.edge.yml`: stateless edge reverse proxy.
+- `docker-compose.cpa.yml`: optional internal CPA service for New API upstream routing.
 - `.env.example`: deployment variables and required secrets.
 - `.env.production.example`: production origin and off-server backup variables.
 - `docs/new-api-code-map.md`: current upstream New API feature and source map.
@@ -57,6 +58,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docs/migration-runbook.md`: no-loss server migration flow.
 - `docs/disaster-recovery-runbook.md`: off-server backup and restore flow.
 - `docs/kuma-status-runbook.md`: Uptime Kuma public status-page setup.
+- `docs/cpa-runbook.md`: optional CPA deployment and SSH-tunneled management UI.
 - `docs/development-workflow.md`: research-first development workflow.
 - `docs/templates/ai-dev/`: Spec Kit style templates for AI-assisted development.
 - `docs/spec-kit-integration-runbook.md`: GitHub Spec Kit Codex skills integration notes.
@@ -88,6 +90,8 @@ DEPLOY_HOST=root@x.x.x.x bash ops/deploy-prod.sh
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ENV_FILE=.env.production bash ops/offsite-backup.sh
 SOURCE_SSH=root@old TARGET_SSH=root@new bash ops/migration-preflight.sh
+ENV_FILE=.env.production bash ops/check-production-runtime.sh
+bash ops/sync-cpa-upstream-assets.sh
 ```
 
 ## Spec Kit Workflow
@@ -135,6 +139,8 @@ DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ```
 
 For China-optimized access, publish an edge VPS in front of the origin and follow `docs/edge-proxy-runbook.md`. For moving to a new production server without losing data, follow `docs/migration-runbook.md`.
+
+If CPA is needed as an internal adapter behind New API, follow `docs/cpa-runbook.md`. Do not expose CPA port `8317` publicly; use SSH tunneling for the management UI.
 
 On Windows, run repository verification from PowerShell:
 

@@ -12,6 +12,7 @@ English documentation remains the engineering source of truth. Chinese documents
 | `docs/migration-runbook.md` | `docs/zh-CN/migration-runbook.md` |
 | `docs/disaster-recovery-runbook.md` | `docs/zh-CN/disaster-recovery-runbook.md` |
 | `docs/git-branching-runbook.md` | `docs/zh-CN/git-branching-runbook.md` |
+| `docs/cpa-runbook.md` | `docs/zh-CN/cpa-runbook.md` |
 | `docs/backup-strategy.md` | `docs/zh-CN/backup-strategy.md` |
 | `docs/operations-runbook.md` | `docs/zh-CN/operations-runbook.md` |
 | `docs/server-buying-guide.md` | `docs/zh-CN/server-buying-guide.md` |

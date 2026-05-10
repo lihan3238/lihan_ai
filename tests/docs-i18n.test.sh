@@ -28,6 +28,7 @@ edge-proxy-runbook.md
 migration-runbook.md
 disaster-recovery-runbook.md
 git-branching-runbook.md
+cpa-runbook.md
 backup-strategy.md
 operations-runbook.md
 server-buying-guide.md
@@ -62,6 +63,29 @@ done
 for keyword in "ORIGIN_UPSTREAM" "docker-compose.edge.yml" ".env.edge"; do
   assert_contains "docs/edge-proxy-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/edge-proxy-runbook.md" "$keyword"
+done
+
+for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai/data/cpa"; do
+  assert_contains "docs/cpa-runbook.md" "$keyword"
+  assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
+done
+
+for keyword in "Firewall Baseline" "Troubleshooting" "URL-safe" "Caddy"; do
+  assert_contains "docs/production-deployment-runbook.md" "$keyword"
+done
+
+for keyword in "防火墙基线" "排障" "URL-safe" "Caddy"; do
+  assert_contains "docs/zh-CN/production-deployment-runbook.md" "$keyword"
+done
+
+for keyword in "drill-restore-stack.sh" "ENV_FILE=.env.production" "check-production-runtime.sh"; do
+  assert_contains "docs/backup-strategy.md" "$keyword"
+  assert_contains "docs/zh-CN/backup-strategy.md" "$keyword"
+done
+
+for keyword in "remote-management.allow-remote" "Base URL" "docker run -p 8317:8317"; do
+  assert_contains "docs/cpa-runbook.md" "$keyword"
+  assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
 done
 
 echo "docs i18n tests passed"

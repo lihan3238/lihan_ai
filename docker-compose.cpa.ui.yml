@@ -1,0 +1,4 @@
+services:
+  cli-proxy-api:
+    ports:
+      - "127.0.0.1:${CPA_UI_PORT:-8317}:8317"
