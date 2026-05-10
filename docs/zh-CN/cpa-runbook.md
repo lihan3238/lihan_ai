@@ -113,6 +113,8 @@ docker compose --env-file .env.production \
   up -d cli-proxy-api
 ```
 
+基础 CPA compose 会把 `config.yaml` 只读挂载。UI override 会刻意把 `/CLIProxyAPI/config.yaml` 重新挂载为可写，这样管理 UI 才能保存配置。只有正在管理 CPA 配置时才使用这个 override。
+
 从本机建立 SSH 隧道：
 
 ```bash
@@ -141,6 +143,8 @@ docker compose --env-file .env.production \
   -f docker-compose.cpa.yml \
   up -d --remove-orphans cli-proxy-api
 ```
+
+这样 CPA 会回到正常运行时使用的只读 config mount。
 
 ## 从 New API 验证
 
