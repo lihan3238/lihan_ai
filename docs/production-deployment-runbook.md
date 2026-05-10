@@ -52,9 +52,11 @@ Preferred release deployment:
 
 ```bash
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh promote
 ```
+
+`prepare` sets the remote `candidate` release. Normal `smoke` and `promote` use that candidate automatically; set `RELEASE_ID=<release-id>` only for a deliberate older-release operation.
 
 Legacy simple deploy of a clean Git ref through SSH:
 

@@ -146,17 +146,17 @@ DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
 bash ops/deploy-release.sh prepare
 
 DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
-RELEASE_ID=<release-id> \
 DEPLOY_INCLUDE_CPA=1 \
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
 bash ops/deploy-release.sh smoke
 
 DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
-RELEASE_ID=<release-id> \
 DEPLOY_INCLUDE_CPA=1 \
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
 bash ops/deploy-release.sh promote
 ```
+
+`prepare` 会把准备好的 release 记录为 `candidate`，所以正常 `smoke` 和 `promote` 不需要手动填 `RELEASE_ID`。只有明确要操作某个旧 release 时，才传 `RELEASE_ID=<release-id>`。
 
 源站手动重启等价命令：
 

@@ -93,8 +93,8 @@ bash ops/channel-health-advisor.sh config/ops-profiles/glm-standard-health.examp
 bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
 bash ops/bootstrap-server.sh
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh promote
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-prod.sh
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ENV_FILE=.env.production bash ops/offsite-backup.sh
@@ -144,10 +144,12 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 
 ```bash
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh promote
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ```
+
+`prepare` 会把最新准备好的 release 记录为 `candidate`，所以正常的 `smoke` 和 `promote` 不需要再手动复制 `RELEASE_ID`。只有明确要测试或发布某个旧 release 时，才额外设置 `RELEASE_ID=<release-id>`。
 
 legacy 直接 checkout 部署仍保留：
 

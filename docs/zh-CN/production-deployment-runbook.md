@@ -52,9 +52,11 @@ sudo ss -lntp | grep -E ':80|:443|:8317|:5432|:6379'
 
 ```bash
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh promote
 ```
+
+`prepare` 会设置远端 `candidate` release。正常 `smoke` 和 `promote` 会自动使用这个 candidate；只有明确要操作某个旧 release 时才设置 `RELEASE_ID=<release-id>`。
 
 legacy 简化部署仍可通过 SSH 部署一个干净的 Git ref：
 

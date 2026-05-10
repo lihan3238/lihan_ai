@@ -14,6 +14,10 @@ assert_file() {
 
 assert_executable() {
   [ -x "$ROOT_DIR/$1" ] || fail "missing executable: $1"
+  if command -v git >/dev/null 2>&1 && git -C "$ROOT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    mode="$(git -C "$ROOT_DIR" ls-files -s -- "$1" | awk '{print $1}')"
+    [ "$mode" = "100755" ] || fail "not executable in git index: $1 ($mode)"
+  fi
 }
 
 assert_contains() {

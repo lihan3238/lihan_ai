@@ -36,6 +36,9 @@ assert_contains "ops/deploy-release.sh" "docker compose -p"
 assert_contains "ops/deploy-release.sh" "COMPOSE_PROJECT_NAME"
 assert_contains "ops/deploy-release.sh" "ALLOW_NON_MAIN_PROD_DEPLOY"
 assert_contains "ops/deploy-release.sh" "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL"
+assert_contains "ops/deploy-release.sh" "candidate_link"
+assert_contains "ops/deploy-release.sh" "candidate_target"
+assert_contains "ops/deploy-release.sh" "set_candidate_to"
 
 tmp_dir="$(mktemp -d)"
 fake_bin="$tmp_dir/bin"
@@ -67,6 +70,7 @@ prepare_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@examp
 printf '%s' "$prepare_output" | grep -q "DRY RUN release prepare" || fail "prepare dry-run missing title: $prepare_output"
 printf '%s' "$prepare_output" | grep -q "/opt/lihan_ai_deploy/repo.git" || fail "prepare dry-run missing repo.git: $prepare_output"
 printf '%s' "$prepare_output" | grep -q "git worktree add --detach" || fail "prepare dry-run missing worktree: $prepare_output"
+printf '%s' "$prepare_output" | grep -q "candidate -> releases/<timestamp>-<sha>" || fail "prepare dry-run missing candidate pointer: $prepare_output"
 printf '%s' "$prepare_output" | grep -q "docker compose -p lihan_ai" || fail "prepare dry-run missing fixed compose project: $prepare_output"
 printf '%s' "$prepare_output" | grep -q "ops/preflight.sh" || fail "prepare dry-run missing preflight: $prepare_output"
 
@@ -83,6 +87,10 @@ if printf '%s' "$smoke_output" | grep -q "switch current"; then
   fail "smoke dry-run should not switch current: $smoke_output"
 fi
 
+smoke_candidate_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example "$ROOT_DIR/ops/deploy-release.sh" smoke)"
+printf '%s' "$smoke_candidate_output" | grep -q "cd /opt/lihan_ai_deploy/candidate" || fail "smoke dry-run should default to prepared candidate: $smoke_candidate_output"
+printf '%s' "$smoke_candidate_output" | grep -q "prepared candidate release" || fail "smoke dry-run should explain candidate default: $smoke_candidate_output"
+
 promote_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example RELEASE_ID=20260510T000000Z-deadbee "$ROOT_DIR/ops/deploy-release.sh" promote)"
 printf '%s' "$promote_output" | grep -q "DRY RUN release promote" || fail "promote dry-run missing title: $promote_output"
 printf '%s' "$promote_output" | grep -q "backup-postgres.sh" || fail "promote dry-run missing backup: $promote_output"
@@ -93,6 +101,10 @@ printf '%s' "$promote_output" | grep -q "check-production-runtime.sh" || fail "p
 promote_tunnel_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example RELEASE_ID=20260510T000000Z-deadbee DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 "$ROOT_DIR/ops/deploy-release.sh" promote)"
 printf '%s' "$promote_tunnel_output" | grep -q -- "--scale caddy=0" || fail "tunnel promote dry-run should scale caddy down: $promote_tunnel_output"
 printf '%s' "$promote_tunnel_output" | grep -q "docker-compose.cloudflare-tunnel.yml" || fail "tunnel promote dry-run missing tunnel compose file: $promote_tunnel_output"
+
+promote_candidate_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example "$ROOT_DIR/ops/deploy-release.sh" promote)"
+printf '%s' "$promote_candidate_output" | grep -q "current -> candidate" || fail "promote dry-run should default to candidate: $promote_candidate_output"
+printf '%s' "$promote_candidate_output" | grep -q "clear candidate after successful promote" || fail "promote dry-run should document candidate cleanup: $promote_candidate_output"
 
 rollback_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example "$ROOT_DIR/ops/deploy-release.sh" rollback)"
 printf '%s' "$rollback_output" | grep -q "DRY RUN release rollback" || fail "rollback dry-run missing title: $rollback_output"

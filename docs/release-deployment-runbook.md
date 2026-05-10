@@ -10,6 +10,7 @@ Default root:
 /opt/lihan_ai_deploy/
   repo.git/
   releases/
+  candidate -> releases/<prepared-release-id>
   current -> releases/<release-id>
   previous -> releases/<previous-release-id>
   shared/
@@ -24,6 +25,7 @@ Rules:
 
 - `main` remains the production branch. Production release deploys refuse non-`main` refs unless `ALLOW_NON_MAIN_PROD_DEPLOY=1` is set for a documented emergency.
 - `git fetch`, candidate release creation, and candidate smoke tests do not modify `current`.
+- Successful `prepare` updates `candidate`; normal `smoke` and `promote` use that candidate when `RELEASE_ID` is omitted.
 - Docker Compose is always run from `current` with `docker compose -p "$DEPLOY_COMPOSE_PROJECT"`.
 - Runtime files live under `shared/`, not inside a release checkout.
 - Releases are not zero-downtime. `promote` switches `current` and restarts the Compose stack.
@@ -71,7 +73,7 @@ Normal change flow:
 2. Commit on a short-lived branch such as `codex/<topic>` or `feature/<topic>`.
 3. Open a PR and merge it to `main` after review and checks.
 4. From the local repository, run `prepare` against `DEPLOY_REF=main`.
-5. Run `smoke` against the prepared `RELEASE_ID`; use `SMOKE_BACKUP_PATH` when you want a known backup.
+5. Run `smoke` against the prepared `candidate`; use `SMOKE_BACKUP_PATH` when you want a known backup.
 6. Run `promote` only after smoke passes.
 7. Verify `current`, Docker services, backups, New API admin, CPA channels, and Kuma.
 
@@ -108,12 +110,13 @@ Create a candidate release without touching production:
 DEPLOY_HOST=<deploy-user>@<origin-host> DEPLOY_REF=main bash ops/deploy-release.sh prepare
 ```
 
-`prepare` fetches the requested ref, creates a detached worktree under `releases/<timestamp>-<sha>`, initializes submodules, links shared runtime paths, runs `ops/preflight.sh`, and renders Compose config.
+`prepare` fetches the requested ref, creates a detached worktree under `releases/<timestamp>-<sha>`, initializes submodules, links shared runtime paths, runs `ops/preflight.sh`, renders Compose config, and points `/opt/lihan_ai_deploy/candidate` at the prepared release.
 
-Save the printed `RELEASE_ID`:
+The script still prints `RELEASE_ID` for audit and emergency use:
 
 ```text
 RELEASE_ID=20260510T120000Z-abcdef0
+candidate -> releases/20260510T120000Z-abcdef0
 ```
 
 ## Smoke
@@ -121,26 +124,33 @@ RELEASE_ID=20260510T120000Z-abcdef0
 Run the candidate against an isolated restore stack:
 
 ```bash
-DEPLOY_HOST=<deploy-user>@<origin-host> RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh smoke
 ```
 
-`smoke` uses the newest `shared/backups/postgres/*.dump` unless `SMOKE_BACKUP_PATH` is set. It runs `ops/drill-restore-stack.sh`, which starts temporary PostgreSQL, Redis, and New API containers on an isolated Docker network. It does not connect to the production database and does not bind public ports.
+`smoke` uses `/opt/lihan_ai_deploy/candidate` by default. It uses the newest `shared/backups/postgres/*.dump` unless `SMOKE_BACKUP_PATH` is set. It runs `ops/drill-restore-stack.sh`, which starts temporary PostgreSQL, Redis, and New API containers on an isolated Docker network. It does not connect to the production database and does not bind public ports.
 
 ## Promote
 
 Promote a tested release:
 
 ```bash
-DEPLOY_HOST=<deploy-user>@<origin-host> RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
 ```
 
-`promote` backs up the current production PostgreSQL database when a current stack exists, points `previous` at the old release, atomically switches `current`, runs:
+`promote` uses `/opt/lihan_ai_deploy/candidate` by default. It backs up the current production PostgreSQL database when a current stack exists, points `previous` at the old release, atomically switches `current`, runs:
 
 ```bash
 docker compose -p lihan_ai --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 ```
 
-and verifies New API `/api/status`. With `DEPLOY_INCLUDE_CPA=1`, `docker-compose.cpa.yml` is appended. With `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1`, `docker-compose.cloudflare-tunnel.yml` is appended and `--scale caddy=0` is applied. If promotion fails, the script switches `current` back to the previous release and attempts to restart the previous stack.
+and verifies New API `/api/status`. With `DEPLOY_INCLUDE_CPA=1`, `docker-compose.cpa.yml` is appended. With `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1`, `docker-compose.cloudflare-tunnel.yml` is appended and `--scale caddy=0` is applied. If promotion succeeds, the candidate pointer is cleared. If promotion fails, the script switches `current` back to the previous release and attempts to restart the previous stack.
+
+To operate on a specific release instead of the current candidate, pass either `RELEASE_ID=<release-id>` or a positional release id:
+
+```bash
+DEPLOY_HOST=<deploy-user>@<origin-host> RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
+DEPLOY_HOST=<deploy-user>@<origin-host> RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+```
 
 ## Rollback
 
@@ -160,7 +170,7 @@ DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh current
 DEPLOY_HOST=<deploy-user>@<origin-host> RELEASE_KEEP=5 bash ops/deploy-release.sh cleanup
 ```
 
-`cleanup` keeps the newest releases plus `current` and `previous`, removes older worktrees, and prunes `repo.git` worktree metadata.
+`cleanup` keeps the newest releases plus `current`, `previous`, and `candidate`, removes older worktrees, and prunes `repo.git` worktree metadata.
 
 ## Post-Promote Acceptance
 

@@ -146,17 +146,17 @@ DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
 bash ops/deploy-release.sh prepare
 
 DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
-RELEASE_ID=<release-id> \
 DEPLOY_INCLUDE_CPA=1 \
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
 bash ops/deploy-release.sh smoke
 
 DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
-RELEASE_ID=<release-id> \
 DEPLOY_INCLUDE_CPA=1 \
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
 bash ops/deploy-release.sh promote
 ```
+
+`prepare` records the prepared release as `candidate`, so normal `smoke` and `promote` do not need a manual `RELEASE_ID`. Pass `RELEASE_ID=<release-id>` only when intentionally operating on a specific older release.
 
 Manual restart equivalent on the origin:
 

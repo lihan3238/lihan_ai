@@ -91,8 +91,8 @@ bash ops/channel-health-advisor.sh config/ops-profiles/glm-standard-health.examp
 bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
 bash ops/bootstrap-server.sh
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh promote
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-prod.sh
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ENV_FILE=.env.production bash ops/offsite-backup.sh
@@ -142,10 +142,12 @@ Preferred release deploy and verification:
 
 ```bash
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh promote
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ```
+
+`prepare` records the newest prepared release as `candidate`, so normal `smoke` and `promote` commands do not need a copied `RELEASE_ID`. Set `RELEASE_ID=<release-id>` only when you intentionally want to smoke or promote a specific older release.
 
 Legacy direct-checkout deploy remains available:
 
