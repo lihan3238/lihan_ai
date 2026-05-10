@@ -93,6 +93,11 @@ grep -q -- "--env-file $good_env" "$docker_log" || fail "verify script did not p
 PATH="$fake_bin:$PATH" ENV_FILE="$good_env" "$ROOT_DIR/ops/restore-postgres.sh" "$backup_path" >/dev/null
 grep -q -- "--env-file $good_env" "$docker_log" || fail "restore script did not pass --env-file"
 
+grep -q -- "--log-dir /tmp/new-api-logs" "$ROOT_DIR/ops/drill-restore-stack.sh" || fail "restore stack drill should use a temp log dir whose parent exists in the upstream image"
+if grep -q -- "--log-dir /app/logs" "$ROOT_DIR/ops/drill-restore-stack.sh"; then
+  fail "restore stack drill must not use /app/logs without mounting that parent path"
+fi
+
 if printf '%s\n' "$bad_output" | grep -Eiq 'SESSION_SECRET|REDIS_PASSWORD=.*|POSTGRES_PASSWORD=.*'; then
   fail "preflight printed secret values"
 fi
