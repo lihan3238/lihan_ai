@@ -1,60 +1,109 @@
-# Cloudflare SaaS Domain Runbook
+# Cloudflare SaaS Tunnel Runbook
 
-This runbook switches the public API entrypoint to `https://api.lihan3238.com` through Cloudflare for SaaS while keeping the Hostinger server as the production origin.
+This runbook switches the public API entrypoint to `https://api.lihan3238.com` through Cloudflare for SaaS and Cloudflare Tunnel.
 
 Traffic shape:
 
 ```text
 user -> api.lihan3238.com preferred Cloudflare IP -> Cloudflare Custom Hostname
-  -> fallback origin origin.lihan3238.top -> Hostinger Caddy -> new-api:3000
+  -> fallback origin origin.lihan3238.top -> Cloudflare Tunnel
+  -> cloudflared on Hostinger -> new-api:3000
 ```
 
-The production origin Caddy site must serve the public custom hostname, `api.lihan3238.com`. Do not set production `DOMAIN` to `origin.lihan3238.top`; that hostname is only Cloudflare's route to the origin.
+In Tunnel mode, public `80/443` are served by Cloudflare edge, not by the Hostinger origin. The origin only runs outbound `cloudflared` connections to Cloudflare. Caddy stays in the repository as the legacy direct-origin fallback, but normal Tunnel promotion scales it to zero.
 
 ## Cloudflare Zone
 
-Add `lihan3238.top` to Cloudflare and move the domain nameservers at Spaceship to the two Cloudflare nameservers. Wait until Cloudflare reports the zone is active.
+Add `lihan3238.top` to Cloudflare and move its nameservers at Spaceship to the two Cloudflare nameservers. Wait until Cloudflare reports the zone is active.
 
-In the Cloudflare DNS page for `lihan3238.top`, create:
+Create a named Tunnel, for example `lihan-ai-prod`, in Cloudflare Zero Trust or with `cloudflared`. Route the fallback origin to the tunnel:
 
-```text
-Type: A
-Name: origin
-IPv4: 72.60.124.21
-Proxy status: Proxied
+```bash
+cloudflared tunnel login
+cloudflared tunnel create lihan-ai-prod
+cloudflared tunnel route dns lihan-ai-prod origin.lihan3238.top
 ```
 
-In `SSL/TLS -> Custom Hostnames`, enable Cloudflare for SaaS and set the fallback origin to:
+The route should create a proxied DNS record for:
+
+```text
+origin.lihan3238.top -> <tunnel-uuid>.cfargotunnel.com
+```
+
+Remove any old `origin.lihan3238.top A 72.60.124.21` record after the tunnel route is active. The fallback origin should resolve to Cloudflare, not directly to the Hostinger IP.
+
+In `SSL/TLS -> Custom Hostnames`, keep Cloudflare for SaaS enabled and keep the fallback origin as:
 
 ```text
 origin.lihan3238.top
 ```
 
-Keep the Cloudflare SSL mode as `Full` while the origin certificate is being proven. After the direct-origin SNI check passes, move the zone to `Full (strict)`.
-
 ## Custom Hostname
 
-Add a custom hostname:
+Add or keep this custom hostname:
 
 ```text
 api.lihan3238.com
 ```
 
-Use the default TLS settings and Let's Encrypt as the certificate authority. Cloudflare will provide DNS validation records. Add both TXT records in the Spaceship DNS page for `lihan3238.com`, then wait until both hostname and certificate status are `Active`.
+Use the default TLS settings and Let's Encrypt as the certificate authority. Cloudflare will provide DNS validation records. Add both TXT records in Spaceship DNS for `lihan3238.com`, then wait until both hostname and certificate status are `Active`.
 
-After validation, keep `lihan3238.com` DNS at Spaceship and create the public entrypoint there:
+After validation, keep `lihan3238.com` DNS at Spaceship and keep the public entrypoint pointed at your preferred Cloudflare IP:
 
 ```text
 Type: A
 Host: api
-Value: <preferred Cloudflare IP from CloudflareSpeedTest>
+Value: 172.64.155.231
 ```
 
-Multiple A records can be used for the fastest measured Cloudflare IPs. If validation gets stuck with preferred IPs, temporarily use Cloudflare's documented CNAME validation path, wait for `Active`, then switch back to preferred A records.
+Do not point `api.lihan3238.com` at `72.60.124.21` for the Tunnel path.
 
-## Origin Configuration
+## Origin Files
 
-Run on the Hostinger origin:
+On the Hostinger origin, store Tunnel files in shared runtime storage:
+
+```bash
+sudo mkdir -p /opt/lihan_ai_deploy/shared/cloudflared
+sudo chown -R lihan:lihan /opt/lihan_ai_deploy/shared/cloudflared
+chmod 700 /opt/lihan_ai_deploy/shared/cloudflared
+```
+
+Copy the tunnel credentials JSON created by `cloudflared tunnel create` into:
+
+```text
+/opt/lihan_ai_deploy/shared/cloudflared/tunnel.json
+```
+
+Create:
+
+```text
+/opt/lihan_ai_deploy/shared/cloudflared/config.yml
+```
+
+Example:
+
+```yaml
+tunnel: <tunnel-uuid>
+credentials-file: /etc/cloudflared/tunnel.json
+
+ingress:
+  - hostname: origin.lihan3238.top
+    service: http://new-api:3000
+  - service: http://new-api:3000
+```
+
+The final catch-all ingress is intentional. Cloudflare for SaaS may preserve `Host: api.lihan3238.com` while using `origin.lihan3238.top` as the fallback route, so unmatched hostnames should still reach New API.
+
+Lock permissions:
+
+```bash
+chmod 600 /opt/lihan_ai_deploy/shared/cloudflared/tunnel.json
+chmod 600 /opt/lihan_ai_deploy/shared/cloudflared/config.yml
+```
+
+## Production Env
+
+Edit the shared env:
 
 ```bash
 cd /opt/lihan_ai_deploy/current
@@ -71,8 +120,10 @@ Set:
 DOMAIN=api.lihan3238.com
 ACME_EMAIL=<your-email>
 DEPLOY_INCLUDE_CPA=1
+DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1
 CLOUDFLARE_SAAS_FALLBACK_ORIGIN=origin.lihan3238.top
-CLOUDFLARE_SAAS_ORIGIN_IP=72.60.124.21
+CLOUDFLARED_CONFIG_PATH=/opt/lihan_ai_deploy/shared/cloudflared/config.yml
+CLOUDFLARED_CREDENTIALS_PATH=/opt/lihan_ai_deploy/shared/cloudflared/tunnel.json
 ```
 
 Never set:
@@ -81,24 +132,46 @@ Never set:
 DOMAIN=origin.lihan3238.top
 ```
 
-Render and reload Caddy:
+`CLOUDFLARE_SAAS_ORIGIN_IP` is only for the old direct-origin SNI check. Leave it empty in Tunnel mode.
+
+## Deploy
+
+Prepare, smoke, and promote the next release from your local repository:
+
+```bash
+DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
+DEPLOY_REF=main \
+DEPLOY_INCLUDE_CPA=1 \
+DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
+bash ops/deploy-release.sh prepare
+
+DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
+RELEASE_ID=<release-id> \
+DEPLOY_INCLUDE_CPA=1 \
+DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
+bash ops/deploy-release.sh smoke
+
+DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
+RELEASE_ID=<release-id> \
+DEPLOY_INCLUDE_CPA=1 \
+DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
+bash ops/deploy-release.sh promote
+```
+
+Manual restart equivalent on the origin:
 
 ```bash
 cd /opt/lihan_ai_deploy/current
 
-ENV_FILE=.env.production bash ops/preflight.sh
-
-compose_files="-f docker-compose.yml -f docker-compose.prod.yml"
-if grep -q '^DEPLOY_INCLUDE_CPA=1' .env.production; then
-  compose_files="$compose_files -f docker-compose.cpa.yml"
-fi
-
-docker compose -p lihan_ai --env-file .env.production $compose_files config >/dev/null
-docker compose -p lihan_ai --env-file .env.production $compose_files up -d --force-recreate caddy
-docker logs --tail=120 relay-caddy
+docker compose -p lihan_ai --env-file .env.production \
+  -f docker-compose.yml \
+  -f docker-compose.prod.yml \
+  -f docker-compose.cpa.yml \
+  -f docker-compose.cloudflare-tunnel.yml \
+  up -d --remove-orphans --scale caddy=0
 ```
 
-In the New API admin console, update the public site URL, base URL, or equivalent setting to:
+In New API admin, update the public site URL, base URL, or equivalent setting to:
 
 ```text
 https://api.lihan3238.com
@@ -110,14 +183,7 @@ For `api.lihan3238.com/*`, bypass cache. Do not apply JS Challenge, Bot Fight Mo
 
 ## Verification
 
-Direct origin SNI and Host check:
-
-```bash
-curl -vk --resolve api.lihan3238.com:443:72.60.124.21 \
-  https://api.lihan3238.com/api/status
-```
-
-Cloudflare public check:
+Public check through Cloudflare:
 
 ```bash
 curl -i https://api.lihan3238.com/api/status
@@ -137,11 +203,14 @@ docker compose -p lihan_ai --env-file .env.production \
   -f docker-compose.yml \
   -f docker-compose.prod.yml \
   -f docker-compose.cpa.yml \
+  -f docker-compose.cloudflare-tunnel.yml \
   ps
 ```
 
 Acceptance checks:
 
+- `relay-cloudflared` is running.
+- `relay-caddy` is absent or has no published `80/443`.
 - `https://api.lihan3238.com` opens the New API UI.
 - Login and admin pages work.
 - `/api/status` returns `success: true`.
@@ -150,16 +219,12 @@ Acceptance checks:
 
 ## Rollback
 
-If the custom hostname path fails, keep the Hostinger stack running and point `api.lihan3238.com` back to the previous known-good DNS target. If the `.env.production` change caused the issue, restore the timestamped backup and recreate Caddy:
+If the Tunnel path fails, keep the Hostinger stack running and temporarily switch the SaaS fallback origin back to a known-good direct-origin path, or restore the previous env backup and promote/rollback the previous release:
 
 ```bash
-cp /opt/lihan_ai_deploy/shared/.env.production.bak.<timestamp> \
-  /opt/lihan_ai_deploy/shared/.env.production
-
-cd /opt/lihan_ai_deploy/current
-docker compose -p lihan_ai --env-file .env.production \
-  -f docker-compose.yml \
-  -f docker-compose.prod.yml \
-  -f docker-compose.cpa.yml \
-  up -d --force-recreate caddy
+DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
+DEPLOY_INCLUDE_CPA=1 \
+bash ops/deploy-release.sh rollback
 ```
+
+For a manual fallback to the old Caddy path, set `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0`, restore `CLOUDFLARE_SAAS_ORIGIN_IP=72.60.124.21`, and recreate Caddy with the base production compose files. Use this only as a temporary recovery path because it reintroduces origin certificate handling.

@@ -36,6 +36,7 @@ DEPLOY_REF="${DEPLOY_REF:-main}"
 DEPLOY_REPO="${DEPLOY_REPO:-$(git -C "$ROOT_DIR" config --get remote.origin.url 2>/dev/null || true)}"
 DEPLOY_COMPOSE_PROJECT="${DEPLOY_COMPOSE_PROJECT:-lihan_ai}"
 DEPLOY_INCLUDE_CPA="${DEPLOY_INCLUDE_CPA:-0}"
+DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL="${DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL:-0}"
 RELEASE_KEEP="${RELEASE_KEEP:-5}"
 RUN_REMOTE_BACKUP="${RUN_REMOTE_BACKUP:-1}"
 ALLOW_NON_MAIN_PROD_DEPLOY="${ALLOW_NON_MAIN_PROD_DEPLOY:-0}"
@@ -61,6 +62,17 @@ compose_preview() {
   if [ "$DEPLOY_INCLUDE_CPA" = "1" ]; then
     printf ' -f docker-compose.cpa.yml'
   fi
+  if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ]; then
+    printf ' -f docker-compose.cloudflare-tunnel.yml'
+  fi
+}
+
+compose_up_preview() {
+  compose_preview
+  printf ' up -d --remove-orphans'
+  if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ]; then
+    printf ' --scale caddy=0'
+  fi
 }
 
 if [ "$DEPLOY_DRY_RUN" = "1" ]; then
@@ -69,6 +81,7 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
   echo "DEPLOY_REPO=$DEPLOY_REPO"
   echo "DEPLOY_REF=$DEPLOY_REF"
   echo "DEPLOY_COMPOSE_PROJECT=$DEPLOY_COMPOSE_PROJECT"
+  echo "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL"
   echo "repo: $DEPLOY_ROOT/repo.git"
   echo "releases: $DEPLOY_ROOT/releases"
   echo "shared: $DEPLOY_ROOT/shared"
@@ -99,12 +112,12 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
       echo "cd $DEPLOY_ROOT/current and run backup-postgres.sh when production postgres is running"
       echo "current -> releases/$target"
       echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_preview) pull"
-      echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_preview) up -d --remove-orphans"
+      echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_up_preview)"
       echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT ENV_FILE=$DEPLOY_ENV_FILE bash ops/check-production-runtime.sh"
       ;;
     rollback)
       echo "current -> previous"
-      echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_preview) up -d --remove-orphans"
+      echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_up_preview)"
       echo "verify /api/status after rollback"
       ;;
     list)
@@ -121,7 +134,7 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
 fi
 
 ssh "$DEPLOY_HOST" \
-  "DEPLOY_ROOT='$DEPLOY_ROOT' DEPLOY_ENV='$DEPLOY_ENV' DEPLOY_ENV_FILE='$DEPLOY_ENV_FILE' DEPLOY_REF='$DEPLOY_REF' DEPLOY_REPO='$DEPLOY_REPO' DEPLOY_COMPOSE_PROJECT='$DEPLOY_COMPOSE_PROJECT' DEPLOY_INCLUDE_CPA='$DEPLOY_INCLUDE_CPA' RELEASE_KEEP='$RELEASE_KEEP' RUN_REMOTE_BACKUP='$RUN_REMOTE_BACKUP' LEGACY_DEPLOY_PATH='$LEGACY_DEPLOY_PATH' RELEASE_ID='$RELEASE_ID' SMOKE_BACKUP_PATH='${SMOKE_BACKUP_PATH:-}' sh -s -- '$command' '$release_arg'" <<'REMOTE'
+  "DEPLOY_ROOT='$DEPLOY_ROOT' DEPLOY_ENV='$DEPLOY_ENV' DEPLOY_ENV_FILE='$DEPLOY_ENV_FILE' DEPLOY_REF='$DEPLOY_REF' DEPLOY_REPO='$DEPLOY_REPO' DEPLOY_COMPOSE_PROJECT='$DEPLOY_COMPOSE_PROJECT' DEPLOY_INCLUDE_CPA='$DEPLOY_INCLUDE_CPA' DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL='$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL' RELEASE_KEEP='$RELEASE_KEEP' RUN_REMOTE_BACKUP='$RUN_REMOTE_BACKUP' LEGACY_DEPLOY_PATH='$LEGACY_DEPLOY_PATH' RELEASE_ID='$RELEASE_ID' SMOKE_BACKUP_PATH='${SMOKE_BACKUP_PATH:-}' sh -s -- '$command' '$release_arg'" <<'REMOTE'
 set -eu
 
 command="$1"
@@ -160,7 +173,7 @@ release_id_from_input() {
 }
 
 ensure_dirs() {
-  mkdir -p "$DEPLOY_ROOT" "$releases_dir" "$shared_dir/data/cpa" "$shared_dir/logs" "$shared_dir/backups/postgres" "$shared_dir/snapshots"
+  mkdir -p "$DEPLOY_ROOT" "$releases_dir" "$shared_dir/data/cpa" "$shared_dir/cloudflared" "$shared_dir/logs" "$shared_dir/backups/postgres" "$shared_dir/snapshots"
 }
 
 ensure_repo() {
@@ -187,10 +200,27 @@ copy_legacy_if_missing() {
 }
 
 compose() {
-  if [ "$DEPLOY_INCLUDE_CPA" = "1" ]; then
+  include_tunnel=0
+  if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ] && [ -f docker-compose.cloudflare-tunnel.yml ]; then
+    include_tunnel=1
+  fi
+
+  if [ "$DEPLOY_INCLUDE_CPA" = "1" ] && [ "$include_tunnel" = "1" ]; then
+    docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml -f docker-compose.cloudflare-tunnel.yml "$@"
+  elif [ "$DEPLOY_INCLUDE_CPA" = "1" ]; then
     docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml "$@"
+  elif [ "$include_tunnel" = "1" ]; then
+    docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cloudflare-tunnel.yml "$@"
   else
     docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" -f docker-compose.yml -f docker-compose.prod.yml "$@"
+  fi
+}
+
+compose_up() {
+  if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ] && [ -f docker-compose.cloudflare-tunnel.yml ]; then
+    compose up -d --remove-orphans --scale caddy=0
+  else
+    compose up -d --remove-orphans
   fi
 }
 
@@ -286,6 +316,9 @@ cmd_prepare() {
 
   (
     cd "$release_path"
+    if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ] && [ ! -f docker-compose.cloudflare-tunnel.yml ]; then
+      fail "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 but docker-compose.cloudflare-tunnel.yml is missing"
+    fi
     COMPOSE_PROJECT_NAME="$DEPLOY_COMPOSE_PROJECT" ENV_FILE="$DEPLOY_ENV_FILE" bash ops/preflight.sh
     compose config >/dev/null
   )
@@ -338,7 +371,7 @@ cmd_promote() {
   (
     cd "$current_link"
     compose pull
-    compose up -d --remove-orphans
+    compose_up
     verify_new_api
     COMPOSE_PROJECT_NAME="$DEPLOY_COMPOSE_PROJECT" ENV_FILE="$DEPLOY_ENV_FILE" bash ops/check-production-runtime.sh
   )
@@ -351,7 +384,7 @@ cmd_promote() {
       switch_current_to "$old_target"
       (
         cd "$current_link"
-        compose up -d --remove-orphans
+        compose_up
       ) || true
     fi
     exit "$promote_status"
@@ -372,7 +405,7 @@ cmd_rollback() {
   switch_current_to "$prev"
   (
     cd "$current_link"
-    compose up -d --remove-orphans
+    compose_up
     verify_new_api
   )
   release_id="$(release_id_for_path "$prev")"

@@ -1,0 +1,25 @@
+services:
+  cloudflared:
+    image: ${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:latest}
+    container_name: relay-cloudflared
+    restart: unless-stopped
+    command: tunnel --config /etc/cloudflared/config.yml run
+    depends_on:
+      new-api:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: ${CLOUDFLARED_CONFIG_PATH:-/opt/lihan_ai_deploy/shared/cloudflared/config.yml}
+        target: /etc/cloudflared/config.yml
+        read_only: true
+      - type: bind
+        source: ${CLOUDFLARED_CREDENTIALS_PATH:-/opt/lihan_ai_deploy/shared/cloudflared/tunnel.json}
+        target: /etc/cloudflared/tunnel.json
+        read_only: true
+    networks:
+      - relay-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"

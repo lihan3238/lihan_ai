@@ -15,7 +15,7 @@ assert_file() {
 assert_contains() {
   file="$1"
   pattern="$2"
-  grep -q "$pattern" "$ROOT_DIR/$file" || fail "$file missing pattern: $pattern"
+  grep -q -- "$pattern" "$ROOT_DIR/$file" || fail "$file missing pattern: $pattern"
 }
 
 assert_file "README.zh-CN.md"
@@ -72,7 +72,7 @@ for keyword in "ORIGIN_UPSTREAM" "docker-compose.edge.yml" ".env.edge"; do
   assert_contains "docs/zh-CN/edge-proxy-runbook.md" "$keyword"
 done
 
-for keyword in "api.lihan3238.com" "origin.lihan3238.top" "CLOUDFLARE_SAAS_FALLBACK_ORIGIN" "curl -vk --resolve"; do
+for keyword in "api.lihan3238.com" "origin.lihan3238.top" "Cloudflare Tunnel" "cloudflared" "--scale caddy=0"; do
   assert_contains "docs/cloudflare-saas-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cloudflare-saas-runbook.md" "$keyword"
 done

@@ -8,7 +8,7 @@
 
 Caddy 不是 New API 自带组件。它是本仓库里的反向代理容器：负责公网 `80/443`、自动申请 HTTPS 证书，并把应用流量转发到 Docker 内部的 `new-api:3000`。
 
-如果要使用 `api.lihan3238.com` 和 `origin.lihan3238.top` 这条 Cloudflare for SaaS custom-hostname 路径，先让基础 origin stack 健康，再按 `docs/zh-CN/cloudflare-saas-runbook.md` 操作。
+如果要使用 `api.lihan3238.com` 和 `origin.lihan3238.top` 这条 Cloudflare for SaaS custom-hostname 路径，先让基础 origin stack 健康，再按 `docs/zh-CN/cloudflare-saas-runbook.md` 操作。Tunnel 模式下公网 `80/443` 由 Cloudflare 边缘监听，源站用 `cloudflared` 直接转发到 `new-api:3000`，Caddy 会被缩容为 0。
 
 1. 将本仓库 clone 到 `/opt/lihan_ai`。
 2. 复制 `.env.production.example` 为 `.env.production`。

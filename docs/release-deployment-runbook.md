@@ -38,6 +38,7 @@ DEPLOY_ROOT=/opt/lihan_ai_deploy
 DEPLOY_REF=main
 DEPLOY_COMPOSE_PROJECT=lihan_ai
 DEPLOY_INCLUDE_CPA=0
+DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0
 RELEASE_KEEP=5
 ```
 
@@ -51,6 +52,16 @@ CPA_LOG_PATH=/opt/lihan_ai_deploy/shared/logs/cpa
 ```
 
 `docker-compose.cpa.ui.yml` is not part of normal release promotion. Use it only for a short SSH-tunneled management session as documented in `docs/cpa-runbook.md`.
+
+If Cloudflare Tunnel is enabled, store tunnel runtime files in shared storage:
+
+```env
+DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1
+CLOUDFLARED_CONFIG_PATH=/opt/lihan_ai_deploy/shared/cloudflared/config.yml
+CLOUDFLARED_CREDENTIALS_PATH=/opt/lihan_ai_deploy/shared/cloudflared/tunnel.json
+```
+
+Tunnel promotion appends `docker-compose.cloudflare-tunnel.yml` and runs Caddy at scale `0`, so the origin no longer publishes public `80/443`.
 
 ## Development To Production Flow
 
@@ -129,7 +140,7 @@ DEPLOY_HOST=<deploy-user>@<origin-host> RELEASE_ID=<release-id> bash ops/deploy-
 docker compose -p lihan_ai --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 ```
 
-and verifies New API `/api/status`. With `DEPLOY_INCLUDE_CPA=1`, `docker-compose.cpa.yml` is appended. If promotion fails, the script switches `current` back to the previous release and attempts to restart the previous stack.
+and verifies New API `/api/status`. With `DEPLOY_INCLUDE_CPA=1`, `docker-compose.cpa.yml` is appended. With `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1`, `docker-compose.cloudflare-tunnel.yml` is appended and `--scale caddy=0` is applied. If promotion fails, the script switches `current` back to the previous release and attempts to restart the previous stack.
 
 ## Rollback
 
@@ -163,6 +174,7 @@ docker compose -p lihan_ai --env-file .env.production \
   -f docker-compose.yml \
   -f docker-compose.prod.yml \
   -f docker-compose.cpa.yml \
+  -f docker-compose.cloudflare-tunnel.yml \
   ps
 
 ENV_FILE=.env.production bash ops/check-production-runtime.sh
@@ -200,6 +212,7 @@ Before archiving legacy directories, all of these must be true:
 
 - `readlink -f /opt/lihan_ai_deploy/current` points at the release you intend to run.
 - `docker compose -p lihan_ai ... ps` shows New API, Caddy, PostgreSQL, Redis, Uptime Kuma, and CPA healthy or running as expected.
+- If Cloudflare Tunnel is enabled, `relay-cloudflared` is running and `relay-caddy` has no published `80/443`.
 - `ENV_FILE=.env.production bash ops/backup-postgres.sh` works from `/opt/lihan_ai_deploy/current`.
 - CPA config and auth files live under `/opt/lihan_ai_deploy/shared/data/cpa`.
 - `docker inspect relay-cpa` shows no mount source under `/opt/lihan_ai_runtime`.
@@ -230,11 +243,12 @@ Release-specific recovery outline:
 2. Create and chown `/opt/lihan_ai_deploy`.
 3. Run `ops/deploy-release.sh bootstrap`.
 4. Restore `/opt/lihan_ai_deploy/shared/.env.production`, CPA runtime files, and PostgreSQL dumps.
-5. Run `prepare` for `main`.
-6. Run `smoke` with a known dump through `SMOKE_BACKUP_PATH`.
-7. Promote the release to start the stack.
-8. Restore the selected PostgreSQL dump if this is a full disaster recovery.
-9. Run the post-promote acceptance checks before DNS cutover or paid traffic.
+5. Restore `/opt/lihan_ai_deploy/shared/cloudflared/` if Cloudflare Tunnel is enabled.
+6. Run `prepare` for `main`.
+7. Run `smoke` with a known dump through `SMOKE_BACKUP_PATH`.
+8. Promote the release to start the stack.
+9. Restore the selected PostgreSQL dump if this is a full disaster recovery.
+10. Run the post-promote acceptance checks before DNS cutover or paid traffic.
 
 ## Operational Notes
 

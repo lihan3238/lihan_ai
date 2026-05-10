@@ -29,11 +29,13 @@ assert_executable "ops/deploy-release.sh"
 assert_contains ".env.production.example" "DEPLOY_ROOT=/opt/lihan_ai_deploy"
 assert_contains ".env.production.example" "DEPLOY_COMPOSE_PROJECT=lihan_ai"
 assert_contains ".env.production.example" "DEPLOY_INCLUDE_CPA=0"
+assert_contains ".env.production.example" "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0"
 assert_contains ".env.production.example" "RELEASE_KEEP=5"
 assert_contains "ops/deploy-release.sh" "git worktree add --detach"
 assert_contains "ops/deploy-release.sh" "docker compose -p"
 assert_contains "ops/deploy-release.sh" "COMPOSE_PROJECT_NAME"
 assert_contains "ops/deploy-release.sh" "ALLOW_NON_MAIN_PROD_DEPLOY"
+assert_contains "ops/deploy-release.sh" "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL"
 
 tmp_dir="$(mktemp -d)"
 fake_bin="$tmp_dir/bin"
@@ -71,6 +73,9 @@ printf '%s' "$prepare_output" | grep -q "ops/preflight.sh" || fail "prepare dry-
 prepare_cpa_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example DEPLOY_INCLUDE_CPA=1 "$ROOT_DIR/ops/deploy-release.sh" prepare)"
 printf '%s' "$prepare_cpa_output" | grep -q "docker-compose.cpa.yml" || fail "CPA dry-run missing CPA compose file: $prepare_cpa_output"
 
+prepare_tunnel_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 "$ROOT_DIR/ops/deploy-release.sh" prepare)"
+printf '%s' "$prepare_tunnel_output" | grep -q "docker-compose.cloudflare-tunnel.yml" || fail "tunnel dry-run missing tunnel compose file: $prepare_tunnel_output"
+
 smoke_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example RELEASE_ID=20260510T000000Z-deadbee "$ROOT_DIR/ops/deploy-release.sh" smoke)"
 printf '%s' "$smoke_output" | grep -q "DRY RUN release smoke" || fail "smoke dry-run missing title: $smoke_output"
 printf '%s' "$smoke_output" | grep -q "ops/drill-restore-stack.sh" || fail "smoke dry-run missing stack drill: $smoke_output"
@@ -84,6 +89,10 @@ printf '%s' "$promote_output" | grep -q "backup-postgres.sh" || fail "promote dr
 printf '%s' "$promote_output" | grep -q "current -> releases/20260510T000000Z-deadbee" || fail "promote dry-run missing current switch: $promote_output"
 printf '%s' "$promote_output" | grep -q "up -d --remove-orphans" || fail "promote dry-run missing compose up: $promote_output"
 printf '%s' "$promote_output" | grep -q "check-production-runtime.sh" || fail "promote dry-run missing runtime check: $promote_output"
+
+promote_tunnel_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example RELEASE_ID=20260510T000000Z-deadbee DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 "$ROOT_DIR/ops/deploy-release.sh" promote)"
+printf '%s' "$promote_tunnel_output" | grep -q -- "--scale caddy=0" || fail "tunnel promote dry-run should scale caddy down: $promote_tunnel_output"
+printf '%s' "$promote_tunnel_output" | grep -q "docker-compose.cloudflare-tunnel.yml" || fail "tunnel promote dry-run missing tunnel compose file: $promote_tunnel_output"
 
 rollback_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example "$ROOT_DIR/ops/deploy-release.sh" rollback)"
 printf '%s' "$rollback_output" | grep -q "DRY RUN release rollback" || fail "rollback dry-run missing title: $rollback_output"
