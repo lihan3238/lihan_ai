@@ -15,13 +15,13 @@ assert_file() {
 assert_contains() {
   file="$1"
   pattern="$2"
-  grep -q "$pattern" "$ROOT_DIR/$file" || fail "$file missing pattern: $pattern"
+  grep -q -- "$pattern" "$ROOT_DIR/$file" || fail "$file missing pattern: $pattern"
 }
 
 assert_not_contains() {
   file="$1"
   pattern="$2"
-  if grep -q "$pattern" "$ROOT_DIR/$file"; then
+  if grep -q -- "$pattern" "$ROOT_DIR/$file"; then
     fail "$file contains forbidden pattern: $pattern"
   fi
 }
@@ -53,9 +53,18 @@ assert_contains "docs/cpa-runbook.md" "ssh -L 8317"
 assert_contains "docs/cpa-runbook.md" "Do not expose"
 assert_contains "docs/cpa-runbook.md" "/opt/lihan_ai/data/cpa"
 assert_contains "docs/cpa-runbook.md" "/opt/lihan_ai_deploy/shared/data/cpa"
+assert_contains "docs/cpa-runbook.md" "docker compose -p lihan_ai"
+assert_contains "docs/cpa-runbook.md" "docker-compose.cloudflare-tunnel.yml"
+assert_contains "docs/cpa-runbook.md" "--scale caddy=0"
+assert_contains "docs/cpa-runbook.md" "--force-recreate"
+assert_contains "docs/cpa-runbook.md" "Do not run"
 assert_contains "docs/zh-CN/cpa-runbook.md" "ssh -L 8317"
 assert_contains "docs/zh-CN/cpa-runbook.md" "/opt/lihan_ai/data/cpa"
 assert_contains "docs/zh-CN/cpa-runbook.md" "/opt/lihan_ai_deploy/shared/data/cpa"
+assert_contains "docs/zh-CN/cpa-runbook.md" "docker compose -p lihan_ai"
+assert_contains "docs/zh-CN/cpa-runbook.md" "docker-compose.cloudflare-tunnel.yml"
+assert_contains "docs/zh-CN/cpa-runbook.md" "--scale caddy=0"
+assert_contains "docs/zh-CN/cpa-runbook.md" "--force-recreate"
 
 assert_contains "ops/sync-cpa-upstream-assets.sh" "raw.githubusercontent.com/router-for-me/CLIProxyAPI/main/docker-compose.yml"
 assert_contains "ops/sync-cpa-upstream-assets.sh" "raw.githubusercontent.com/router-for-me/CLIProxyAPI/main/config.example.yaml"

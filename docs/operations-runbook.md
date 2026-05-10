@@ -112,7 +112,7 @@ For the first paid API relay validation, follow `docs/phase1-new-api-validation-
 - Last off-server restic backup exists and can be listed with `restic snapshots`.
 - Uptime Kuma public status page is updated with coarse service state only; do not expose provider names, channel IDs, balances, or internal error details.
 
-After deployment, DNS changes, or Caddy changes, run:
+After deployment, DNS changes, Caddy changes, or Cloudflare Tunnel changes, run:
 
 ```bash
 ENV_FILE=.env.production bash ops/check-production-runtime.sh
@@ -147,6 +147,8 @@ To publish the status page, set `STATUS_DOMAIN` on the server and merge the exam
 ## CPA Adapter
 
 CPA is optional and must stay behind New API. Use `docker-compose.cpa.yml` to place it on the same Docker network as New API, and use `docker-compose.cpa.ui.yml` only when you need the management UI through an SSH tunnel. Do not expose `8317` publicly. Follow `docs/cpa-runbook.md`.
+
+When production is running with Cloudflare Tunnel, CPA UI commands must include the active `docker-compose.cloudflare-tunnel.yml` overlay and fixed project name `-p lihan_ai`; otherwise `--remove-orphans` can remove `relay-cloudflared`. Use the copy-paste commands in `docs/cpa-runbook.md`.
 
 ## Live E2E
 

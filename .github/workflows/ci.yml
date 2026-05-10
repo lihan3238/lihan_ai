@@ -59,6 +59,8 @@ jobs:
           docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml config >/dev/null
           docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml config >/dev/null
           docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml -f docker-compose.cpa.ui.yml config >/dev/null
+          docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cloudflare-tunnel.yml config >/dev/null
+          docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml -f docker-compose.cloudflare-tunnel.yml config >/dev/null
           docker compose --env-file .env.production.example -f docker-compose.edge.yml config >/dev/null
 
       - name: Repository verifier

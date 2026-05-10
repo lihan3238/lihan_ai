@@ -6,9 +6,9 @@
 
 生产环境从 `main` 部署。部署 wrapper 会拒绝非 `main` 的生产部署，除非为了已记录的紧急情况显式设置 `ALLOW_NON_MAIN_PROD_DEPLOY=1`。
 
-Caddy 不是 New API 自带组件。它是本仓库里的反向代理容器：负责公网 `80/443`、自动申请 HTTPS 证书，并把应用流量转发到 Docker 内部的 `new-api:3000`。
+Caddy 不是 New API 自带组件。直连源站模式下，它负责公网 `80/443`、自动申请 HTTPS 证书，并把应用流量转发到 Docker 内部的 `new-api:3000`。Cloudflare Tunnel 模式下，公网 `80/443` 属于 Cloudflare 边缘节点；源站通过 `cloudflared` 直接转发到 `new-api:3000`，Caddy 会被缩容为 0。
 
-如果要使用 `api.lihan3238.com` 和 `origin.lihan3238.top` 这条 Cloudflare for SaaS custom-hostname 路径，先让基础 origin stack 健康，再按 `docs/zh-CN/cloudflare-saas-runbook.md` 操作。
+如果要使用 `api.lihan3238.com` 和 `origin.lihan3238.top` 这条 Cloudflare for SaaS custom-hostname 路径，先让基础 origin stack 健康，再按 `docs/zh-CN/cloudflare-saas-runbook.md` 操作。Tunnel 模式下公网 `80/443` 由 Cloudflare 边缘监听，源站用 `cloudflared` 直接转发到 `new-api:3000`，Caddy 会被缩容为 0。
 
 1. 将本仓库 clone 到 `/opt/lihan_ai`。
 2. 复制 `.env.production.example` 为 `.env.production`。
@@ -33,7 +33,8 @@ ENV_FILE=.env.production bash ops/check-production-runtime.sh
 origin 服务器建议：
 
 - SSH 只允许你自己的可信 IP 访问；如果 provider firewall 暂时无法按 IP 限制，bootstrap 后至少使用 SSH key 登录并关闭密码登录。
-- 公网开放 TCP `80` 和 `443`，用于 Caddy 和 ACME 证书签发。
+- 直连源站模式下，公网开放 TCP `80` 和 `443`，用于 Caddy 和 ACME 证书签发。
+- Cloudflare Tunnel 模式下，源站不要公开 TCP `80` 或 `443`；只需要允许 `cloudflared` 出站连接 Cloudflare。
 - 不要把 PostgreSQL `5432`、Redis `6379`、New API `3000`、Uptime Kuma `3001` 或 CPA `8317` 暴露到公网。
 - provider firewall 和主机 firewall 保持一致。Caddy 健康但公网 HTTPS 失败时，按 DNS、provider firewall、主机 firewall、Caddy 日志的顺序排查。
 
@@ -43,7 +44,7 @@ origin 服务器建议：
 sudo ss -lntp | grep -E ':80|:443|:8317|:5432|:6379'
 ```
 
-基础生产栈只有 `80` 和 `443` 应该被公网访问到。CPA `8317` 只有在临时启用 UI override 时，才应该出现在 `127.0.0.1` 上。
+基础直连源站生产栈只有 `80` 和 `443` 应该被公网访问到。Cloudflare Tunnel 模式下，源站不需要公开这两个端口。CPA `8317` 只有在临时启用 UI override 时，才应该出现在 `127.0.0.1` 上。
 
 ## 从本地远程部署
 
@@ -51,9 +52,11 @@ sudo ss -lntp | grep -E ':80|:443|:8317|:5432|:6379'
 
 ```bash
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh promote
 ```
+
+`prepare` 会设置远端 `candidate` release。正常 `smoke` 和 `promote` 会自动使用这个 candidate；只有明确要操作某个旧 release 时才设置 `RELEASE_ID=<release-id>`。
 
 legacy 简化部署仍可通过 SSH 部署一个干净的 Git ref：
 
@@ -83,7 +86,7 @@ DEPLOY_HOST=root@x.x.x.x RUN_LIVE_E2E=1 NEW_API_TEST_TOKEN_NAME=test_token_name 
 
 如果 `new-api` 因 PostgreSQL URL parse error 变成 unhealthy，先检查 `POSTGRES_PASSWORD`。当前 URL-style DSN 遇到 `/`、`+`、`=`、`@` 或 `:` 这类字符会解析失败。用 `openssl rand -hex 32` 生成新的 URL-safe 值，更新 `.env.production` 后重建 stack。
 
-如果 `curl -i http://127.0.0.1/api/status` 访问 `80` 失败，说明 Caddy 没有监听宿主机 `80`，或你 curl 的层级不对。New API 在 Docker 内部监听 `3000`；生产宿主机访问通常应经过 Caddy：
+如果 `curl -i http://127.0.0.1/api/status` 访问 `80` 失败，说明 Caddy 没有监听宿主机 `80`，或你 curl 的层级不对。New API 在 Docker 内部监听 `3000`；直连源站模式经过 Caddy，Cloudflare Tunnel 模式经过 `cloudflared`：
 
 ```bash
 docker exec relay-new-api wget -q -O - http://localhost:3000/api/status
@@ -98,7 +101,7 @@ sudo ss -lntp | grep -E ':80|:443'
 
 停止或调整冲突的 Web 服务后，再重启 Compose stack。
 
-如果 Caddy 日志里出现通过 `127.0.0.53` 查询失败、ACME 失败等错误，先修复宿主机 DNS。Caddy 需要出站 DNS 和 HTTPS 访问 Let's Encrypt 或 ZeroSSL，同时公网入站 `80/443` 必须能到达 origin。
+如果 Caddy 日志里出现通过 `127.0.0.53` 查询失败、ACME 失败等错误，先修复宿主机 DNS。直连源站模式下 Caddy 需要出站 DNS 和 HTTPS 访问 Let's Encrypt 或 ZeroSSL，同时公网入站 `80/443` 必须能到达 origin。Cloudflare Tunnel 模式不依赖 Caddy 签发公开域名证书。
 
 如果生产站点里 New API 仍显示 `localhost:3000`，到 New API 后台把 public site/base URL 改成 `https://$DOMAIN`。Caddy 只负责反代流量，不会自动改应用自身的公开 URL 设置。
 

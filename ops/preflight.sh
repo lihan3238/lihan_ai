@@ -90,6 +90,16 @@ if [ "$deploy_env" = "production" ]; then
   fi
   require_file "docker-compose.prod.yml"
   compose_files="$compose_files -f docker-compose.prod.yml"
+
+  deploy_include_tunnel="$(env_value DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL)"
+  if [ "$deploy_include_tunnel" = "1" ]; then
+    require_file "docker-compose.cloudflare-tunnel.yml"
+    require_env_value CLOUDFLARED_CONFIG_PATH
+    require_env_value CLOUDFLARED_CREDENTIALS_PATH
+    require_file "$(env_value CLOUDFLARED_CONFIG_PATH)"
+    require_file "$(env_value CLOUDFLARED_CREDENTIALS_PATH)"
+    compose_files="$compose_files -f docker-compose.cloudflare-tunnel.yml"
+  fi
 fi
 
 if ! command -v docker >/dev/null 2>&1; then

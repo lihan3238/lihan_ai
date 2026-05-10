@@ -6,7 +6,7 @@ Use one Linux origin server for New API, PostgreSQL, Redis, Caddy, and Uptime Ku
 
 Production deploys from `main`. The deployment wrapper refuses non-`main` production deploys unless `ALLOW_NON_MAIN_PROD_DEPLOY=1` is explicitly set for a documented emergency.
 
-Caddy is not part of New API. It is the reverse proxy container in this repository: it owns public `80/443`, obtains HTTPS certificates, and forwards application traffic to the internal `new-api:3000` service.
+Caddy is not part of New API. In the legacy direct-origin mode, it owns public `80/443`, obtains HTTPS certificates, and forwards traffic to `new-api:3000`. In the Cloudflare Tunnel mode, public `80/443` belong to Cloudflare edge; `cloudflared` forwards tunnel traffic directly to `new-api:3000`, and Caddy is scaled to zero.
 
 For the Cloudflare for SaaS custom-hostname path using `api.lihan3238.com` and `origin.lihan3238.top`, follow `docs/cloudflare-saas-runbook.md` after the base origin stack is healthy.
 
@@ -33,7 +33,8 @@ The first New API browser visit normally shows the upstream initialization scree
 For the origin server:
 
 - Allow SSH only from your own trusted IPs when the provider firewall supports it. If you cannot restrict by IP yet, keep key-based SSH and disable password login after bootstrap.
-- Allow public TCP `80` and `443` for Caddy and ACME certificate issuance.
+- In direct-origin mode, allow public TCP `80` and `443` for Caddy and ACME certificate issuance.
+- In Cloudflare Tunnel mode, do not expose public TCP `80` or `443` on the origin. Allow outbound cloudflared connections to Cloudflare instead.
 - Do not publish PostgreSQL `5432`, Redis `6379`, New API `3000`, Uptime Kuma `3001`, or CPA `8317` to the public internet.
 - Keep the provider firewall and host firewall consistent. If Caddy is healthy but public HTTPS fails, check DNS, provider firewall, host firewall, and Caddy logs in that order.
 
@@ -43,7 +44,7 @@ On the server, a quick listener check is:
 sudo ss -lntp | grep -E ':80|:443|:8317|:5432|:6379'
 ```
 
-Only `80` and `443` should be publicly reachable for the base production stack. CPA `8317` should appear only on `127.0.0.1` when the UI override is intentionally enabled.
+Only `80` and `443` should be publicly reachable for the base direct-origin stack. In Cloudflare Tunnel mode, neither port needs to be reachable on the origin. CPA `8317` should appear only on `127.0.0.1` when the UI override is intentionally enabled.
 
 ## Remote Deploy From Local
 
@@ -51,9 +52,11 @@ Preferred release deployment:
 
 ```bash
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh promote
 ```
+
+`prepare` sets the remote `candidate` release. Normal `smoke` and `promote` use that candidate automatically; set `RELEASE_ID=<release-id>` only for a deliberate older-release operation.
 
 Legacy simple deploy of a clean Git ref through SSH:
 
@@ -83,7 +86,7 @@ DEPLOY_HOST=root@x.x.x.x RUN_LIVE_E2E=1 NEW_API_TEST_TOKEN_NAME=test_token_name 
 
 If `new-api` is unhealthy with a PostgreSQL URL parse error, check `POSTGRES_PASSWORD` first. URL-style DSNs break when the password contains characters such as `/`, `+`, `=`, `@`, or `:`. Generate a new URL-safe value with `openssl rand -hex 32`, update `.env.production`, and recreate the stack.
 
-If `curl -i http://127.0.0.1/api/status` fails on port `80`, that means Caddy is not listening on host port `80`, or you are curling the wrong layer. New API listens inside Docker on `3000`; production host access should normally go through Caddy:
+If `curl -i http://127.0.0.1/api/status` fails on port `80`, that means Caddy is not listening on host port `80`, or you are curling the wrong layer. New API listens inside Docker on `3000`; production host access goes through Caddy in direct-origin mode and through Cloudflare Tunnel in Tunnel mode:
 
 ```bash
 docker exec relay-new-api wget -q -O - http://localhost:3000/api/status

@@ -45,6 +45,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docker-compose.prod.yml`：生产覆盖文件，用于日志轮转并移除开发端口。
 - `docker-compose.edge.yml`：无状态 edge 反向代理。
 - `docker-compose.cpa.yml`：可选 CPA 内部服务，给 New API 做上游适配。
+- `docker-compose.cloudflare-tunnel.yml`：可选 Cloudflare Tunnel 源站路径，运行 `cloudflared` 并跳过公网 Caddy 端口。
 - `.env.example`：本地开发变量示例。
 - `.env.production.example`：生产 origin 和离线备份变量示例。
 - `docs/zh-CN/`：部署和运维文档中文版。
@@ -57,7 +58,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docs/server-buying-guide.md`：服务器规格和购买建议。
 - `docs/production-deployment-runbook.md`：生产 origin 部署流程。
 - `docs/release-deployment-runbook.md`：推荐的 `releases/current/shared` 生产部署流程。
-- `docs/cloudflare-saas-runbook.md`：Cloudflare for SaaS custom hostname 和源站域名切换流程。
+- `docs/cloudflare-saas-runbook.md`：Cloudflare for SaaS custom hostname 和 Tunnel 源站流程。
 - `docs/edge-proxy-runbook.md`：中国优化 edge 反代流程。
 - `docs/migration-runbook.md`：无损迁移流程。
 - `docs/disaster-recovery-runbook.md`：离线备份和灾难恢复流程。
@@ -92,8 +93,8 @@ bash ops/channel-health-advisor.sh config/ops-profiles/glm-standard-health.examp
 bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
 bash ops/bootstrap-server.sh
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh promote
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-prod.sh
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ENV_FILE=.env.production bash ops/offsite-backup.sh
@@ -143,10 +144,12 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 
 ```bash
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
-DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh promote
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ```
+
+`prepare` 会把最新准备好的 release 记录为 `candidate`，所以正常的 `smoke` 和 `promote` 不需要再手动复制 `RELEASE_ID`。只有明确要测试或发布某个旧 release 时，才额外设置 `RELEASE_ID=<release-id>`。
 
 legacy 直接 checkout 部署仍保留：
 

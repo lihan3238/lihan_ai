@@ -24,19 +24,20 @@ assert_file "docs/zh-CN/cloudflare-saas-runbook.md"
 for file in docs/cloudflare-saas-runbook.md docs/zh-CN/cloudflare-saas-runbook.md; do
   assert_contains "$file" "api.lihan3238.com"
   assert_contains "$file" "origin.lihan3238.top"
-  assert_contains "$file" "72.60.124.21"
   assert_contains "$file" "CLOUDFLARE_SAAS_FALLBACK_ORIGIN"
-  assert_contains "$file" "CLOUDFLARE_SAAS_ORIGIN_IP"
-  assert_contains "$file" "curl -vk --resolve api.lihan3238.com:443:72.60.124.21"
+  assert_contains "$file" "Cloudflare Tunnel"
+  assert_contains "$file" "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1"
+  assert_contains "$file" "cloudflared"
   assert_contains "$file" "DOMAIN=api.lihan3238.com"
   assert_contains "$file" "DOMAIN=origin.lihan3238.top"
 done
 
 assert_contains ".env.production.example" "CLOUDFLARE_SAAS_FALLBACK_ORIGIN="
 assert_contains ".env.production.example" "CLOUDFLARE_SAAS_ORIGIN_IP="
+assert_contains ".env.production.example" "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0"
 assert_contains "ops/preflight.sh" "DOMAIN must be the public custom hostname"
 assert_contains "ops/check-production-runtime.sh" "CLOUDFLARE_SAAS_ORIGIN_IP"
-assert_contains "ops/check-production-runtime.sh" "--resolve"
+assert_contains "ops/check-production-runtime.sh" "Cloudflare Tunnel mode skips direct origin SNI check"
 
 tmp_dir="$(mktemp -d)"
 fake_bin="$tmp_dir/bin"
@@ -67,6 +68,7 @@ POSTGRES_DB=newapi
 REDIS_PASSWORD=abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789
 CLOUDFLARE_SAAS_FALLBACK_ORIGIN=origin.lihan3238.top
 CLOUDFLARE_SAAS_ORIGIN_IP=72.60.124.21
+DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0
 EOF
 }
 

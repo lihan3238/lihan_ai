@@ -51,6 +51,7 @@ run bash tests/check-local-ports.test.sh
 run bash tests/browser-e2e-scaffold.test.sh
 run bash tests/github-actions-ci.test.sh
 run bash tests/cloudflare-saas-domain.test.sh
+run bash tests/cloudflare-tunnel-compose.test.sh
 run bash tests/prod-deploy-migration.test.sh
 run bash tests/prod-deploy-hardening.test.sh
 run bash tests/release-deploy.test.sh
@@ -74,6 +75,8 @@ run docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.y
 run docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local-build.yml config
 run docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.prod.yml config
 run docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml config
+run docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cloudflare-tunnel.yml config
+run docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml -f docker-compose.cloudflare-tunnel.yml config
 run docker compose --env-file .env.production.example -f docker-compose.edge.yml config
 
 backup="$(bash ops/backup-postgres.sh)"

@@ -15,7 +15,7 @@ assert_file() {
 assert_contains() {
   file="$1"
   pattern="$2"
-  grep -q "$pattern" "$ROOT_DIR/$file" || fail "$file missing pattern: $pattern"
+  grep -q -- "$pattern" "$ROOT_DIR/$file" || fail "$file missing pattern: $pattern"
 }
 
 assert_file "README.zh-CN.md"
@@ -72,12 +72,12 @@ for keyword in "ORIGIN_UPSTREAM" "docker-compose.edge.yml" ".env.edge"; do
   assert_contains "docs/zh-CN/edge-proxy-runbook.md" "$keyword"
 done
 
-for keyword in "api.lihan3238.com" "origin.lihan3238.top" "CLOUDFLARE_SAAS_FALLBACK_ORIGIN" "curl -vk --resolve"; do
+for keyword in "api.lihan3238.com" "origin.lihan3238.top" "Cloudflare Tunnel" "cloudflared" "--scale caddy=0"; do
   assert_contains "docs/cloudflare-saas-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cloudflare-saas-runbook.md" "$keyword"
 done
 
-for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai/data/cpa"; do
+for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai/data/cpa" "docker compose -p lihan_ai" "docker-compose.cloudflare-tunnel.yml" "--scale caddy=0"; do
   assert_contains "docs/cpa-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
 done
@@ -95,7 +95,7 @@ for keyword in "drill-restore-stack.sh" "ENV_FILE=.env.production" "check-produc
   assert_contains "docs/zh-CN/backup-strategy.md" "$keyword"
 done
 
-for keyword in "/opt/lihan_ai_deploy" "ops/deploy-release.sh" "docker compose -p" "DEPLOY_INCLUDE_CPA" "rollback" "PM2" "SMOKE_BACKUP_PATH" "lihan_ai_runtime" "docker inspect relay-cpa" "disaster-recovery-runbook.md"; do
+for keyword in "/opt/lihan_ai_deploy" "ops/deploy-release.sh" "docker compose -p" "DEPLOY_INCLUDE_CPA" "rollback" "PM2" "SMOKE_BACKUP_PATH" "candidate" "lihan_ai_runtime" "docker inspect relay-cpa" "disaster-recovery-runbook.md"; do
   assert_contains "docs/release-deployment-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/release-deployment-runbook.md" "$keyword"
 done
