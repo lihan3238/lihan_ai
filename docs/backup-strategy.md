@@ -38,6 +38,14 @@ ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<backu
 
 The stack drill starts temporary PostgreSQL, Redis, and New API containers on a private Docker network, restores the dump, checks `/api/status`, and then removes the temporary resources.
 
+Use the three verification levels deliberately:
+
+- `verify-postgres-backup.sh` proves the dump file is readable and checksum-valid.
+- `drill-restore-postgres.sh` proves PostgreSQL can restore the dump and key tables exist.
+- `drill-restore-stack.sh` proves a restored database can boot New API with Redis and answer `/api/status`.
+
+The stack drill is the closest local confidence check before a migration or destructive restore. It still does not replace a manual browser check of admin login, channels, tokens, and one low-quota token call.
+
 ## What Must Be Preserved
 
 - PostgreSQL database: users, root account, tokens, channels, settings, logs, billing data, OAuth/payment configuration.
@@ -108,7 +116,7 @@ ENV_FILE=.env.production bash ops/offsite-backup.sh
 Run this on the VPS from the repository directory:
 
 ```cron
-15 3 * * * cd /opt/lihan_ai && bash ops/backup-postgres.sh >> logs/backup.log 2>&1
+15 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/backup-postgres.sh >> logs/backup.log 2>&1
 ```
 
 Then run `ops/offsite-backup.sh` or sync `backups/postgres/` and `.env.production` to an off-server location using your preferred encrypted backup tool. Do not commit either to git.
@@ -123,10 +131,11 @@ For restic-based off-server backup:
 
 1. Provision a fresh server.
 2. Clone the repository and initialize submodules.
-3. Restore the saved `.env`.
+3. Restore the saved `.env.production`.
 4. Start PostgreSQL and Redis.
-5. Run `bash ops/restore-postgres.sh <backup.dump>`.
+5. Run `ENV_FILE=.env.production bash ops/restore-postgres.sh <backup.dump>`.
 6. Start New API.
-7. Verify login, admin settings, token list, channel list, and `/api/status`.
+7. Run `ENV_FILE=.env.production bash ops/check-production-runtime.sh`.
+8. Verify login, admin settings, token list, channel list, and `/api/status`.
 
 For a full fresh-server disaster recovery flow, follow `docs/disaster-recovery-runbook.md`.

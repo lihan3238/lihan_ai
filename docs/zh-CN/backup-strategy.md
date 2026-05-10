@@ -28,6 +28,8 @@ ENV_FILE=.env.production bash ops/restore-postgres.sh backups/postgres/<backup>.
 bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
 ```
 
+演练会恢复到临时 PostgreSQL 容器，检查关键 New API 表，然后清理临时容器。
+
 需要更接近真实灾备时，运行完整隔离栈演练：
 
 ```bash
@@ -36,7 +38,13 @@ ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<backu
 
 它会在独立 Docker 网络里启动临时 PostgreSQL、Redis 和 New API，恢复 dump，检查 `/api/status`，最后清理临时资源。
 
-演练会恢复到临时 PostgreSQL 容器，检查关键 New API 表，然后清理临时容器。
+三个验证层级要分清：
+
+- `verify-postgres-backup.sh` 证明 dump 文件可读，并且 checksum 有效。
+- `drill-restore-postgres.sh` 证明 PostgreSQL 能恢复 dump，关键表存在。
+- `drill-restore-stack.sh` 证明恢复后的数据库可以和 Redis、New API 一起启动，并响应 `/api/status`。
+
+迁移或破坏性恢复前，完整隔离栈演练是最接近真实灾备的本地信心检查。但它不能替代浏览器手动检查管理员登录、渠道、token，以及一次低额度 token 调用。
 
 ## 必须保留的内容
 
@@ -96,7 +104,7 @@ wrapper 会创建 PostgreSQL dump、导出脱敏配置快照、可选导出 GPG 
 在 VPS 仓库目录中设置：
 
 ```cron
-15 3 * * * cd /opt/lihan_ai && bash ops/backup-postgres.sh >> logs/backup.log 2>&1
+15 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/backup-postgres.sh >> logs/backup.log 2>&1
 ```
 
 然后运行 `ops/offsite-backup.sh`，或用你选择的加密备份工具同步 `backups/postgres/` 和 `.env.production` 到离线位置。不要把它们提交到 git。
@@ -107,6 +115,7 @@ wrapper 会创建 PostgreSQL dump、导出脱敏配置快照、可选导出 GPG 
 2. Clone 仓库并初始化 submodules。
 3. 恢复保存的 `.env.production`。
 4. 启动 PostgreSQL 和 Redis。
-5. 运行 `bash ops/restore-postgres.sh <backup.dump>`。
+5. 运行 `ENV_FILE=.env.production bash ops/restore-postgres.sh <backup.dump>`。
 6. 启动 New API。
-7. 验证登录、后台设置、token 列表、渠道列表和 `/api/status`。
+7. 运行 `ENV_FILE=.env.production bash ops/check-production-runtime.sh`。
+8. 验证登录、后台设置、token 列表、渠道列表和 `/api/status`。

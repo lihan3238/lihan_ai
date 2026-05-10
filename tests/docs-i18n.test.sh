@@ -70,4 +70,22 @@ for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317
   assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
 done
 
+for keyword in "Firewall Baseline" "Troubleshooting" "URL-safe" "Caddy"; do
+  assert_contains "docs/production-deployment-runbook.md" "$keyword"
+done
+
+for keyword in "防火墙基线" "排障" "URL-safe" "Caddy"; do
+  assert_contains "docs/zh-CN/production-deployment-runbook.md" "$keyword"
+done
+
+for keyword in "drill-restore-stack.sh" "ENV_FILE=.env.production" "check-production-runtime.sh"; do
+  assert_contains "docs/backup-strategy.md" "$keyword"
+  assert_contains "docs/zh-CN/backup-strategy.md" "$keyword"
+done
+
+for keyword in "remote-management.allow-remote" "Base URL" "docker run -p 8317:8317"; do
+  assert_contains "docs/cpa-runbook.md" "$keyword"
+  assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
+done
+
 echo "docs i18n tests passed"
