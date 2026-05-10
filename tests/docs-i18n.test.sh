@@ -25,6 +25,7 @@ assert_contains "README.md" "README.zh-CN.md"
 docs="
 production-deployment-runbook.md
 release-deployment-runbook.md
+cloudflare-saas-runbook.md
 edge-proxy-runbook.md
 migration-runbook.md
 disaster-recovery-runbook.md
@@ -51,6 +52,11 @@ for keyword in "docker compose" ".env.production" "DEPLOY_HOST" "ops/deploy-prod
   assert_contains "README.zh-CN.md" "$keyword"
 done
 
+for keyword in ".github/workflows/ci.yml" "GitHub Actions PR CI"; do
+  assert_contains "README.md" "$keyword"
+  assert_contains "README.zh-CN.md" "$keyword"
+done
+
 for keyword in "CONFIRM_FINAL_CUTOVER=yes" "ops/migrate-prod.sh" "SOURCE_SSH" "TARGET_SSH"; do
   assert_contains "docs/migration-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/migration-runbook.md" "$keyword"
@@ -64,6 +70,11 @@ done
 for keyword in "ORIGIN_UPSTREAM" "docker-compose.edge.yml" ".env.edge"; do
   assert_contains "docs/edge-proxy-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/edge-proxy-runbook.md" "$keyword"
+done
+
+for keyword in "api.lihan3238.com" "origin.lihan3238.top" "CLOUDFLARE_SAAS_FALLBACK_ORIGIN" "curl -vk --resolve"; do
+  assert_contains "docs/cloudflare-saas-runbook.md" "$keyword"
+  assert_contains "docs/zh-CN/cloudflare-saas-runbook.md" "$keyword"
 done
 
 for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai/data/cpa"; do
@@ -92,6 +103,11 @@ done
 for keyword in "remote-management.allow-remote" "Base URL" "docker run -p 8317:8317" "/CLIProxyAPI/config.yaml"; do
   assert_contains "docs/cpa-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
+done
+
+for keyword in "GitHub Actions PR CI" "production-gate" "live databases"; do
+  assert_contains "docs/git-branching-runbook.md" "$keyword"
+  assert_contains "docs/zh-CN/git-branching-runbook.md" "$keyword"
 done
 
 echo "docs i18n tests passed"

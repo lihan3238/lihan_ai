@@ -81,6 +81,13 @@ compose_files="-f docker-compose.yml"
 if [ "$deploy_env" = "production" ]; then
   require_env_value DOMAIN
   require_env_value ACME_EMAIL
+  domain="$(env_value DOMAIN)"
+  fallback_origin="$(env_value CLOUDFLARE_SAAS_FALLBACK_ORIGIN)"
+  if [ -n "$fallback_origin" ] && [ "$domain" = "$fallback_origin" ]; then
+    echo "DOMAIN must be the public custom hostname, not CLOUDFLARE_SAAS_FALLBACK_ORIGIN" >&2
+    echo "For Cloudflare for SaaS, use DOMAIN=api.lihan3238.com and CLOUDFLARE_SAAS_FALLBACK_ORIGIN=origin.lihan3238.top" >&2
+    exit 1
+  fi
   require_file "docker-compose.prod.yml"
   compose_files="$compose_files -f docker-compose.prod.yml"
 fi

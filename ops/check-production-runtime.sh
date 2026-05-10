@@ -120,6 +120,16 @@ else
   print_result WARN "external status" "DOMAIN or curl is missing"
 fi
 
+if [ -n "${DOMAIN:-}" ] && [ -n "${CLOUDFLARE_SAAS_ORIGIN_IP:-}" ] && command -v curl >/dev/null 2>&1; then
+  if curl -fsS --max-time 20 --resolve "$DOMAIN:443:$CLOUDFLARE_SAAS_ORIGIN_IP" "https://$DOMAIN/api/status" 2>/dev/null | grep -q '"success"[[:space:]]*:[[:space:]]*true'; then
+    print_result PASS "saas origin status" "https://$DOMAIN/api/status works via $CLOUDFLARE_SAAS_ORIGIN_IP"
+  else
+    print_result FAIL "saas origin status" "direct origin SNI/Host check failed via $CLOUDFLARE_SAAS_ORIGIN_IP"
+  fi
+elif [ -n "${CLOUDFLARE_SAAS_FALLBACK_ORIGIN:-}" ]; then
+  print_result WARN "saas origin status" "CLOUDFLARE_SAAS_ORIGIN_IP is missing; skipped direct origin check"
+fi
+
 printf 'Summary: %s PASS, %s WARN, %s FAIL\n' "$pass_count" "$warn_count" "$fail_count"
 
 if [ "$fail_count" -gt 0 ]; then
