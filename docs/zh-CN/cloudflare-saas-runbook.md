@@ -101,6 +101,22 @@ chmod 600 /opt/lihan_ai_deploy/shared/cloudflared/tunnel.json
 chmod 600 /opt/lihan_ai_deploy/shared/cloudflared/config.yml
 ```
 
+启动 stack 前确认这两个 bind mount 源路径都是普通文件。只要路径不存在，Docker 可能会自动创建同名目录，随后 `cloudflared` 会因为 `read /etc/cloudflared/config.yml: is a directory` 反复重启。
+
+```bash
+test -f /opt/lihan_ai_deploy/shared/cloudflared/config.yml && echo "config.yml is file"
+test -f /opt/lihan_ai_deploy/shared/cloudflared/tunnel.json && echo "tunnel.json is file"
+```
+
+如果 `config.yml` 已经被误创建成目录，只删除这个错误目录，然后用 tunnel UUID 和 credentials JSON 重新创建配置文件：
+
+```bash
+sudo find /opt/lihan_ai_deploy/shared/cloudflared -maxdepth 3 -ls
+sudo rm -rf /opt/lihan_ai_deploy/shared/cloudflared/config.yml
+sudoedit /opt/lihan_ai_deploy/shared/cloudflared/config.yml
+chmod 600 /opt/lihan_ai_deploy/shared/cloudflared/config.yml
+```
+
 ## 生产 Env
 
 编辑共享 env：

@@ -63,6 +63,13 @@ CLOUDFLARED_CONFIG_PATH=/opt/lihan_ai_deploy/shared/cloudflared/config.yml
 CLOUDFLARED_CREDENTIALS_PATH=/opt/lihan_ai_deploy/shared/cloudflared/tunnel.json
 ```
 
+这两个路径在 `prepare` 或 `promote` 前必须已经是普通文件：
+
+```bash
+test -f /opt/lihan_ai_deploy/shared/cloudflared/config.yml && echo "config.yml is file"
+test -f /opt/lihan_ai_deploy/shared/cloudflared/tunnel.json && echo "tunnel.json is file"
+```
+
 Tunnel 发布会追加 `docker-compose.cloudflare-tunnel.yml`，并用 `--scale caddy=0` 让源站不再发布公网 `80/443`。
 
 ## 从开发到生产
