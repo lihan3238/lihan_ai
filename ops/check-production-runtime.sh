@@ -22,6 +22,8 @@ set +a
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-${DEPLOY_COMPOSE_PROJECT:-}}"
 DEPLOY_INCLUDE_CPA="${DEPLOY_INCLUDE_CPA:-0}"
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL="${DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL:-0}"
+RUNTIME_EXTERNAL_RETRIES="${RUNTIME_EXTERNAL_RETRIES:-12}"
+RUNTIME_EXTERNAL_RETRY_SECONDS="${RUNTIME_EXTERNAL_RETRY_SECONDS:-5}"
 
 pass_count=0
 warn_count=0
@@ -178,10 +180,30 @@ else
 fi
 
 if [ -n "${DOMAIN:-}" ] && command -v curl >/dev/null 2>&1; then
-  if curl -fsS --max-time 20 "https://$DOMAIN/api/status" 2>/dev/null | grep -q '"success"[[:space:]]*:[[:space:]]*true'; then
-    print_result PASS "external status" "https://$DOMAIN/api/status works"
+  case "$RUNTIME_EXTERNAL_RETRIES" in
+    ''|*[!0-9]*) RUNTIME_EXTERNAL_RETRIES=12 ;;
+  esac
+  case "$RUNTIME_EXTERNAL_RETRY_SECONDS" in
+    ''|*[!0-9]*) RUNTIME_EXTERNAL_RETRY_SECONDS=5 ;;
+  esac
+
+  external_status_ok=0
+  external_attempt=1
+  while [ "$external_attempt" -le "$RUNTIME_EXTERNAL_RETRIES" ]; do
+    if curl -fsS --max-time 20 "https://$DOMAIN/api/status" 2>/dev/null | grep -q '"success"[[:space:]]*:[[:space:]]*true'; then
+      external_status_ok=1
+      break
+    fi
+    if [ "$external_attempt" -lt "$RUNTIME_EXTERNAL_RETRIES" ]; then
+      sleep "$RUNTIME_EXTERNAL_RETRY_SECONDS"
+    fi
+    external_attempt=$((external_attempt + 1))
+  done
+
+  if [ "$external_status_ok" -eq 1 ]; then
+    print_result PASS "external status" "https://$DOMAIN/api/status works after $external_attempt attempt(s)"
   else
-    print_result FAIL "external status" "https://$DOMAIN/api/status failed"
+    print_result FAIL "external status" "https://$DOMAIN/api/status failed after $RUNTIME_EXTERNAL_RETRIES attempt(s)"
   fi
 else
   print_result WARN "external status" "DOMAIN or curl is missing"
