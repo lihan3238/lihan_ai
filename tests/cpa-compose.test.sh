@@ -62,6 +62,13 @@ if command -v docker >/dev/null 2>&1; then
   cd "$ROOT_DIR"
   docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml config >/dev/null
   docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml -f docker-compose.cpa.ui.yml config >/dev/null
+
+  ui_config="$(docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml -f docker-compose.cpa.ui.yml config)"
+  printf '%s\n' "$ui_config" | awk '
+    /target: \/CLIProxyAPI\/config.yaml/ { in_config = 1; next }
+    in_config && /read_only: true/ { exit 42 }
+    in_config && /target:/ { in_config = 0 }
+  ' || fail "CPA UI override must mount /CLIProxyAPI/config.yaml writable so the management UI can save config"
 fi
 
 echo "cpa compose tests passed"
