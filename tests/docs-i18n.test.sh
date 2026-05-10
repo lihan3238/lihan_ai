@@ -77,7 +77,7 @@ for keyword in "api.lihan3238.com" "origin.lihan3238.top" "Cloudflare Tunnel" "c
   assert_contains "docs/zh-CN/cloudflare-saas-runbook.md" "$keyword"
 done
 
-for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai/data/cpa"; do
+for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai/data/cpa" "docker compose -p lihan_ai" "docker-compose.cloudflare-tunnel.yml" "--scale caddy=0"; do
   assert_contains "docs/cpa-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
 done

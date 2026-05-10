@@ -79,11 +79,27 @@ For the legacy direct-checkout deployment, the older `/opt/lihan_ai/data/cpa` pa
 Start CPA on the same Docker network as New API:
 
 ```bash
-docker compose --env-file .env.production \
+cd /opt/lihan_ai_deploy/current
+
+compose_files="-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml"
+scale_args=""
+if grep -q '^DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1' .env.production; then
+  compose_files="$compose_files -f docker-compose.cloudflare-tunnel.yml"
+  scale_args="--scale caddy=0"
+fi
+
+docker compose -p lihan_ai --env-file .env.production $compose_files \
+  up -d --remove-orphans $scale_args cli-proxy-api
+```
+
+For direct-origin deployments, this is equivalent to:
+
+```bash
+docker compose -p lihan_ai --env-file .env.production \
   -f docker-compose.yml \
   -f docker-compose.prod.yml \
   -f docker-compose.cpa.yml \
-  up -d
+  up -d --remove-orphans cli-proxy-api
 ```
 
 New API can then reach CPA at:
@@ -107,12 +123,19 @@ Do not use the public origin domain for New API-to-CPA traffic. That would leave
 The management UI is disabled from the public internet. When you need it, start the localhost-only UI override:
 
 ```bash
-docker compose --env-file .env.production \
-  -f docker-compose.yml \
-  -f docker-compose.prod.yml \
-  -f docker-compose.cpa.yml \
+cd /opt/lihan_ai_deploy/current
+
+compose_files="-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml"
+scale_args=""
+if grep -q '^DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1' .env.production; then
+  compose_files="$compose_files -f docker-compose.cloudflare-tunnel.yml"
+  scale_args="--scale caddy=0"
+fi
+
+docker compose -p lihan_ai --env-file .env.production \
+  $compose_files \
   -f docker-compose.cpa.ui.yml \
-  up -d cli-proxy-api
+  up -d --force-recreate $scale_args cli-proxy-api
 ```
 
 The base CPA compose file mounts `config.yaml` read-only. The UI override intentionally remounts `/CLIProxyAPI/config.yaml` writable so the management UI can save changes. Use this override only while you are actively managing CPA config.
@@ -139,14 +162,23 @@ Security model:
 When finished, remove the UI port by restarting without the UI override:
 
 ```bash
-docker compose --env-file .env.production \
-  -f docker-compose.yml \
-  -f docker-compose.prod.yml \
-  -f docker-compose.cpa.yml \
-  up -d --remove-orphans cli-proxy-api
+cd /opt/lihan_ai_deploy/current
+
+compose_files="-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml"
+scale_args=""
+if grep -q '^DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1' .env.production; then
+  compose_files="$compose_files -f docker-compose.cloudflare-tunnel.yml"
+  scale_args="--scale caddy=0"
+fi
+
+docker compose -p lihan_ai --env-file .env.production \
+  $compose_files \
+  up -d --remove-orphans --force-recreate $scale_args cli-proxy-api
 ```
 
 This returns CPA to the read-only config mount used for normal runtime.
+
+Do not run the close-UI command without the active Tunnel overlay when `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1`; otherwise `--remove-orphans` can remove `relay-cloudflared`.
 
 ## Verify From New API
 

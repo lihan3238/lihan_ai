@@ -211,8 +211,8 @@ Expected production directories during migration:
 Before archiving legacy directories, all of these must be true:
 
 - `readlink -f /opt/lihan_ai_deploy/current` points at the release you intend to run.
-- `docker compose -p lihan_ai ... ps` shows New API, Caddy, PostgreSQL, Redis, Uptime Kuma, and CPA healthy or running as expected.
-- If Cloudflare Tunnel is enabled, `relay-cloudflared` is running and `relay-caddy` has no published `80/443`.
+- `docker compose -p lihan_ai ... ps` shows New API, PostgreSQL, Redis, Uptime Kuma, and optional CPA healthy or running as expected.
+- In direct-origin mode, `relay-caddy` is running with published `80/443`; in Cloudflare Tunnel mode, `relay-cloudflared` is running and `relay-caddy` has no published `80/443`.
 - `ENV_FILE=.env.production bash ops/backup-postgres.sh` works from `/opt/lihan_ai_deploy/current`.
 - CPA config and auth files live under `/opt/lihan_ai_deploy/shared/data/cpa`.
 - `docker inspect relay-cpa` shows no mount source under `/opt/lihan_ai_runtime`.

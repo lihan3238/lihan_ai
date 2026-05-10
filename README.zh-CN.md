@@ -45,6 +45,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docker-compose.prod.yml`：生产覆盖文件，用于日志轮转并移除开发端口。
 - `docker-compose.edge.yml`：无状态 edge 反向代理。
 - `docker-compose.cpa.yml`：可选 CPA 内部服务，给 New API 做上游适配。
+- `docker-compose.cloudflare-tunnel.yml`：可选 Cloudflare Tunnel 源站路径，运行 `cloudflared` 并跳过公网 Caddy 端口。
 - `.env.example`：本地开发变量示例。
 - `.env.production.example`：生产 origin 和离线备份变量示例。
 - `docs/zh-CN/`：部署和运维文档中文版。
@@ -57,7 +58,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docs/server-buying-guide.md`：服务器规格和购买建议。
 - `docs/production-deployment-runbook.md`：生产 origin 部署流程。
 - `docs/release-deployment-runbook.md`：推荐的 `releases/current/shared` 生产部署流程。
-- `docs/cloudflare-saas-runbook.md`：Cloudflare for SaaS custom hostname 和源站域名切换流程。
+- `docs/cloudflare-saas-runbook.md`：Cloudflare for SaaS custom hostname 和 Tunnel 源站流程。
 - `docs/edge-proxy-runbook.md`：中国优化 edge 反代流程。
 - `docs/migration-runbook.md`：无损迁移流程。
 - `docs/disaster-recovery-runbook.md`：离线备份和灾难恢复流程。

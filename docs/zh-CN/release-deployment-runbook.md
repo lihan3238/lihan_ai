@@ -53,6 +53,16 @@ CPA_LOG_PATH=/opt/lihan_ai_deploy/shared/logs/cpa
 
 `docker-compose.cpa.ui.yml` 不进入默认 promote。只有需要临时管理 UI 时，按 `docs/zh-CN/cpa-runbook.md` 通过 SSH 隧道短时间启用。
 
+如果启用 Cloudflare Tunnel，把 tunnel runtime 文件放在 shared 目录：
+
+```env
+DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1
+CLOUDFLARED_CONFIG_PATH=/opt/lihan_ai_deploy/shared/cloudflared/config.yml
+CLOUDFLARED_CREDENTIALS_PATH=/opt/lihan_ai_deploy/shared/cloudflared/tunnel.json
+```
+
+Tunnel 发布会追加 `docker-compose.cloudflare-tunnel.yml`，并用 `--scale caddy=0` 让源站不再发布公网 `80/443`。
+
 ## 从开发到生产
 
 正常变更流程：
@@ -130,7 +140,7 @@ DEPLOY_HOST=<deploy-user>@<origin-host> RELEASE_ID=<release-id> bash ops/deploy-
 docker compose -p lihan_ai --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 ```
 
-并验证 New API `/api/status`。如果 `DEPLOY_INCLUDE_CPA=1`，会追加 `docker-compose.cpa.yml`。如果发布失败，脚本会把 `current` 切回上一版，并尝试重启上一版 stack。
+并验证 New API `/api/status`。如果 `DEPLOY_INCLUDE_CPA=1`，会追加 `docker-compose.cpa.yml`。如果 `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1`，会追加 `docker-compose.cloudflare-tunnel.yml` 并应用 `--scale caddy=0`。如果发布失败，脚本会把 `current` 切回上一版，并尝试重启上一版 stack。
 
 ## Rollback
 
@@ -200,7 +210,8 @@ docker exec relay-new-api wget -q -O - http://cli-proxy-api:8317/v1/models \
 归档旧目录前必须满足：
 
 - `readlink -f /opt/lihan_ai_deploy/current` 指向你期望运行的 release。
-- `docker compose -p lihan_ai ... ps` 显示 New API、Caddy、PostgreSQL、Redis、Uptime Kuma 和 CPA 按预期 healthy 或 running。
+- `docker compose -p lihan_ai ... ps` 显示 New API、PostgreSQL、Redis、Uptime Kuma 和可选 CPA 按预期 healthy 或 running。
+- 直连源站模式下，`relay-caddy` 正在运行并发布 `80/443`；Cloudflare Tunnel 模式下，`relay-cloudflared` 正在运行，且 `relay-caddy` 没有发布 `80/443`。
 - 从 `/opt/lihan_ai_deploy/current` 运行 `ENV_FILE=.env.production bash ops/backup-postgres.sh` 成功。
 - CPA 配置和 auth 文件已经位于 `/opt/lihan_ai_deploy/shared/data/cpa`。
 - `docker inspect relay-cpa` 不再显示任何 `/opt/lihan_ai_runtime` 挂载。
