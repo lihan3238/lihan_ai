@@ -79,7 +79,7 @@ docker run -d --name "$new_api" --network "$network" \
   -e SESSION_SECRET="$session_secret" \
   -e TZ="${TZ:-Asia/Shanghai}" \
   -e ERROR_LOG_ENABLED=false \
-  "$image" --log-dir /app/logs >/dev/null
+  "$image" --log-dir /tmp/new-api-logs >/dev/null
 
 ready=0
 for _ in $(seq 1 90); do
