@@ -148,16 +148,26 @@ assert_contains "docs/zh-CN/release-deployment-runbook.md" "/opt/lihan_ai_deploy
 assert_contains "docs/cloudflare-saas-runbook.md" "api.lihan3238.com"
 assert_contains "docs/zh-CN/cloudflare-saas-runbook.md" "api.lihan3238.com"
 
+test_tmp="$(mktemp -d)"
+trap 'rm -rf "$test_tmp"' EXIT
+test_env="$test_tmp/.env"
+cat > "$test_env" <<'EOF'
+POSTGRES_USER=newapi
+POSTGRES_DB=newapi
+POSTGRES_PASSWORD=redacted
+NEW_API_DEV_PORT=3100
+EOF
+
 set +e
-private_output="$(env -u CONFIG_SNAPSHOT_GPG_RECIPIENT "$ROOT_DIR/ops/export-config-snapshot.sh" --private 2>&1)"
+private_output="$(CONFIG_SNAPSHOT_GPG_RECIPIENT= ENV_FILE="$test_env" "$ROOT_DIR/ops/export-config-snapshot.sh" --private 2>&1)"
 private_status="$?"
 set -e
 [ "$private_status" -eq 2 ] || fail "expected private snapshot exit 2 without recipient, got $private_status: $private_output"
 printf '%s' "$private_output" | grep -q "CONFIG_SNAPSHOT_GPG_RECIPIENT is not set" || fail "missing private snapshot recipient message"
 
-fake_bin="$(mktemp -d)"
-tmp_out="$(mktemp -d)"
-trap 'rm -rf "$fake_bin" "$tmp_out"' EXIT
+fake_bin="$test_tmp/bin"
+tmp_out="$test_tmp/snapshots"
+mkdir -p "$fake_bin" "$tmp_out"
 
 cat > "$fake_bin/docker" <<'DOCKER'
 #!/usr/bin/env sh
@@ -203,7 +213,7 @@ exit 1
 DOCKER
 chmod +x "$fake_bin/docker"
 
-snapshot_output="$(PATH="$fake_bin:$PATH" CONFIG_SNAPSHOT_DIR="$tmp_out" "$ROOT_DIR/ops/export-config-snapshot.sh")"
+snapshot_output="$(PATH="$fake_bin:$PATH" ENV_FILE="$test_env" CONFIG_SNAPSHOT_DIR="$tmp_out" "$ROOT_DIR/ops/export-config-snapshot.sh")"
 [ -f "$snapshot_output" ] || fail "snapshot output not found: $snapshot_output"
 grep -q '"snapshot_kind": "redacted"' "$snapshot_output" || fail "snapshot missing redacted kind"
 grep -q '"key_fingerprint"' "$snapshot_output" || fail "snapshot missing key fingerprint"
