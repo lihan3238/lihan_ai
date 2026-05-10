@@ -8,6 +8,8 @@ Production deploys from `main`. The deployment wrapper refuses non-`main` produc
 
 Caddy is not part of New API. It is the reverse proxy container in this repository: it owns public `80/443`, obtains HTTPS certificates, and forwards application traffic to the internal `new-api:3000` service.
 
+For the Cloudflare for SaaS custom-hostname path using `api.lihan3238.com` and `origin.lihan3238.top`, follow `docs/cloudflare-saas-runbook.md` after the base origin stack is healthy.
+
 1. Clone this repository to `/opt/lihan_ai`.
 2. Copy `.env.production.example` to `.env.production`.
 3. Replace every `CHANGE_ME` value and set `DOMAIN` plus `ACME_EMAIL`.

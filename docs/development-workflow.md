@@ -14,6 +14,12 @@ Official GitHub Spec Kit `v0.8.7` is initialized in Codex skills mode. Its gener
 
 This repository uses a simple GitHub Flow style policy: `main = production`. Production origin servers deploy `main` by default, while local development happens on short-lived `codex/<topic>`, `feature/<topic>`, or `hotfix/<topic>` branches. See `docs/git-branching-runbook.md` for the full policy.
 
+## GitHub Actions PR CI
+
+Pull requests targeting `main` and pushes to `main` run the root GitHub Actions CI workflow. This is a fast, no-secret gate for repository hygiene: shell syntax, shell tests, Compose config rendering, whitespace checks, and `scripts/verify-repo.ps1 -SkipDocker`.
+
+Default CI must not connect to production, read `.env.production`, require `NEW_API_TEST_TOKEN`, run `ops/production-gate.sh`, or perform backup/restore operations against a live database. Keep live billing E2E, production backups, restore drills, and release promotion checks in the local production gate and release deployment flow.
+
 ## Spec Kit And Superpowers
 
 Spec Kit provides the upstream specification workflow and Codex skills:
@@ -114,3 +120,5 @@ bash tests/e2e-api-billing.test.sh
 bash tests/wrapper-infra.test.sh
 bash ops/preflight.sh
 ```
+
+The GitHub Actions PR CI is an additional merge-time backstop, not a replacement for local verification. Operations, billing, deployment, backup, migration, and security changes still need the relevant local commands and a clear handoff of skipped live checks.

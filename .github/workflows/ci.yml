@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repo-gate:
+    name: Repository gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Tool versions
+        run: |
+          bash --version | head -n 1
+          docker --version
+          docker compose version
+          pwsh -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
+
+      - name: Whitespace check
+        run: git diff --check
+
+      - name: Shell syntax
+        run: |
+          set -eu
+          find ops tests -type f -name '*.sh' -print0 | xargs -0 -n 1 bash -n
+
+      - name: Shell tests
+        run: |
+          set -eu
+          for test in tests/*.test.sh; do
+            echo "::group::$test"
+            bash "$test"
+            echo "::endgroup::"
+          done
+
+      - name: Compose render checks
+        run: |
+          set -eu
+          docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.dev.yml config >/dev/null
+          docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local-build.yml config >/dev/null
+          docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml config >/dev/null
+          docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml config >/dev/null
+          docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml -f docker-compose.cpa.ui.yml config >/dev/null
+          docker compose --env-file .env.production.example -f docker-compose.edge.yml config >/dev/null
+
+      - name: Repository verifier
+        shell: pwsh
+        run: ./scripts/verify-repo.ps1 -SkipDocker

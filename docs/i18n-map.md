@@ -9,6 +9,7 @@ English documentation remains the engineering source of truth. Chinese documents
 | `README.md` | `README.zh-CN.md` |
 | `docs/production-deployment-runbook.md` | `docs/zh-CN/production-deployment-runbook.md` |
 | `docs/release-deployment-runbook.md` | `docs/zh-CN/release-deployment-runbook.md` |
+| `docs/cloudflare-saas-runbook.md` | `docs/zh-CN/cloudflare-saas-runbook.md` |
 | `docs/edge-proxy-runbook.md` | `docs/zh-CN/edge-proxy-runbook.md` |
 | `docs/migration-runbook.md` | `docs/zh-CN/migration-runbook.md` |
 | `docs/disaster-recovery-runbook.md` | `docs/zh-CN/disaster-recovery-runbook.md` |

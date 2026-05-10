@@ -18,6 +18,7 @@ Do not create a long-lived `develop` branch. If staging is needed later, add a s
 - Prefer squash merge or rebase merge into `main` to keep history readable.
 - Delete the remote feature branch after the PR is merged.
 - Include feature docs under `docs/ai-dev/<YYYY-MM-DD>-<topic>/`, unless the PR is a small documentation or operations correction and the PR description says so.
+- Let GitHub Actions PR CI pass before merging to `main`. The CI gate is intentionally no-secret and does not deploy, run production-gate, or touch live databases.
 - Run the relevant tests before merge. Operations, billing, deployment, backup, migration, and security changes must pass the project gates documented in `docs/development-workflow.md`.
 
 ## Environment Isolation

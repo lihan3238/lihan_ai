@@ -18,6 +18,7 @@
 - 合并到 `main` 时优先使用 squash merge 或 rebase merge，保持历史清晰。
 - PR 合并后删除远程功能分支。
 - 除小型文档或运维修正外，PR 需要包含 `docs/ai-dev/<YYYY-MM-DD>-<topic>/` feature 文档；小修正要在 PR 描述中说明。
+- 合并到 `main` 前等待 GitHub Actions PR CI 通过。CI 门禁刻意不使用 secrets，不部署、不运行 production-gate，也不接触 live databases。
 - 合并前运行相关测试。涉及运维、计费、部署、备份、迁移和安全的变更，必须通过 `docs/development-workflow.md` 中的项目门禁。
 
 ## 环境隔离

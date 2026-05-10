@@ -49,6 +49,8 @@ run bash tests/channel-health-advisor.test.sh
 run bash tests/live-e2e-token-wrapper.test.sh
 run bash tests/check-local-ports.test.sh
 run bash tests/browser-e2e-scaffold.test.sh
+run bash tests/github-actions-ci.test.sh
+run bash tests/cloudflare-saas-domain.test.sh
 run bash tests/prod-deploy-migration.test.sh
 run bash tests/prod-deploy-hardening.test.sh
 run bash tests/release-deploy.test.sh

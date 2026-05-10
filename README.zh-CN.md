@@ -57,6 +57,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docs/server-buying-guide.md`：服务器规格和购买建议。
 - `docs/production-deployment-runbook.md`：生产 origin 部署流程。
 - `docs/release-deployment-runbook.md`：推荐的 `releases/current/shared` 生产部署流程。
+- `docs/cloudflare-saas-runbook.md`：Cloudflare for SaaS custom hostname 和源站域名切换流程。
 - `docs/edge-proxy-runbook.md`：中国优化 edge 反代流程。
 - `docs/migration-runbook.md`：无损迁移流程。
 - `docs/disaster-recovery-runbook.md`：离线备份和灾难恢复流程。
@@ -65,6 +66,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docs/development-workflow.md`：research-first 开发流程。
 - `docs/templates/ai-dev/`：AI 辅助开发模板。
 - `docs/spec-kit-integration-runbook.md`：GitHub Spec Kit Codex skills 集成说明。
+- `.github/workflows/ci.yml`：不使用 secrets 的 GitHub Actions PR CI，用于脚本测试和 Compose 渲染。
 - `.specify/`：Spec Kit 脚本、模板、工作流和 constitution memory。
 - `.agents/skills/speckit-*`：Spec Kit 生成的 Codex skills。
 - `docs/wrapper-infra-runbook.md`：wrapper 构建、快照、恢复演练和 production gate。
