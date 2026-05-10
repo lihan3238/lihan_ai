@@ -113,6 +113,8 @@ docker compose --env-file .env.production \
   up -d cli-proxy-api
 ```
 
+The base CPA compose file mounts `config.yaml` read-only. The UI override intentionally remounts `/CLIProxyAPI/config.yaml` writable so the management UI can save changes. Use this override only while you are actively managing CPA config.
+
 From your local machine:
 
 ```bash
@@ -141,6 +143,8 @@ docker compose --env-file .env.production \
   -f docker-compose.cpa.yml \
   up -d --remove-orphans cli-proxy-api
 ```
+
+This returns CPA to the read-only config mount used for normal runtime.
 
 ## Verify From New API
 

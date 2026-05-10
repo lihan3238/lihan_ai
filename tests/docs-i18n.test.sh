@@ -83,7 +83,7 @@ for keyword in "drill-restore-stack.sh" "ENV_FILE=.env.production" "check-produc
   assert_contains "docs/zh-CN/backup-strategy.md" "$keyword"
 done
 
-for keyword in "remote-management.allow-remote" "Base URL" "docker run -p 8317:8317"; do
+for keyword in "remote-management.allow-remote" "Base URL" "docker run -p 8317:8317" "/CLIProxyAPI/config.yaml"; do
   assert_contains "docs/cpa-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
 done
