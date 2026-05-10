@@ -13,9 +13,13 @@ CPA 指 `router-for-me/CLIProxyAPI`。在本仓库里，它是 New API 后面的
 
 ```bash
 bash ops/sync-cpa-upstream-assets.sh
+git diff vendor/cli-proxy-api
+bash tests/cpa-compose.test.sh
 ```
 
 不要在生产环境直接运行官方 compose。官方示例默认发布多个宿主机端口。生产应使用本仓库的 CPA overlay。
+
+如果官方示例发生变化，先审查 diff；只有仓库 overlay 需要跟随运行时变化时，才更新 `docker-compose.cpa.yml`。不要把官方示例里的公网端口发布直接复制到生产配置。
 
 仓库 overlay 的目的有两个：
 
@@ -27,10 +31,14 @@ bash ops/sync-cpa-upstream-assets.sh
 真实 CPA 配置保存在 git 外：
 
 ```bash
-sudo mkdir -p /opt/lihan_ai_runtime/.cli-proxy-api
-sudo cp vendor/cli-proxy-api/config.example.yaml /opt/lihan_ai_runtime/.cli-proxy-api/config.yaml
-sudo nano /opt/lihan_ai_runtime/.cli-proxy-api/config.yaml
+mkdir -p /opt/lihan_ai/data/cpa /opt/lihan_ai/logs/cpa
+cp vendor/cli-proxy-api/config.example.yaml /opt/lihan_ai/data/cpa/config.yaml
+chmod 700 /opt/lihan_ai/data/cpa
+chmod 600 /opt/lihan_ai/data/cpa/config.yaml
+nano /opt/lihan_ai/data/cpa/config.yaml
 ```
+
+`data/` 和 `logs/` 已被 git 忽略。这样 CPA runtime 文件会留在部署目录里，便于迁移，但不会把 provider keys、auth files 或 logs 提交进仓库。
 
 最低生产规则：
 
@@ -39,12 +47,29 @@ sudo nano /opt/lihan_ai_runtime/.cli-proxy-api/config.yaml
 - CPA API key 必须足够强，并且和 New API 用户 token 分开管理。
 - 容器内使用 `auth-dir: "/root/.cli-proxy-api"`。
 - 不要把 `8317` 暴露到公网。
-- 上游 provider key 只放在 `/opt/lihan_ai_runtime/.cli-proxy-api/config.yaml`。
+- 上游 provider key 只放在 `/opt/lihan_ai/data/cpa/config.yaml`。
 
 生成密钥：
 
 ```bash
 openssl rand -hex 32
+```
+
+如果你已经把 CPA 配置放在旧 runtime 路径，可以迁移到仓库 runtime 目录：
+
+```bash
+mkdir -p /opt/lihan_ai/data/cpa /opt/lihan_ai/logs/cpa
+cp -a /opt/lihan_ai_runtime/.cli-proxy-api/. /opt/lihan_ai/data/cpa/
+chmod 700 /opt/lihan_ai/data/cpa
+chmod 600 /opt/lihan_ai/data/cpa/config.yaml
+```
+
+然后在 `.env.production` 设置：
+
+```env
+CPA_CONFIG_PATH=/opt/lihan_ai/data/cpa/config.yaml
+CPA_AUTH_PATH=/opt/lihan_ai/data/cpa
+CPA_LOG_PATH=/opt/lihan_ai/logs/cpa
 ```
 
 ## 内网启动 CPA

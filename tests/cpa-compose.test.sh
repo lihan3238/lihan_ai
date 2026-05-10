@@ -42,7 +42,7 @@ assert_contains "vendor/cli-proxy-api/config.example.yaml" "panel-github-reposit
 
 assert_contains "docker-compose.cpa.yml" "container_name: relay-cpa"
 assert_contains "docker-compose.cpa.yml" "relay-internal"
-assert_contains "docker-compose.cpa.yml" "/opt/lihan_ai_runtime/.cli-proxy-api/config.yaml"
+assert_contains "docker-compose.cpa.yml" "/opt/lihan_ai/data/cpa/config.yaml"
 assert_not_contains "docker-compose.cpa.yml" "8317:8317"
 assert_not_contains "docker-compose.cpa.yml" "0.0.0.0:8317"
 
@@ -51,7 +51,9 @@ assert_contains "docker-compose.cpa.ui.yml" "CPA_UI_PORT"
 
 assert_contains "docs/cpa-runbook.md" "ssh -L 8317"
 assert_contains "docs/cpa-runbook.md" "Do not expose"
+assert_contains "docs/cpa-runbook.md" "/opt/lihan_ai/data/cpa"
 assert_contains "docs/zh-CN/cpa-runbook.md" "ssh -L 8317"
+assert_contains "docs/zh-CN/cpa-runbook.md" "/opt/lihan_ai/data/cpa"
 
 assert_contains "ops/sync-cpa-upstream-assets.sh" "raw.githubusercontent.com/router-for-me/CLIProxyAPI/main/docker-compose.yml"
 assert_contains "ops/sync-cpa-upstream-assets.sh" "raw.githubusercontent.com/router-for-me/CLIProxyAPI/main/config.example.yaml"

@@ -65,7 +65,7 @@ for keyword in "ORIGIN_UPSTREAM" "docker-compose.edge.yml" ".env.edge"; do
   assert_contains "docs/zh-CN/edge-proxy-runbook.md" "$keyword"
 done
 
-for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh"; do
+for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai/data/cpa"; do
   assert_contains "docs/cpa-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
 done

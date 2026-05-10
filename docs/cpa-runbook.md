@@ -13,9 +13,13 @@ Refresh them with:
 
 ```bash
 bash ops/sync-cpa-upstream-assets.sh
+git diff vendor/cli-proxy-api
+bash tests/cpa-compose.test.sh
 ```
 
 Do not run the upstream compose file directly in production. It publishes several host ports by default. Use the repository CPA overlay instead.
+
+If the official example changes, review the diff and update `docker-compose.cpa.yml` only when the repository overlay needs a matching runtime change. Do not copy upstream public port publishing into production.
 
 The repository overlay exists for two reasons:
 
@@ -27,10 +31,14 @@ The repository overlay exists for two reasons:
 Keep the real CPA config outside git:
 
 ```bash
-sudo mkdir -p /opt/lihan_ai_runtime/.cli-proxy-api
-sudo cp vendor/cli-proxy-api/config.example.yaml /opt/lihan_ai_runtime/.cli-proxy-api/config.yaml
-sudo nano /opt/lihan_ai_runtime/.cli-proxy-api/config.yaml
+mkdir -p /opt/lihan_ai/data/cpa /opt/lihan_ai/logs/cpa
+cp vendor/cli-proxy-api/config.example.yaml /opt/lihan_ai/data/cpa/config.yaml
+chmod 700 /opt/lihan_ai/data/cpa
+chmod 600 /opt/lihan_ai/data/cpa/config.yaml
+nano /opt/lihan_ai/data/cpa/config.yaml
 ```
+
+`data/` and `logs/` are ignored by git. This keeps CPA runtime files inside the deploy directory for migration, without committing provider keys, auth files, or logs.
 
 Minimum production rules:
 
@@ -39,12 +47,29 @@ Minimum production rules:
 - Keep CPA API keys strong and separate from New API user tokens.
 - Use `auth-dir: "/root/.cli-proxy-api"` inside the container.
 - Do not expose `8317` publicly.
-- Keep upstream provider keys only in `/opt/lihan_ai_runtime/.cli-proxy-api/config.yaml`.
+- Keep upstream provider keys only in `/opt/lihan_ai/data/cpa/config.yaml`.
 
 Generate secrets:
 
 ```bash
 openssl rand -hex 32
+```
+
+If you already created CPA config under the older runtime path, migrate it into the repository runtime directory:
+
+```bash
+mkdir -p /opt/lihan_ai/data/cpa /opt/lihan_ai/logs/cpa
+cp -a /opt/lihan_ai_runtime/.cli-proxy-api/. /opt/lihan_ai/data/cpa/
+chmod 700 /opt/lihan_ai/data/cpa
+chmod 600 /opt/lihan_ai/data/cpa/config.yaml
+```
+
+Then set these values in `.env.production`:
+
+```env
+CPA_CONFIG_PATH=/opt/lihan_ai/data/cpa/config.yaml
+CPA_AUTH_PATH=/opt/lihan_ai/data/cpa
+CPA_LOG_PATH=/opt/lihan_ai/logs/cpa
 ```
 
 ## Start CPA Internally

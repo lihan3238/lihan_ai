@@ -6,8 +6,8 @@ services:
     environment:
       DEPLOY: ${CPA_DEPLOY:-}
     volumes:
-      - ${CPA_CONFIG_PATH:-/opt/lihan_ai_runtime/.cli-proxy-api/config.yaml}:/CLIProxyAPI/config.yaml:ro
-      - ${CPA_AUTH_PATH:-/opt/lihan_ai_runtime/.cli-proxy-api}:/root/.cli-proxy-api
-      - ${CPA_LOG_PATH:-./logs/cpa}:/CLIProxyAPI/logs
+      - ${CPA_CONFIG_PATH:-/opt/lihan_ai/data/cpa/config.yaml}:/CLIProxyAPI/config.yaml:ro
+      - ${CPA_AUTH_PATH:-/opt/lihan_ai/data/cpa}:/root/.cli-proxy-api
+      - ${CPA_LOG_PATH:-/opt/lihan_ai/logs/cpa}:/CLIProxyAPI/logs
     networks:
       - relay-internal
