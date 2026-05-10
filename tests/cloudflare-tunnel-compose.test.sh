@@ -38,6 +38,8 @@ assert_contains "ops/deploy-release.sh" "docker-compose.cloudflare-tunnel.yml"
 assert_contains "ops/deploy-release.sh" "--scale caddy=0"
 assert_contains "ops/check-production-runtime.sh" "relay-cloudflared"
 assert_contains "ops/check-production-runtime.sh" "CLOUDFLARE_TUNNEL"
+assert_contains "ops/check-production-runtime.sh" "RUNTIME_EXTERNAL_RETRIES"
+assert_contains "ops/check-production-runtime.sh" "external_status_ok"
 
 assert_contains "docs/cloudflare-saas-runbook.md" "Cloudflare Tunnel"
 assert_contains "docs/cloudflare-saas-runbook.md" "cloudflared"
@@ -61,5 +63,105 @@ if command -v docker >/dev/null 2>&1; then
     -f docker-compose.cloudflare-tunnel.yml \
     config >/dev/null
 fi
+
+tmp_dir="$(mktemp -d)"
+fake_bin="$tmp_dir/bin"
+env_file="$tmp_dir/.env.production"
+curl_count="$tmp_dir/curl-count"
+docker_log="$tmp_dir/docker.log"
+mkdir -p "$fake_bin"
+trap 'rm -rf "$tmp_dir"' EXIT
+
+cat > "$env_file" <<'EOF'
+DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1
+DEPLOY_COMPOSE_PROJECT=lihan_ai
+DOMAIN=api.example.test
+POSTGRES_USER=newapi
+POSTGRES_DB=newapi
+POSTGRES_PASSWORD=redacted
+REDIS_PASSWORD=redacted
+SESSION_SECRET=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+EOF
+
+cat > "$fake_bin/docker" <<'DOCKER'
+#!/usr/bin/env sh
+printf '%s\n' "$*" >> "$FAKE_DOCKER_LOG"
+
+if [ "$1" = "inspect" ]; then
+  case "$*" in
+    *"relay-new-api"*) printf 'healthy\n'; exit 0 ;;
+    *"relay-cloudflared"*) printf 'running\n'; exit 0 ;;
+  esac
+fi
+
+if [ "$1" = "port" ] && [ "$2" = "relay-caddy" ]; then
+  exit 1
+fi
+
+if [ "$1" = "logs" ] && [ "$4" = "relay-cloudflared" ]; then
+  printf 'registered tunnel connection\n'
+  exit 0
+fi
+
+if [ "$1" = "compose" ]; then
+  case "$*" in
+    *" config")
+      exit 0
+      ;;
+    *" ps postgres")
+      printf 'relay-postgres running\n'
+      exit 0
+      ;;
+    *" ps redis")
+      printf 'relay-redis running\n'
+      exit 0
+      ;;
+    *" ps new-api")
+      printf 'relay-new-api running\n'
+      exit 0
+      ;;
+    *" ps cloudflared")
+      printf 'relay-cloudflared running\n'
+      exit 0
+      ;;
+    *" exec -T new-api wget"*)
+      printf '{"success":true}\n'
+      exit 0
+      ;;
+  esac
+fi
+
+echo "unexpected docker args: $*" >&2
+exit 1
+DOCKER
+chmod +x "$fake_bin/docker"
+
+cat > "$fake_bin/curl" <<'CURL'
+#!/usr/bin/env sh
+count_file="$FAKE_CURL_COUNT"
+count=0
+[ -f "$count_file" ] && count="$(cat "$count_file")"
+count=$((count + 1))
+printf '%s\n' "$count" > "$count_file"
+
+if [ "$count" -lt 2 ]; then
+  exit 22
+fi
+
+printf '{"success":true}\n'
+CURL
+chmod +x "$fake_bin/curl"
+
+cat > "$fake_bin/ss" <<'SS'
+#!/usr/bin/env sh
+exit 0
+SS
+chmod +x "$fake_bin/ss"
+
+: > "$docker_log"
+printf '0\n' > "$curl_count"
+runtime_output="$(PATH="$fake_bin:$PATH" FAKE_DOCKER_LOG="$docker_log" FAKE_CURL_COUNT="$curl_count" ENV_FILE="$env_file" RUNTIME_EXTERNAL_RETRIES=2 RUNTIME_EXTERNAL_RETRY_SECONDS=0 "$ROOT_DIR/ops/check-production-runtime.sh")"
+printf '%s' "$runtime_output" | grep -q "PASS external status" || fail "runtime check should pass after external retry: $runtime_output"
+[ "$(cat "$curl_count")" -eq 2 ] || fail "external status should retry once before passing"
 
 echo "cloudflare tunnel compose tests passed"
