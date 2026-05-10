@@ -68,7 +68,36 @@ if [ "$ready" -ne 1 ]; then
   exit 1
 fi
 
-docker exec -i "$postgres" pg_restore --clean --if-exists --no-owner -U restore -d restore < "$backup"
+ready=0
+for _ in $(seq 1 15); do
+  if docker exec "$postgres" psql -U restore -d restore -c 'select 1;' >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
+  sleep 1
+done
+
+if [ "$ready" -ne 1 ]; then
+  docker logs --tail=80 "$postgres" >&2 || true
+  echo "restore drill postgres did not accept a test query" >&2
+  exit 1
+fi
+
+pg_restore_status=1
+for attempt in $(seq 1 3); do
+  if docker exec -i "$postgres" pg_restore --clean --if-exists --no-owner -U restore -d restore < "$backup"; then
+    pg_restore_status=0
+    break
+  fi
+  echo "WARN restore drill pg_restore failed on attempt $attempt; retrying" >&2
+  docker logs --tail=40 "$postgres" >&2 || true
+  sleep 3
+done
+
+if [ "$pg_restore_status" -ne 0 ]; then
+  echo "restore drill pg_restore failed" >&2
+  exit 1
+fi
 
 docker run -d --name "$redis" --network "$network" --network-alias redis \
   redis:7-alpine redis-server --appendonly yes --requirepass "$redis_password" >/dev/null
