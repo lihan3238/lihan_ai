@@ -52,6 +52,20 @@ CPA_LOG_PATH=/opt/lihan_ai_deploy/shared/logs/cpa
 
 `docker-compose.cpa.ui.yml` is not part of normal release promotion. Use it only for a short SSH-tunneled management session as documented in `docs/cpa-runbook.md`.
 
+## Development To Production Flow
+
+Normal change flow:
+
+1. Develop locally in WSL or another Linux-like environment.
+2. Commit on a short-lived branch such as `codex/<topic>` or `feature/<topic>`.
+3. Open a PR and merge it to `main` after review and checks.
+4. From the local repository, run `prepare` against `DEPLOY_REF=main`.
+5. Run `smoke` against the prepared `RELEASE_ID`; use `SMOKE_BACKUP_PATH` when you want a known backup.
+6. Run `promote` only after smoke passes.
+7. Verify `current`, Docker services, backups, New API admin, CPA channels, and Kuma.
+
+The production host should not be used as the development workspace. It may keep a legacy `/opt/lihan_ai` clone for a short migration window, but production should run from `/opt/lihan_ai_deploy/current`.
+
 ## Bootstrap
 
 Run once from your local machine:
@@ -72,6 +86,8 @@ sudo nano /opt/lihan_ai_deploy/shared/.env.production
 If the copied env still points CPA at `/opt/lihan_ai`, update it to `/opt/lihan_ai_deploy/shared/...` before enabling `DEPLOY_INCLUDE_CPA=1`.
 
 Keep the old `/opt/lihan_ai` directory until release deploys, backups, and rollback have been tested.
+
+If `/opt/lihan_ai_deploy/shared/data/cpa/config.yaml` was accidentally created as a directory by Docker bind mounting, stop and remove `relay-cpa`, replace that path with the real CPA `config.yaml` file, then start CPA again. The path must be a file, not a directory.
 
 ## Prepare
 
@@ -134,6 +150,91 @@ DEPLOY_HOST=<deploy-user>@<origin-host> RELEASE_KEEP=5 bash ops/deploy-release.s
 ```
 
 `cleanup` keeps the newest releases plus `current` and `previous`, removes older worktrees, and prunes `repo.git` worktree metadata.
+
+## Post-Promote Acceptance
+
+Run these checks after every production promote:
+
+```bash
+readlink -f /opt/lihan_ai_deploy/current
+
+cd /opt/lihan_ai_deploy/current
+docker compose -p lihan_ai --env-file .env.production \
+  -f docker-compose.yml \
+  -f docker-compose.prod.yml \
+  -f docker-compose.cpa.yml \
+  ps
+
+ENV_FILE=.env.production bash ops/check-production-runtime.sh
+
+backup="$(ENV_FILE=.env.production bash ops/backup-postgres.sh)"
+echo "$backup"
+ENV_FILE=.env.production bash ops/verify-postgres-backup.sh "$backup"
+
+docker logs --tail=80 relay-cpa
+```
+
+For CPA routing, verify New API can reach CPA on the internal Docker network:
+
+```bash
+docker exec relay-new-api wget -q -O - http://cli-proxy-api:8317/v1/models \
+  --header="Authorization: Bearer <CPA_API_KEY>"
+```
+
+Use one value from CPA `api-keys` for `<CPA_API_KEY>`.
+
+## Legacy Directory Cleanup
+
+Do not delete legacy directories immediately after the first successful promote.
+
+Expected production directories during migration:
+
+```text
+/opt/containerd           container runtime data; do not touch
+/opt/lihan_ai             legacy direct Git checkout; archive later
+/opt/lihan_ai_deploy      active release deployment root
+/opt/lihan_ai_runtime     old ad hoc CPA runtime; archive after CPA migration
+```
+
+Before archiving legacy directories, all of these must be true:
+
+- `readlink -f /opt/lihan_ai_deploy/current` points at the release you intend to run.
+- `docker compose -p lihan_ai ... ps` shows New API, Caddy, PostgreSQL, Redis, Uptime Kuma, and CPA healthy or running as expected.
+- `ENV_FILE=.env.production bash ops/backup-postgres.sh` works from `/opt/lihan_ai_deploy/current`.
+- CPA config and auth files live under `/opt/lihan_ai_deploy/shared/data/cpa`.
+- `docker inspect relay-cpa` shows no mount source under `/opt/lihan_ai_runtime`.
+- At least one release deploy, smoke, promote, and backup cycle has passed after the migration.
+
+Check CPA mounts:
+
+```bash
+docker inspect relay-cpa --format '{{range .Mounts}}{{println .Source "->" .Destination}}{{end}}'
+```
+
+Archive first, delete later:
+
+```bash
+sudo mv /opt/lihan_ai /opt/lihan_ai.legacy-$(date +%Y%m%d)
+sudo mv /opt/lihan_ai_runtime /opt/lihan_ai_runtime.legacy-$(date +%Y%m%d)
+```
+
+After several stable days, remove the archived directories only if no mount, cron job, or operator workflow still references them. Never remove `/opt/containerd`, and never run `docker compose down -v` during cleanup.
+
+## Fresh Server Or Disaster Recovery
+
+For a new server, follow the disaster recovery runbook first: `docs/disaster-recovery-runbook.md`.
+
+Release-specific recovery outline:
+
+1. Provision Docker and the deploy user.
+2. Create and chown `/opt/lihan_ai_deploy`.
+3. Run `ops/deploy-release.sh bootstrap`.
+4. Restore `/opt/lihan_ai_deploy/shared/.env.production`, CPA runtime files, and PostgreSQL dumps.
+5. Run `prepare` for `main`.
+6. Run `smoke` with a known dump through `SMOKE_BACKUP_PATH`.
+7. Promote the release to start the stack.
+8. Restore the selected PostgreSQL dump if this is a full disaster recovery.
+9. Run the post-promote acceptance checks before DNS cutover or paid traffic.
 
 ## Operational Notes
 
