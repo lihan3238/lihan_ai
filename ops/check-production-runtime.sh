@@ -19,6 +19,8 @@ set -a
 . "$ENV_FILE"
 set +a
 
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-${DEPLOY_COMPOSE_PROJECT:-}}"
+
 pass_count=0
 warn_count=0
 fail_count=0
@@ -36,7 +38,11 @@ print_result() {
 }
 
 compose() {
-  docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.prod.yml" "$@"
+  if [ -n "${COMPOSE_PROJECT_NAME:-}" ]; then
+    docker compose -p "$COMPOSE_PROJECT_NAME" --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.prod.yml" "$@"
+  else
+    docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.prod.yml" "$@"
+  fi
 }
 
 cd "$ROOT_DIR"

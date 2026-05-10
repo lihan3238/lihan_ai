@@ -56,6 +56,7 @@ POSTGRES_USER=newapi
 POSTGRES_PASSWORD=$postgres_password
 POSTGRES_DB=newapi
 REDIS_PASSWORD=abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789
+DEPLOY_COMPOSE_PROJECT=lihan_ai
 EOF
 }
 
@@ -81,6 +82,7 @@ grep -q -- "-f docker-compose.prod.yml config" "$docker_log" || fail "production
 backup_output="$(PATH="$fake_bin:$PATH" ENV_FILE="$good_env" BACKUP_DIR="$tmp_dir/backups" "$ROOT_DIR/ops/backup-postgres.sh")"
 [ -f "$ROOT_DIR/$backup_output" ] || [ -f "$backup_output" ] || fail "backup script did not create output: $backup_output"
 grep -q -- "--env-file $good_env" "$docker_log" || fail "backup script did not pass --env-file"
+grep -q -- "compose -p lihan_ai" "$docker_log" || fail "backup script did not use DEPLOY_COMPOSE_PROJECT"
 
 backup_path="$ROOT_DIR/$backup_output"
 [ -f "$backup_path" ] || backup_path="$backup_output"
@@ -88,10 +90,12 @@ backup_path="$ROOT_DIR/$backup_output"
 : > "$docker_log"
 PATH="$fake_bin:$PATH" ENV_FILE="$good_env" "$ROOT_DIR/ops/verify-postgres-backup.sh" "$backup_path" >/dev/null
 grep -q -- "--env-file $good_env" "$docker_log" || fail "verify script did not pass --env-file"
+grep -q -- "compose -p lihan_ai" "$docker_log" || fail "verify script did not use DEPLOY_COMPOSE_PROJECT"
 
 : > "$docker_log"
 PATH="$fake_bin:$PATH" ENV_FILE="$good_env" "$ROOT_DIR/ops/restore-postgres.sh" "$backup_path" >/dev/null
 grep -q -- "--env-file $good_env" "$docker_log" || fail "restore script did not pass --env-file"
+grep -q -- "compose -p lihan_ai" "$docker_log" || fail "restore script did not use DEPLOY_COMPOSE_PROJECT"
 
 grep -q -- "--log-dir /tmp/new-api-logs" "$ROOT_DIR/ops/drill-restore-stack.sh" || fail "restore stack drill should use a temp log dir whose parent exists in the upstream image"
 if grep -q -- "--log-dir /app/logs" "$ROOT_DIR/ops/drill-restore-stack.sh"; then
