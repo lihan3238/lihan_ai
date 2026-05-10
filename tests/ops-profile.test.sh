@@ -16,6 +16,14 @@ fail() {
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
+env_file="$tmp_dir/.env"
+cat > "$env_file" <<'EOF'
+POSTGRES_USER=newapi
+POSTGRES_DB=newapi
+POSTGRES_PASSWORD=redacted
+NEW_API_DEV_PORT=3100
+EOF
+
 set +e
 missing_output="$("$SCRIPT" "$tmp_dir/missing.json" 2>&1)"
 missing_status="$?"
@@ -80,7 +88,7 @@ printf '200'
 CURL
 chmod +x "$fake_bin/curl"
 
-pass_output="$(PATH="$fake_bin:$PATH" "$SCRIPT" "$PROFILE")"
+pass_output="$(PATH="$fake_bin:$PATH" NEW_API_ENV_FILE="$env_file" "$SCRIPT" "$PROFILE")"
 printf '%s' "$pass_output" | grep -q "PASS enabled channels" || fail "pass output missing enabled channel pass: $pass_output"
 printf '%s' "$pass_output" | grep -q "WARN subscriptions" || fail "pass output missing subscription warning: $pass_output"
 printf '%s' "$pass_output" | grep -q "Summary: pass=" || fail "pass output missing summary: $pass_output"
@@ -89,13 +97,13 @@ if printf '%s' "$pass_output" | grep -Eiq 'sk-[A-Za-z0-9]|password|SESSION_SECRE
 fi
 
 set +e
-fail_output="$(OPS_PROFILE_FAKE_DB_STATE=fail PATH="$fake_bin:$PATH" "$SCRIPT" "$PROFILE" 2>&1)"
+fail_output="$(OPS_PROFILE_FAKE_DB_STATE=fail PATH="$fake_bin:$PATH" NEW_API_ENV_FILE="$env_file" "$SCRIPT" "$PROFILE" 2>&1)"
 fail_status="$?"
 set -e
 [ "$fail_status" -eq 1 ] || fail "expected profile mismatch exit 1, got $fail_status: $fail_output"
 printf '%s' "$fail_output" | grep -q "FAIL enabled channels" || fail "fail output missing enabled channel failure: $fail_output"
 
-models_output="$(NEW_API_TEST_TOKEN='sk-test-redacted' PATH="$fake_bin:$PATH" "$SCRIPT" "$PROFILE")"
+models_output="$(NEW_API_TEST_TOKEN='sk-test-redacted' PATH="$fake_bin:$PATH" NEW_API_ENV_FILE="$env_file" "$SCRIPT" "$PROFILE")"
 printf '%s' "$models_output" | grep -q "PASS models api" || fail "models output missing API pass: $models_output"
 if printf '%s' "$models_output" | grep -q "sk-test-redacted"; then
   fail "validator output printed test token: $models_output"
