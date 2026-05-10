@@ -22,6 +22,8 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 ENV_FILE=.env.production bash ops/check-production-runtime.sh
 ```
 
+后续生产更新优先使用 `docs/zh-CN/release-deployment-runbook.md` 里的 release 部署流程。上面的 `/opt/lihan_ai` 直接 checkout 流程仍可用于首次 bootstrap 和 legacy 回退，但稳定后生产应从 `/opt/lihan_ai_deploy/current` 运行，运行时文件放在 `/opt/lihan_ai_deploy/shared`。
+
 第一次通过浏览器打开 New API 时，看到上游初始化页面并要求创建 root/admin 是正常现象。`SESSION_SECRET`、`POSTGRES_PASSWORD` 和 `REDIS_PASSWORD` 是应用、数据库和运行时 secret，不会自动创建 New API 管理员账号。
 
 ## 防火墙基线
@@ -43,13 +45,21 @@ sudo ss -lntp | grep -E ':80|:443|:8317|:5432|:6379'
 
 ## 从本地远程部署
 
-通过 SSH 部署一个干净的 Git ref：
+推荐的 release 部署：
+
+```bash
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
+DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+```
+
+legacy 简化部署仍可通过 SSH 部署一个干净的 Git ref：
 
 ```bash
 DEPLOY_HOST=root@x.x.x.x DEPLOY_PATH=/opt/lihan_ai DEPLOY_REF=main bash ops/deploy-prod.sh
 ```
 
-远程仓库如果存在本地未提交改动，部署脚本会拒绝继续。替换容器前，如果已有数据库正在运行，脚本会先创建 PostgreSQL 备份。
+两条路径都默认拒绝非 `main` 的生产 ref。legacy 部署脚本还会在远程仓库存在本地未提交改动时拒绝继续。release 部署路径在存在当前生产 stack 时，会在替换容器前先创建 PostgreSQL 备份。
 
 ## 验证
 
@@ -94,7 +104,13 @@ GitHub、LinuxDo 等外部登录方式需要先在对应 provider 创建 OAuth a
 
 ## 回滚
 
-重新部署一个已知可用的 Git ref：
+使用 release 部署时，回滚到上一条 release：
+
+```bash
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh rollback
+```
+
+使用 legacy 简化部署时，重新部署一个已知可用的 Git ref：
 
 ```bash
 DEPLOY_HOST=root@x.x.x.x DEPLOY_REF=<known-good-ref> bash ops/deploy-prod.sh

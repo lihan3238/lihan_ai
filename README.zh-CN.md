@@ -56,6 +56,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docs/backup-strategy.md`：数据库备份、校验和恢复规则。
 - `docs/server-buying-guide.md`：服务器规格和购买建议。
 - `docs/production-deployment-runbook.md`：生产 origin 部署流程。
+- `docs/release-deployment-runbook.md`：推荐的 `releases/current/shared` 生产部署流程。
 - `docs/edge-proxy-runbook.md`：中国优化 edge 反代流程。
 - `docs/migration-runbook.md`：无损迁移流程。
 - `docs/disaster-recovery-runbook.md`：离线备份和灾难恢复流程。
@@ -88,6 +89,9 @@ bash ops/validate-ops-profile.sh config/ops-profiles/glm-standard.example.json
 bash ops/channel-health-advisor.sh config/ops-profiles/glm-standard-health.example.json
 bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
 bash ops/bootstrap-server.sh
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
+DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-prod.sh
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ENV_FILE=.env.production bash ops/offsite-backup.sh
@@ -126,18 +130,26 @@ docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml u
 
 ## 生产与迁移
 
-生产 origin 使用 `.env.production` 和 `docker-compose.prod.yml`。edge 反代使用 `docker-compose.edge.yml`，必须保持无状态：
+生产 origin 使用 `.env.production` 和 `docker-compose.prod.yml`。后续生产更新优先使用 `docs/zh-CN/release-deployment-runbook.md` 里的 release 流程：生产从 `/opt/lihan_ai_deploy/current` 运行，运行时文件放在 `/opt/lihan_ai_deploy/shared`。edge 反代使用 `docker-compose.edge.yml`，必须保持无状态：
 
 ```bash
 ENV_FILE=.env.production bash ops/preflight.sh
 docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-远程部署和验证：
+推荐的 release 部署和验证：
+
+```bash
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
+DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
+```
+
+legacy 直接 checkout 部署仍保留：
 
 ```bash
 DEPLOY_HOST=root@x.x.x.x DEPLOY_PATH=/opt/lihan_ai DEPLOY_REF=main bash ops/deploy-prod.sh
-DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ```
 
 面向国内访问时，建议在 origin 前增加中国优化 edge VPS，并按 `docs/zh-CN/edge-proxy-runbook.md` 配置。未来迁移到新生产服务器时，按 `docs/zh-CN/migration-runbook.md` 执行。

@@ -24,6 +24,7 @@ assert_contains "README.md" "README.zh-CN.md"
 
 docs="
 production-deployment-runbook.md
+release-deployment-runbook.md
 edge-proxy-runbook.md
 migration-runbook.md
 disaster-recovery-runbook.md
@@ -81,6 +82,11 @@ done
 for keyword in "drill-restore-stack.sh" "ENV_FILE=.env.production" "check-production-runtime.sh"; do
   assert_contains "docs/backup-strategy.md" "$keyword"
   assert_contains "docs/zh-CN/backup-strategy.md" "$keyword"
+done
+
+for keyword in "/opt/lihan_ai_deploy" "ops/deploy-release.sh" "docker compose -p" "DEPLOY_INCLUDE_CPA" "rollback" "PM2"; do
+  assert_contains "docs/release-deployment-runbook.md" "$keyword"
+  assert_contains "docs/zh-CN/release-deployment-runbook.md" "$keyword"
 done
 
 for keyword in "remote-management.allow-remote" "Base URL" "docker run -p 8317:8317" "/CLIProxyAPI/config.yaml"; do

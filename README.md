@@ -54,6 +54,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docs/backup-strategy.md`: database backup, verification, and restore rules.
 - `docs/server-buying-guide.md`: VPS sizing and purchase checklist.
 - `docs/production-deployment-runbook.md`: production origin bootstrap and SSH deploy flow.
+- `docs/release-deployment-runbook.md`: preferred `releases/current/shared` production deploy flow.
 - `docs/edge-proxy-runbook.md`: China-optimized edge reverse proxy setup.
 - `docs/migration-runbook.md`: no-loss server migration flow.
 - `docs/disaster-recovery-runbook.md`: off-server backup and restore flow.
@@ -86,6 +87,9 @@ bash ops/validate-ops-profile.sh config/ops-profiles/glm-standard.example.json
 bash ops/channel-health-advisor.sh config/ops-profiles/glm-standard-health.example.json
 bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
 bash ops/bootstrap-server.sh
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
+DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-prod.sh
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ENV_FILE=.env.production bash ops/offsite-backup.sh
@@ -124,18 +128,26 @@ On first login, New API will ask you to initialize the system and create the roo
 
 ## Production And Migration
 
-The production origin uses `.env.production` and `docker-compose.prod.yml`. The edge proxy uses `docker-compose.edge.yml` and must stay stateless:
+The production origin uses `.env.production` and `docker-compose.prod.yml`. New production updates should use the release flow in `docs/release-deployment-runbook.md`, where production runs from `/opt/lihan_ai_deploy/current` and runtime files live under `/opt/lihan_ai_deploy/shared`. The edge proxy uses `docker-compose.edge.yml` and must stay stateless:
 
 ```bash
 ENV_FILE=.env.production bash ops/preflight.sh
 docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-Remote deploy and verification:
+Preferred release deploy and verification:
+
+```bash
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
+DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
+```
+
+Legacy direct-checkout deploy remains available:
 
 ```bash
 DEPLOY_HOST=root@x.x.x.x DEPLOY_PATH=/opt/lihan_ai DEPLOY_REF=main bash ops/deploy-prod.sh
-DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ```
 
 For China-optimized access, publish an edge VPS in front of the origin and follow `docs/edge-proxy-runbook.md`. For moving to a new production server without losing data, follow `docs/migration-runbook.md`.

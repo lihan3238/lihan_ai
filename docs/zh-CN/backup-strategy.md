@@ -10,6 +10,8 @@ ENV_FILE=.env.production bash ops/backup-postgres.sh
 
 脚本会在 `backups/postgres/` 下创建 PostgreSQL custom-format dump，使用 `pg_restore` 验证 dump 可读，并在存在 `sha256sum` 时写入 `.sha256` 校验文件。备份目录被 git 忽略。生产环境命令应传入 `ENV_FILE=.env.production`，确保 Compose 使用和运行中服务一致的变量。
 
+使用 release 部署时，从 `/opt/lihan_ai_deploy/current` 运行备份命令；`backups/` 是指向 `/opt/lihan_ai_deploy/shared/backups/` 的 symlink。
+
 不恢复、只校验备份：
 
 ```bash
@@ -107,7 +109,19 @@ wrapper 会创建 PostgreSQL dump、导出脱敏配置快照、可选导出 GPG 
 15 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/backup-postgres.sh >> logs/backup.log 2>&1
 ```
 
+使用 release 部署时，从 `current` 运行并把日志写入 shared：
+
+```cron
+15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/backup-postgres.sh >> /opt/lihan_ai_deploy/shared/logs/backup.log 2>&1
+```
+
 然后运行 `ops/offsite-backup.sh`，或用你选择的加密备份工具同步 `backups/postgres/` 和 `.env.production` 到离线位置。不要把它们提交到 git。
+
+restic 离线备份也应改到 release 路径：
+
+```cron
+20 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/offsite-backup.sh >> /opt/lihan_ai_deploy/shared/logs/offsite-backup.log 2>&1
+```
 
 ## 恢复顺序
 

@@ -22,6 +22,8 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 ENV_FILE=.env.production bash ops/check-production-runtime.sh
 ```
 
+For ongoing production updates, prefer the release deployment flow in `docs/release-deployment-runbook.md`. The direct `/opt/lihan_ai` checkout flow above is still useful for first bootstrap and as a legacy fallback, but production should eventually run from `/opt/lihan_ai_deploy/current` with runtime files in `/opt/lihan_ai_deploy/shared`.
+
 The first New API browser visit normally shows the upstream initialization screen and asks you to create the root/admin account. `SESSION_SECRET`, `POSTGRES_PASSWORD`, and `REDIS_PASSWORD` are application/database/runtime secrets; they do not create a New API admin login.
 
 ## Firewall Baseline
@@ -43,13 +45,21 @@ Only `80` and `443` should be publicly reachable for the base production stack. 
 
 ## Remote Deploy From Local
 
-Deploy a clean Git ref through SSH:
+Preferred release deployment:
+
+```bash
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
+DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
+DEPLOY_HOST=root@x.x.x.x RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
+```
+
+Legacy simple deploy of a clean Git ref through SSH:
 
 ```bash
 DEPLOY_HOST=root@x.x.x.x DEPLOY_PATH=/opt/lihan_ai DEPLOY_REF=main bash ops/deploy-prod.sh
 ```
 
-The deploy script refuses to continue if the remote repository has local changes. Before replacing containers, it creates a PostgreSQL backup when an existing database is running.
+Both deploy paths refuse non-`main` production refs by default. The legacy deploy script also refuses to continue if the remote repository has local changes. Before replacing containers, the release deploy path creates a PostgreSQL backup when an existing current stack is running.
 
 ## Verification
 
@@ -94,7 +104,13 @@ External login providers such as GitHub or LinuxDo require provider-side OAuth a
 
 ## Rollback
 
-Redeploy a previous Git ref:
+With release deployment, roll back to the previous release:
+
+```bash
+DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh rollback
+```
+
+With the legacy simple deploy path, redeploy a previous Git ref:
 
 ```bash
 DEPLOY_HOST=root@x.x.x.x DEPLOY_REF=<known-good-ref> bash ops/deploy-prod.sh
