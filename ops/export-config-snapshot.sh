@@ -30,13 +30,21 @@ set +a
 
 POSTGRES_USER="${POSTGRES_USER:-newapi}"
 POSTGRES_DB="${POSTGRES_DB:-newapi}"
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-${DEPLOY_COMPOSE_PROJECT:-}}"
 mkdir -p "$SNAPSHOT_DIR"
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 
+compose() {
+  if [ -n "${COMPOSE_PROJECT_NAME:-}" ]; then
+    docker compose -p "$COMPOSE_PROJECT_NAME" --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.dev.yml" "$@"
+  else
+    docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.dev.yml" "$@"
+  fi
+}
+
 compose_psql_json() {
   sql="$1"
-  docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.dev.yml" \
-    exec -T postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA -c "$sql"
+  compose exec -T postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA -c "$sql"
 }
 
 redacted_sql="

@@ -26,9 +26,24 @@ if [ ! -f "$backup" ]; then
   exit 1
 fi
 
+set -a
+# shellcheck disable=SC1090
+. "$ENV_FILE"
+set +a
+
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-${DEPLOY_COMPOSE_PROJECT:-}}"
+
+compose() {
+  if [ -n "${COMPOSE_PROJECT_NAME:-}" ]; then
+    docker compose -p "$COMPOSE_PROJECT_NAME" --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.prod.yml" "$@"
+  else
+    docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.prod.yml" "$@"
+  fi
+}
+
 if [ -f "$checksum" ] && command -v sha256sum >/dev/null 2>&1; then
   (cd "$(dirname "$backup")" && sha256sum -c "$(basename "$checksum")")
 fi
 
-docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.prod.yml" exec -T postgres pg_restore -l < "$backup" >/dev/null
+compose exec -T postgres pg_restore -l < "$backup" >/dev/null
 echo "backup is readable: $backup"
