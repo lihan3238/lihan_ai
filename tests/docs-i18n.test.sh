@@ -84,7 +84,7 @@ for keyword in "drill-restore-stack.sh" "ENV_FILE=.env.production" "check-produc
   assert_contains "docs/zh-CN/backup-strategy.md" "$keyword"
 done
 
-for keyword in "/opt/lihan_ai_deploy" "ops/deploy-release.sh" "docker compose -p" "DEPLOY_INCLUDE_CPA" "rollback" "PM2"; do
+for keyword in "/opt/lihan_ai_deploy" "ops/deploy-release.sh" "docker compose -p" "DEPLOY_INCLUDE_CPA" "rollback" "PM2" "SMOKE_BACKUP_PATH" "lihan_ai_runtime" "docker inspect relay-cpa" "disaster-recovery-runbook.md"; do
   assert_contains "docs/release-deployment-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/release-deployment-runbook.md" "$keyword"
 done
