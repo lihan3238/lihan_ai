@@ -38,6 +38,7 @@ run bash -n ops/check-production-runtime.sh
 run bash -n ops/sync-cpa-upstream-assets.sh
 run bash -n ops/bootstrap-server.sh
 run bash -n ops/deploy-prod.sh
+run bash -n ops/deploy-release.sh
 run bash -n ops/verify-remote-prod.sh
 run bash -n ops/offsite-backup.sh
 run bash -n ops/migration-preflight.sh
@@ -50,6 +51,7 @@ run bash tests/check-local-ports.test.sh
 run bash tests/browser-e2e-scaffold.test.sh
 run bash tests/prod-deploy-migration.test.sh
 run bash tests/prod-deploy-hardening.test.sh
+run bash tests/release-deploy.test.sh
 run bash tests/cpa-compose.test.sh
 run bash tests/docs-i18n.test.sh
 run bash tests/git-branching-policy.test.sh

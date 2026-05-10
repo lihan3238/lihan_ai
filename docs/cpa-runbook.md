@@ -31,14 +31,14 @@ The repository overlay exists for two reasons:
 Keep the real CPA config outside git:
 
 ```bash
-mkdir -p /opt/lihan_ai/data/cpa /opt/lihan_ai/logs/cpa
-cp vendor/cli-proxy-api/config.example.yaml /opt/lihan_ai/data/cpa/config.yaml
-chmod 700 /opt/lihan_ai/data/cpa
-chmod 600 /opt/lihan_ai/data/cpa/config.yaml
-nano /opt/lihan_ai/data/cpa/config.yaml
+mkdir -p /opt/lihan_ai_deploy/shared/data/cpa /opt/lihan_ai_deploy/shared/logs/cpa
+cp vendor/cli-proxy-api/config.example.yaml /opt/lihan_ai_deploy/shared/data/cpa/config.yaml
+chmod 700 /opt/lihan_ai_deploy/shared/data/cpa
+chmod 600 /opt/lihan_ai_deploy/shared/data/cpa/config.yaml
+nano /opt/lihan_ai_deploy/shared/data/cpa/config.yaml
 ```
 
-`data/` and `logs/` are ignored by git. This keeps CPA runtime files inside the deploy directory for migration, without committing provider keys, auth files, or logs.
+`shared/data/` and `shared/logs/` stay outside release checkouts. This keeps CPA runtime files available across release promotion and rollback, without committing provider keys, auth files, or logs.
 
 Minimum production rules:
 
@@ -47,7 +47,7 @@ Minimum production rules:
 - Keep CPA API keys strong and separate from New API user tokens.
 - Use `auth-dir: "/root/.cli-proxy-api"` inside the container.
 - Do not expose `8317` publicly.
-- Keep upstream provider keys only in `/opt/lihan_ai/data/cpa/config.yaml`.
+- Keep upstream provider keys only in `/opt/lihan_ai_deploy/shared/data/cpa/config.yaml`.
 
 Generate secrets:
 
@@ -58,19 +58,21 @@ openssl rand -hex 32
 If you already created CPA config under the older runtime path, migrate it into the repository runtime directory:
 
 ```bash
-mkdir -p /opt/lihan_ai/data/cpa /opt/lihan_ai/logs/cpa
-cp -a /opt/lihan_ai_runtime/.cli-proxy-api/. /opt/lihan_ai/data/cpa/
-chmod 700 /opt/lihan_ai/data/cpa
-chmod 600 /opt/lihan_ai/data/cpa/config.yaml
+mkdir -p /opt/lihan_ai_deploy/shared/data/cpa /opt/lihan_ai_deploy/shared/logs/cpa
+cp -a /opt/lihan_ai_runtime/.cli-proxy-api/. /opt/lihan_ai_deploy/shared/data/cpa/
+chmod 700 /opt/lihan_ai_deploy/shared/data/cpa
+chmod 600 /opt/lihan_ai_deploy/shared/data/cpa/config.yaml
 ```
 
 Then set these values in `.env.production`:
 
 ```env
-CPA_CONFIG_PATH=/opt/lihan_ai/data/cpa/config.yaml
-CPA_AUTH_PATH=/opt/lihan_ai/data/cpa
-CPA_LOG_PATH=/opt/lihan_ai/logs/cpa
+CPA_CONFIG_PATH=/opt/lihan_ai_deploy/shared/data/cpa/config.yaml
+CPA_AUTH_PATH=/opt/lihan_ai_deploy/shared/data/cpa
+CPA_LOG_PATH=/opt/lihan_ai_deploy/shared/logs/cpa
 ```
+
+For the legacy direct-checkout deployment, the older `/opt/lihan_ai/data/cpa` path still works, but release deployment should use `/opt/lihan_ai_deploy/shared/data/cpa`.
 
 ## Start CPA Internally
 

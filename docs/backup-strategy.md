@@ -10,6 +10,8 @@ ENV_FILE=.env.production bash ops/backup-postgres.sh
 
 The script creates a custom-format PostgreSQL dump under `backups/postgres/`, verifies that `pg_restore` can read the dump, and writes a `.sha256` checksum when `sha256sum` is available. The backup directory is ignored by git. Production commands should pass `ENV_FILE=.env.production` so Compose expands the same variables as the running stack.
 
+With release deployment, run backup commands from `/opt/lihan_ai_deploy/current`; the `backups/` path is a symlink into `/opt/lihan_ai_deploy/shared/backups/`.
+
 Verify a backup without restoring it:
 
 ```bash
@@ -119,12 +121,24 @@ Run this on the VPS from the repository directory:
 15 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/backup-postgres.sh >> logs/backup.log 2>&1
 ```
 
+With release deployment, use `current` and write logs to shared storage:
+
+```cron
+15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/backup-postgres.sh >> /opt/lihan_ai_deploy/shared/logs/backup.log 2>&1
+```
+
 Then run `ops/offsite-backup.sh` or sync `backups/postgres/` and `.env.production` to an off-server location using your preferred encrypted backup tool. Do not commit either to git.
 
 For restic-based off-server backup:
 
 ```cron
 20 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/offsite-backup.sh >> logs/offsite-backup.log 2>&1
+```
+
+Release deployment equivalent:
+
+```cron
+20 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/offsite-backup.sh >> /opt/lihan_ai_deploy/shared/logs/offsite-backup.log 2>&1
 ```
 
 ## Recovery Order

@@ -1,0 +1,97 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+
+assert_file() {
+  [ -f "$ROOT_DIR/$1" ] || fail "missing file: $1"
+}
+
+assert_executable() {
+  [ -x "$ROOT_DIR/$1" ] || fail "missing executable: $1"
+}
+
+assert_contains() {
+  file="$1"
+  pattern="$2"
+  grep -q "$pattern" "$ROOT_DIR/$file" || fail "$file missing pattern: $pattern"
+}
+
+assert_file "docs/release-deployment-runbook.md"
+assert_file "docs/zh-CN/release-deployment-runbook.md"
+assert_executable "ops/deploy-release.sh"
+
+assert_contains ".env.production.example" "DEPLOY_ROOT=/opt/lihan_ai_deploy"
+assert_contains ".env.production.example" "DEPLOY_COMPOSE_PROJECT=lihan_ai"
+assert_contains ".env.production.example" "DEPLOY_INCLUDE_CPA=0"
+assert_contains ".env.production.example" "RELEASE_KEEP=5"
+assert_contains "ops/deploy-release.sh" "git worktree add --detach"
+assert_contains "ops/deploy-release.sh" "docker compose -p"
+assert_contains "ops/deploy-release.sh" "COMPOSE_PROJECT_NAME"
+assert_contains "ops/deploy-release.sh" "ALLOW_NON_MAIN_PROD_DEPLOY"
+
+tmp_dir="$(mktemp -d)"
+fake_bin="$tmp_dir/bin"
+mkdir -p "$fake_bin"
+trap 'rm -rf "$tmp_dir"' EXIT
+
+cat > "$fake_bin/ssh" <<'SSH'
+#!/usr/bin/env sh
+echo "ssh should not be called during dry-run tests" >&2
+exit 99
+SSH
+chmod +x "$fake_bin/ssh"
+
+set +e
+missing_output="$(DEPLOY_HOST= "$ROOT_DIR/ops/deploy-release.sh" prepare 2>&1)"
+missing_status="$?"
+set -e
+[ "$missing_status" -eq 2 ] || fail "missing host should exit 2, got $missing_status: $missing_output"
+printf '%s' "$missing_output" | grep -q "DEPLOY_HOST is not set" || fail "missing host message was unclear: $missing_output"
+
+set +e
+bad_ref_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example DEPLOY_REF=feature/test "$ROOT_DIR/ops/deploy-release.sh" prepare 2>&1)"
+bad_ref_status="$?"
+set -e
+[ "$bad_ref_status" -eq 2 ] || fail "non-main production prepare should fail, got $bad_ref_status: $bad_ref_output"
+printf '%s' "$bad_ref_output" | grep -q "production release deploy requires DEPLOY_REF=main" || fail "non-main guard message was unclear: $bad_ref_output"
+
+prepare_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example "$ROOT_DIR/ops/deploy-release.sh" prepare)"
+printf '%s' "$prepare_output" | grep -q "DRY RUN release prepare" || fail "prepare dry-run missing title: $prepare_output"
+printf '%s' "$prepare_output" | grep -q "/opt/lihan_ai_deploy/repo.git" || fail "prepare dry-run missing repo.git: $prepare_output"
+printf '%s' "$prepare_output" | grep -q "git worktree add --detach" || fail "prepare dry-run missing worktree: $prepare_output"
+printf '%s' "$prepare_output" | grep -q "docker compose -p lihan_ai" || fail "prepare dry-run missing fixed compose project: $prepare_output"
+printf '%s' "$prepare_output" | grep -q "ops/preflight.sh" || fail "prepare dry-run missing preflight: $prepare_output"
+
+prepare_cpa_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example DEPLOY_INCLUDE_CPA=1 "$ROOT_DIR/ops/deploy-release.sh" prepare)"
+printf '%s' "$prepare_cpa_output" | grep -q "docker-compose.cpa.yml" || fail "CPA dry-run missing CPA compose file: $prepare_cpa_output"
+
+smoke_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example RELEASE_ID=20260510T000000Z-deadbee "$ROOT_DIR/ops/deploy-release.sh" smoke)"
+printf '%s' "$smoke_output" | grep -q "DRY RUN release smoke" || fail "smoke dry-run missing title: $smoke_output"
+printf '%s' "$smoke_output" | grep -q "ops/drill-restore-stack.sh" || fail "smoke dry-run missing stack drill: $smoke_output"
+if printf '%s' "$smoke_output" | grep -q "switch current"; then
+  fail "smoke dry-run should not switch current: $smoke_output"
+fi
+
+promote_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example RELEASE_ID=20260510T000000Z-deadbee "$ROOT_DIR/ops/deploy-release.sh" promote)"
+printf '%s' "$promote_output" | grep -q "DRY RUN release promote" || fail "promote dry-run missing title: $promote_output"
+printf '%s' "$promote_output" | grep -q "backup-postgres.sh" || fail "promote dry-run missing backup: $promote_output"
+printf '%s' "$promote_output" | grep -q "current -> releases/20260510T000000Z-deadbee" || fail "promote dry-run missing current switch: $promote_output"
+printf '%s' "$promote_output" | grep -q "up -d --remove-orphans" || fail "promote dry-run missing compose up: $promote_output"
+printf '%s' "$promote_output" | grep -q "check-production-runtime.sh" || fail "promote dry-run missing runtime check: $promote_output"
+
+rollback_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example "$ROOT_DIR/ops/deploy-release.sh" rollback)"
+printf '%s' "$rollback_output" | grep -q "DRY RUN release rollback" || fail "rollback dry-run missing title: $rollback_output"
+printf '%s' "$rollback_output" | grep -q "current -> previous" || fail "rollback dry-run missing previous switch: $rollback_output"
+
+for command in bootstrap list current cleanup; do
+  output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example "$ROOT_DIR/ops/deploy-release.sh" "$command")"
+  printf '%s' "$output" | grep -q "DRY RUN release $command" || fail "$command dry-run missing title: $output"
+done
+
+echo "release deploy tests passed"

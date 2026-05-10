@@ -28,16 +28,23 @@ ENV_FILE=.env.production bash ops/offsite-backup.sh
 20 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/offsite-backup.sh >> logs/offsite-backup.log 2>&1
 ```
 
+使用 release 部署时，改用：
+
+```cron
+20 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/offsite-backup.sh >> /opt/lihan_ai_deploy/shared/logs/offsite-backup.log 2>&1
+```
+
 ## 恢复到新服务器
 
 1. 准备一台新服务器，并安装 Docker 与 Compose plugin。
-2. 将仓库 clone 到 `/opt/lihan_ai`。
-3. 从 restic backup 或单独的 secret store 恢复 `.env.production`。
+2. 紧急 legacy 恢复可将仓库 clone 到 `/opt/lihan_ai`；release 恢复则先运行 `ops/deploy-release.sh bootstrap` 重建 `/opt/lihan_ai_deploy`。
+3. release 部署把 `.env.production` 恢复到 `/opt/lihan_ai_deploy/shared/.env.production`；legacy 恢复则放到 `/opt/lihan_ai/.env.production`。
 4. 从 restic 恢复最新 dump。
 5. 启动 PostgreSQL 和 Redis。
-6. 运行 `ENV_FILE=.env.production bash ops/restore-postgres.sh <backup.dump>`。
+6. 在当前部署目录运行 `ENV_FILE=.env.production bash ops/restore-postgres.sh <backup.dump>`。
 7. 启动完整生产栈。
-8. 运行 `DEPLOY_HOST=<new-server> bash ops/verify-remote-prod.sh`。
+8. stack 启动后运行 `ENV_FILE=.env.production bash ops/check-production-runtime.sh`。
+9. 运行 `DEPLOY_HOST=<new-server> bash ops/verify-remote-prod.sh`。
 
 ## 演练周期
 

@@ -31,14 +31,14 @@ bash tests/cpa-compose.test.sh
 真实 CPA 配置保存在 git 外：
 
 ```bash
-mkdir -p /opt/lihan_ai/data/cpa /opt/lihan_ai/logs/cpa
-cp vendor/cli-proxy-api/config.example.yaml /opt/lihan_ai/data/cpa/config.yaml
-chmod 700 /opt/lihan_ai/data/cpa
-chmod 600 /opt/lihan_ai/data/cpa/config.yaml
-nano /opt/lihan_ai/data/cpa/config.yaml
+mkdir -p /opt/lihan_ai_deploy/shared/data/cpa /opt/lihan_ai_deploy/shared/logs/cpa
+cp vendor/cli-proxy-api/config.example.yaml /opt/lihan_ai_deploy/shared/data/cpa/config.yaml
+chmod 700 /opt/lihan_ai_deploy/shared/data/cpa
+chmod 600 /opt/lihan_ai_deploy/shared/data/cpa/config.yaml
+nano /opt/lihan_ai_deploy/shared/data/cpa/config.yaml
 ```
 
-`data/` 和 `logs/` 已被 git 忽略。这样 CPA runtime 文件会留在部署目录里，便于迁移，但不会把 provider keys、auth files 或 logs 提交进仓库。
+`shared/data/` 和 `shared/logs/` 位于 release checkout 之外。这样 CPA runtime 文件会跨 release 发布和回滚保留，但不会把 provider keys、auth files 或 logs 提交进仓库。
 
 最低生产规则：
 
@@ -47,7 +47,7 @@ nano /opt/lihan_ai/data/cpa/config.yaml
 - CPA API key 必须足够强，并且和 New API 用户 token 分开管理。
 - 容器内使用 `auth-dir: "/root/.cli-proxy-api"`。
 - 不要把 `8317` 暴露到公网。
-- 上游 provider key 只放在 `/opt/lihan_ai/data/cpa/config.yaml`。
+- 上游 provider key 只放在 `/opt/lihan_ai_deploy/shared/data/cpa/config.yaml`。
 
 生成密钥：
 
@@ -58,19 +58,21 @@ openssl rand -hex 32
 如果你已经把 CPA 配置放在旧 runtime 路径，可以迁移到仓库 runtime 目录：
 
 ```bash
-mkdir -p /opt/lihan_ai/data/cpa /opt/lihan_ai/logs/cpa
-cp -a /opt/lihan_ai_runtime/.cli-proxy-api/. /opt/lihan_ai/data/cpa/
-chmod 700 /opt/lihan_ai/data/cpa
-chmod 600 /opt/lihan_ai/data/cpa/config.yaml
+mkdir -p /opt/lihan_ai_deploy/shared/data/cpa /opt/lihan_ai_deploy/shared/logs/cpa
+cp -a /opt/lihan_ai_runtime/.cli-proxy-api/. /opt/lihan_ai_deploy/shared/data/cpa/
+chmod 700 /opt/lihan_ai_deploy/shared/data/cpa
+chmod 600 /opt/lihan_ai_deploy/shared/data/cpa/config.yaml
 ```
 
 然后在 `.env.production` 设置：
 
 ```env
-CPA_CONFIG_PATH=/opt/lihan_ai/data/cpa/config.yaml
-CPA_AUTH_PATH=/opt/lihan_ai/data/cpa
-CPA_LOG_PATH=/opt/lihan_ai/logs/cpa
+CPA_CONFIG_PATH=/opt/lihan_ai_deploy/shared/data/cpa/config.yaml
+CPA_AUTH_PATH=/opt/lihan_ai_deploy/shared/data/cpa
+CPA_LOG_PATH=/opt/lihan_ai_deploy/shared/logs/cpa
 ```
+
+legacy 直接 checkout 部署仍可使用旧的 `/opt/lihan_ai/data/cpa` 路径；release 部署应使用 `/opt/lihan_ai_deploy/shared/data/cpa`。
 
 ## 内网启动 CPA
 
