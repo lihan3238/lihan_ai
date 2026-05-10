@@ -101,6 +101,8 @@ grep -q -- "--log-dir /tmp/new-api-logs" "$ROOT_DIR/ops/drill-restore-stack.sh" 
 if grep -q -- "--log-dir /app/logs" "$ROOT_DIR/ops/drill-restore-stack.sh"; then
   fail "restore stack drill must not use /app/logs without mounting that parent path"
 fi
+grep -q -- "select 1" "$ROOT_DIR/ops/drill-restore-stack.sh" || fail "restore stack drill should verify PostgreSQL accepts a real query before restore"
+grep -q -- "pg_restore_status" "$ROOT_DIR/ops/drill-restore-stack.sh" || fail "restore stack drill should retry pg_restore transient startup/shutdown races"
 
 if printf '%s\n' "$bad_output" | grep -Eiq 'SESSION_SECRET|REDIS_PASSWORD=.*|POSTGRES_PASSWORD=.*'; then
   fail "preflight printed secret values"
