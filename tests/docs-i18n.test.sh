@@ -131,6 +131,11 @@ for keyword in "/opt/lihan_ai_deploy" "ops/deploy-release.sh" "docker compose -p
   assert_contains "docs/zh-CN/release-deployment-runbook.md" "$keyword"
 done
 
+for keyword in "ops/production-monitor.sh runtime" "ops/production-monitor.sh backup" "ops/production-monitor.sh offsite" "ops/production-monitor.sh audit" "ops/production-monitor.sh restore-drill"; do
+  assert_contains "docs/release-deployment-runbook.md" "$keyword"
+  assert_contains "docs/zh-CN/release-deployment-runbook.md" "$keyword"
+done
+
 for keyword in "remote-management.allow-remote" "Base URL" "docker run -p 8317:8317" "/CLIProxyAPI/config.yaml"; do
   assert_contains "docs/cpa-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"

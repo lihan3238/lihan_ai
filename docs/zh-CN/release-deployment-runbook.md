@@ -273,14 +273,20 @@ release 相关恢复概要：
 
 ```bash
 cd /opt/lihan_ai_deploy/current
-ENV_FILE=.env.production bash ops/backup-postgres.sh
-ENV_FILE=.env.production bash ops/check-production-runtime.sh
+ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+ENV_FILE=.env.production bash ops/production-monitor.sh backup
+ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+ENV_FILE=.env.production bash ops/production-monitor.sh audit
 ```
 
-cron 日志写入 shared：
+建议 cron 统一使用 monitor wrapper，这样日志、状态文件和可选 Uptime Kuma Push heartbeat 都保持一致：
 
 ```cron
-15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/backup-postgres.sh >> /opt/lihan_ai_deploy/shared/logs/backup.log 2>&1
+*/5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+*/15 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh audit
+15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
+35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+20 4 1 * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
 ```
 
 部署或回滚时不要运行 `docker compose down -v`。PostgreSQL 和 Redis 继续使用 Docker named volumes。
