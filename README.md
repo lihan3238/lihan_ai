@@ -60,7 +60,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docs/edge-proxy-runbook.md`: China-optimized edge reverse proxy setup.
 - `docs/migration-runbook.md`: no-loss server migration flow.
 - `docs/disaster-recovery-runbook.md`: off-server backup and restore flow.
-- `docs/kuma-status-runbook.md`: Uptime Kuma public status-page setup.
+- `docs/kuma-status-runbook.md`: Uptime Kuma public status page and internal Push monitor setup.
 - `docs/cpa-runbook.md`: optional CPA deployment and SSH-tunneled management UI.
 - `docs/development-workflow.md`: research-first development workflow.
 - `docs/templates/ai-dev/`: Spec Kit style templates for AI-assisted development.
@@ -294,4 +294,4 @@ It reads New API PostgreSQL tables and reports channel capacity, recent errors, 
 
 The default health profile uses `mode: development`, which treats noisy setup errors and slow probes as warnings unless the error rate itself is unhealthy. Before paid production traffic, copy the profile and switch to `mode: production` with stricter thresholds.
 
-For user-facing availability, use Uptime Kuma. Follow `docs/kuma-status-runbook.md` and publish only coarse components such as API Gateway, GLM Standard, Account & Billing, and Maintenance Notice.
+For user-facing availability, use Uptime Kuma. Follow `docs/kuma-status-runbook.md` and publish only coarse components such as API Gateway, GLM Standard, Account & Billing, and Maintenance Notice. The same runbook also covers internal Push monitors for ops and backup health.

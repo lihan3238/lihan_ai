@@ -62,7 +62,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docs/edge-proxy-runbook.md`：中国优化 edge 反代流程。
 - `docs/migration-runbook.md`：无损迁移流程。
 - `docs/disaster-recovery-runbook.md`：离线备份和灾难恢复流程。
-- `docs/kuma-status-runbook.md`：Uptime Kuma 公开状态页配置。
+- `docs/kuma-status-runbook.md`：Uptime Kuma 公开状态页和内部 Push monitor 配置。
 - `docs/cpa-runbook.md`：可选 CPA 部署和 SSH 隧道管理 UI。
 - `docs/development-workflow.md`：research-first 开发流程。
 - `docs/templates/ai-dev/`：AI 辅助开发模板。
@@ -295,4 +295,4 @@ bash ops/channel-health-advisor.sh config/ops-profiles/glm-standard-health.examp
 
 默认健康 profile 使用 `mode: development`，会把搭建期噪声错误和慢探测降级为 warning。正式收费前，复制 profile 并切到 `mode: production`，再收紧阈值。
 
-用户侧状态页使用 Uptime Kuma。按 `docs/kuma-status-runbook.md` 发布粗粒度组件，例如 API Gateway、GLM Standard、Account & Billing、Maintenance Notice。
+用户侧状态页使用 Uptime Kuma。按 `docs/kuma-status-runbook.md` 发布粗粒度组件，例如 API Gateway、GLM Standard、Account & Billing、Maintenance Notice。内部 ops/backup Push monitors 也在同一份 runbook 里配置。
