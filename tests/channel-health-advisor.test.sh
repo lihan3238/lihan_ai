@@ -44,7 +44,7 @@ printf '%s' "$bad_json_output" | grep -q "invalid JSON" || fail "bad JSON messag
 cat > "$profile" <<'EOF'
 {
   "name": "broken",
-  "group": "standard"
+  "group": "default"
 }
 EOF
 set +e
@@ -56,8 +56,8 @@ printf '%s' "$missing_field_output" | grep -q "profile.model is required" || fai
 
 cat > "$profile" <<'EOF'
 {
-  "name": "glm-standard-health",
-  "group": "standard",
+  "name": "glm-default-health",
+  "group": "default",
   "model": "glm-5.1",
   "mode": "development",
   "window_hours": 24,
@@ -84,22 +84,22 @@ JSON
     ;;
   high_error)
     cat <<'JSON'
-{"matched_channel_count":1,"enabled_channel_count":1,"disabled_channel_count":0,"window_request_count":50,"window_error_count":25,"window_error_rate":0.5,"channels":[{"id":1,"name":"glm-standard-a","status":1,"ability_enabled":true,"priority":0,"weight":10,"response_time":300,"test_age_hours":1,"window_request_count":50,"window_error_count":25,"window_error_rate":0.5,"p95_use_time":3,"used_quota":1000,"recommendations":["investigate upstream errors"]}]}
+{"matched_channel_count":1,"enabled_channel_count":1,"disabled_channel_count":0,"window_request_count":50,"window_error_count":25,"window_error_rate":0.5,"channels":[{"id":1,"name":"glm-default-a","status":1,"ability_enabled":true,"priority":0,"weight":10,"response_time":300,"test_age_hours":1,"window_request_count":50,"window_error_count":25,"window_error_rate":0.5,"p95_use_time":3,"used_quota":1000,"recommendations":["investigate upstream errors"]}]}
 JSON
     ;;
   development_noise)
     cat <<'JSON'
-{"matched_channel_count":1,"enabled_channel_count":1,"disabled_channel_count":0,"window_request_count":500,"window_error_count":45,"window_error_rate":0.09,"channels":[{"id":1,"name":"glm-standard-a","status":1,"ability_enabled":true,"priority":0,"weight":10,"response_time":3973,"test_age_hours":4,"window_request_count":500,"window_error_count":45,"window_error_rate":0.09,"p95_use_time":24,"used_quota":1000,"recommendations":[]}]}
+{"matched_channel_count":1,"enabled_channel_count":1,"disabled_channel_count":0,"window_request_count":500,"window_error_count":45,"window_error_rate":0.09,"channels":[{"id":1,"name":"glm-default-a","status":1,"ability_enabled":true,"priority":0,"weight":10,"response_time":3973,"test_age_hours":4,"window_request_count":500,"window_error_count":45,"window_error_rate":0.09,"p95_use_time":24,"used_quota":1000,"recommendations":[]}]}
 JSON
     ;;
   low_sample)
     cat <<'JSON'
-{"matched_channel_count":1,"enabled_channel_count":1,"disabled_channel_count":0,"window_request_count":1,"window_error_count":0,"window_error_rate":0,"channels":[{"id":1,"name":"glm-standard-a","status":1,"ability_enabled":true,"priority":0,"weight":10,"response_time":300,"test_age_hours":1,"window_request_count":1,"window_error_count":0,"window_error_rate":0,"p95_use_time":2,"used_quota":1000,"recommendations":[]}]}
+{"matched_channel_count":1,"enabled_channel_count":1,"disabled_channel_count":0,"window_request_count":1,"window_error_count":0,"window_error_rate":0,"channels":[{"id":1,"name":"glm-default-a","status":1,"ability_enabled":true,"priority":0,"weight":10,"response_time":300,"test_age_hours":1,"window_request_count":1,"window_error_count":0,"window_error_rate":0,"p95_use_time":2,"used_quota":1000,"recommendations":[]}]}
 JSON
     ;;
   pass)
     cat <<'JSON'
-{"matched_channel_count":2,"enabled_channel_count":2,"disabled_channel_count":0,"window_request_count":20,"window_error_count":1,"window_error_rate":0.05,"channels":[{"id":1,"name":"glm-standard-a","status":1,"ability_enabled":true,"priority":0,"weight":10,"response_time":300,"test_age_hours":1,"window_request_count":10,"window_error_count":0,"window_error_rate":0,"p95_use_time":2,"used_quota":1000,"recommendations":[]},{"id":2,"name":"glm-standard-b","status":1,"ability_enabled":true,"priority":1,"weight":5,"response_time":600,"test_age_hours":2,"window_request_count":10,"window_error_count":1,"window_error_rate":0.1,"p95_use_time":4,"used_quota":800,"recommendations":[]}]}
+{"matched_channel_count":2,"enabled_channel_count":2,"disabled_channel_count":0,"window_request_count":20,"window_error_count":1,"window_error_rate":0.05,"channels":[{"id":1,"name":"glm-default-a","status":1,"ability_enabled":true,"priority":0,"weight":10,"response_time":300,"test_age_hours":1,"window_request_count":10,"window_error_count":0,"window_error_rate":0,"p95_use_time":2,"used_quota":1000,"recommendations":[]},{"id":2,"name":"glm-default-b","status":1,"ability_enabled":true,"priority":1,"weight":5,"response_time":600,"test_age_hours":2,"window_request_count":10,"window_error_count":1,"window_error_rate":0.1,"p95_use_time":4,"used_quota":800,"recommendations":[]}]}
 JSON
     ;;
 esac

@@ -3,7 +3,7 @@ set -eu
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SCRIPT="$ROOT_DIR/ops/validate-ops-profile.sh"
-PROFILE="$ROOT_DIR/config/ops-profiles/glm-standard.example.json"
+PROFILE="$ROOT_DIR/config/ops-profiles/glm-default.example.json"
 
 fail() {
   echo "FAIL: $*" >&2
@@ -44,7 +44,7 @@ missing_required="$tmp_dir/missing-required.json"
 cat > "$missing_required" <<'JSON'
 {
   "name": "bad-profile",
-  "group": "standard",
+  "group": "default",
   "min_enabled_channels": 1
 }
 JSON

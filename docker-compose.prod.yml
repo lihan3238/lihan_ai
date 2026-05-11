@@ -16,7 +16,3 @@ services:
 
   caddy:
     logging: *default-logging
-
-  uptime-kuma:
-    ports: !reset []
-    logging: *default-logging

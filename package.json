@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "e2e:web": "playwright test",
-    "e2e:web:new-api": "playwright test e2e/new-api-smoke.spec.ts",
-    "e2e:web:kuma": "playwright test e2e/kuma-status.spec.ts"
+    "e2e:web:new-api": "playwright test e2e/new-api-smoke.spec.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0"

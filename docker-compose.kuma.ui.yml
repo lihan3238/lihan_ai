@@ -1,4 +1,0 @@
-services:
-  uptime-kuma:
-    ports:
-      - "127.0.0.1:${KUMA_PORT:-3011}:3001"

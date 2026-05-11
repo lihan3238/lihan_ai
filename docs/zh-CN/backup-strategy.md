@@ -1,135 +1,125 @@
 # 备份策略
 
-## 当前机制
+## 范围
 
-项目将 New API 状态存储在 PostgreSQL 中。主要备份命令是：
+当前生产备份模型刻意保持很小：
+
+- 创建 PostgreSQL custom-format dump。
+- 每个 dump 创建后立即校验。
+- dump 保存在生产服务器的 shared 部署目录。
+- 需要外部副本时，用 `scp` 手动下载。
+- 恢复和迁移演练保持人工显式执行。
+
+仓库不再包含远端自动备份、webhook 告警、状态看板或监控服务。
+
+## 备份位置
+
+Release 部署运行目录：
+
+```text
+/opt/lihan_ai_deploy/current
+```
+
+运行时状态目录：
+
+```text
+/opt/lihan_ai_deploy/shared
+```
+
+PostgreSQL dump 默认写入：
+
+```text
+/opt/lihan_ai_deploy/shared/backups/postgres/
+```
+
+不要提交 `.env.production`、`backups/`、`snapshots/`、CPA 运行时文件或下载出来的 dump。
+
+## 手动备份
+
+在生产服务器上：
 
 ```bash
+cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/backup-postgres.sh
 ```
 
-脚本会在 `backups/postgres/` 下创建 PostgreSQL custom-format dump，使用 `pg_restore` 验证 dump 可读，并在存在 `sha256sum` 时写入 `.sha256` 校验文件。备份目录被 git 忽略。生产环境命令应传入 `ENV_FILE=.env.production`，确保 Compose 使用和运行中服务一致的变量。
-
-使用 release 部署时，从 `/opt/lihan_ai_deploy/current` 运行备份命令；`backups/` 是指向 `/opt/lihan_ai_deploy/shared/backups/` 的 symlink。
-
-不恢复、只校验备份：
+命令会打印创建的 dump 路径。继续校验：
 
 ```bash
-ENV_FILE=.env.production bash ops/verify-postgres-backup.sh backups/postgres/<backup>.dump
+ENV_FILE=.env.production bash ops/verify-postgres-backup.sh backups/postgres/<dump>.dump
 ```
 
-恢复操作刻意保持显式且具破坏性：
+## 本地备份 Cron
+
+定时备份使用 `ops/backup-cron.sh`。它会创建 dump、立即校验，并把普通文本日志追加到 `BACKUP_CRON_LOG_DIR`：
 
 ```bash
-ENV_FILE=.env.production bash ops/restore-postgres.sh backups/postgres/<backup>.dump
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/backup-cron.sh
 ```
 
-不触碰当前数据库的隔离恢复演练：
-
-```bash
-bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
-```
-
-演练会恢复到临时 PostgreSQL 容器，检查关键 New API 表，然后清理临时容器。
-
-需要更接近真实灾备时，运行完整隔离栈演练：
-
-```bash
-ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<backup>.dump
-```
-
-它会在独立 Docker 网络里启动临时 PostgreSQL、Redis 和 New API，恢复 dump，检查 `/api/status`，最后清理临时资源。
-
-三个验证层级要分清：
-
-- `verify-postgres-backup.sh` 证明 dump 文件可读，并且 checksum 有效。
-- `drill-restore-postgres.sh` 证明 PostgreSQL 能恢复 dump，关键表存在。
-- `drill-restore-stack.sh` 证明恢复后的数据库可以和 Redis、New API 一起启动，并响应 `/api/status`。
-
-迁移或破坏性恢复前，完整隔离栈演练是最接近真实灾备的本地信心检查。但它不能替代浏览器手动检查管理员登录、渠道、token，以及一次低额度 token 调用。
-
-## 必须保留的内容
-
-- PostgreSQL 数据库：用户、root 账号、tokens、channels、settings、logs、billing、OAuth/payment 配置。
-- `.env` 或 `.env.production`：保留 `POSTGRES_*`、`REDIS_PASSWORD`，尤其是 `SESSION_SECRET`。
-- 如果 New API 在本地保存生成文件或资源，则保留 `data/new-api/`。
-
-Redis 对缓存和会话类运行时状态有用，但关键恢复来源是 PostgreSQL 和 env 文件。
-
-## 本地开发规则
-
-普通删除容器是安全的：
-
-```bash
-docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml down
-```
-
-这会保留 Docker named volumes。
-
-不要执行下面命令，除非你明确要清空本地状态：
-
-```bash
-docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml down -v
-```
-
-`down -v` 会删除 `lihan_ai_postgres_data`，也就是本地 New API 数据库。
-
-## 生产基线
-
-小规模收费服务至少需要：
-
-- 每日 PostgreSQL 备份。
-- 每次 New API 升级、支付配置或渠道配置变更前备份。
-- 本地保留 14-30 天。
-- 一个加密的离线副本，例如 restic over SFTP、S3-compatible object storage 或私有备份机。
-- 每月在单独机器或临时 Docker project 上做恢复演练。
-
-只有本地备份不够。如果 VPS 磁盘丢失，本地 dump 也会一起丢失。
-
-## 离线 Restic 备份
-
-生产 origin 准备好 `.env.production` 后，在 git 之外配置 restic 凭证：
-
-```bash
-export RESTIC_REPOSITORY=sftp:user@backup-host:/srv/restic/lihan-ai
-export RESTIC_PASSWORD='<store outside the server>'
-export CONFIG_SNAPSHOT_GPG_RECIPIENT='<optional-gpg-recipient>'
-ENV_FILE=.env.production bash ops/offsite-backup.sh
-```
-
-wrapper 会创建 PostgreSQL dump、导出脱敏配置快照、可选导出 GPG 加密私有快照，用 restic 备份这些文件，执行保留策略，并运行 `restic check`。
-
-`RESTIC_PASSWORD` 必须保存在生产服务器之外。没有它，离线仓库无法恢复。
-
-## 建议 Cron
-
-定时生产任务统一使用 `ops/production-monitor.sh`。它会写入 `logs/production-monitor-<mode>.log`，更新 `logs/production-monitor-<mode>.status`；如果 `.env.production` 设置了 `MONITOR_ALERT_WEBHOOK_URL`，失败和恢复时会发送粗粒度 webhook 告警。例如 runtime 检查会追加到 `logs/production-monitor-runtime.log`。
-
-release 部署的 crontab：
+建议 crontab：
 
 ```cron
-*/5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
-*/15 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh audit
-15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
-35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
-20 4 1 * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
+15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/backup-cron.sh
 ```
 
-`backup` mode 会创建 PostgreSQL dump，并立即用 `ops/verify-postgres-backup.sh` 校验。`offsite` mode 会运行 `ops/offsite-backup.sh`，所以缺少 `RESTIC_REPOSITORY` 或 `RESTIC_PASSWORD` 会按真实失败处理。`audit` mode 会写入 `logs/ops-health/status.json` 和 `logs/ops-health/index.html`，覆盖 dump 清单、restic snapshot 可见性、磁盘和 inode 压力、容器健康、cron 新鲜度、恢复演练年龄。`restore-drill` mode 会选取最新 dump 跑 `ops/drill-restore-stack.sh`，并像其他 monitor mode 一样记录结果。
+仓库不会自动安装 cron；请在 origin 服务器上确认后手动添加。
 
-如果要复用 Uptime Kuma Push monitor，在 `.env.production` 设置 `MONITOR_PUSH_RUNTIME_URL`、`MONITOR_PUSH_BACKUP_URL`、`MONITOR_PUSH_OFFSITE_URL`、`MONITOR_PUSH_AUDIT_URL`、`MONITOR_PUSH_RESTORE_DRILL_URL`。这些 URL 是 secret，不要提交进 git。仓库不会自动安装 cron；在 origin 服务器上确认后手动复制这些条目。
+## 手动下载
 
-查看本地详细报告时，在 origin 运行 `ENV_FILE=.env.production bash ops/ops-dashboard.sh open`，再通过 SSH tunnel 访问 `127.0.0.1:${OPS_DASHBOARD_PORT:-3021}`。
+在本地机器上：
 
-不要把 `backups/postgres/`、`.env.production`、restic 凭证或 monitor webhook secret 提交到 git。
+```bash
+scp <deploy-user>@<origin-host>:/opt/lihan_ai_deploy/shared/backups/postgres/<dump>.dump .
+scp <deploy-user>@<origin-host>:/opt/lihan_ai_deploy/shared/backups/postgres/<dump>.dump.sha256 .
+```
 
-## 恢复顺序
+下载后校验：
 
-1. 准备一台新服务器。
-2. Clone 仓库并初始化 submodules。
-3. 恢复保存的 `.env.production`。
-4. 启动 PostgreSQL 和 Redis。
-5. 运行 `ENV_FILE=.env.production bash ops/restore-postgres.sh <backup.dump>`。
-6. 启动 New API。
-7. 运行 `ENV_FILE=.env.production bash ops/check-production-runtime.sh`。
-8. 验证登录、后台设置、token 列表、渠道列表和 `/api/status`。
+```bash
+sha256sum -c <dump>.dump.sha256
+```
+
+如果 `.sha256` 文件里是服务器绝对路径，改用：
+
+```bash
+sha256sum <dump>.dump
+```
+
+然后人工比对 digest。
+
+## 恢复演练
+
+只验证 PostgreSQL：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/drill-restore-postgres.sh backups/postgres/<dump>.dump
+```
+
+完整 stack 演练：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<dump>.dump
+```
+
+重大部署、服务器迁移或清理旧运行时目录前，先跑一次完整 stack 演练。
+
+## 恢复
+
+恢复会替换目标数据库。先停止应用写入，并在恢复前再创建一个新备份：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/backup-postgres.sh
+ENV_FILE=.env.production bash ops/restore-postgres.sh backups/postgres/<dump>.dump
+ENV_FILE=.env.production bash ops/check-production-runtime.sh
+```
+
+备份或恢复时不要运行 `docker compose down -v`。PostgreSQL 和 Redis 状态在 Docker named volumes 里。
+
+## 保留策略
+
+`BACKUP_RETENTION_DAYS` 控制 `ops/backup-postgres.sh` 的本地 dump 保留时间。保留足够近期 dump 支撑回滚和迁移；删除服务器副本前，先把重要 dump 手动下载到本地。

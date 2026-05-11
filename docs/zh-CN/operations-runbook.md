@@ -1,236 +1,173 @@
 # 运维 Runbook
 
-## 首次部署
+## 当前运维模型
 
-1. 使用 WSL Ubuntu 24.04 或 Linux VPS shell。
-2. 运行 `git submodule update --init --recursive` 拉取固定版本的 New API 源码。
-3. 复制 `.env.production.example` 为 `.env.production`。
-4. 替换所有 `CHANGE_ME`。
-5. 设置 `DOMAIN` 和 `ACME_EMAIL`。
-6. 运行 `ENV_FILE=.env.production bash ops/preflight.sh`。
-7. 运行 `docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d`。
-8. 打开站点，创建管理员用户，并在 New API 原生后台配置系统。
+生产运维面刻意保持很小：
 
-生产环境跟踪 `main`。不要把长期功能分支部署到生产 origin；分支规则参考 `docs/zh-CN/git-branching-runbook.md`。
+- New API
+- PostgreSQL
+- Redis
+- 直连源站模式下的 Caddy，或 Tunnel 模式下的 Cloudflare Tunnel
+- 可选内部 CPA
+- 本地 PostgreSQL 备份、校验、恢复、恢复演练和迁移脚本
 
-## New API 源码管理
+仓库不再运行独立监控栈。应用层可见性使用 New API 自带后台；部署验收和人工检查使用 wrapper 脚本。
 
-默认部署使用官方 New API Docker 镜像，`vendor/new-api` 只用于审计、diff 和未来二开。新增本地业务逻辑前，必须先确认上游实现。更新固定的上游源码：
+## 每日快速检查
 
-```bash
-git -C vendor/new-api fetch origin
-git -C vendor/new-api checkout origin/main
-git add vendor/new-api
-git commit -m "chore: update new-api upstream"
-```
-
-只有在自定义变更具备测试和回滚方案后，才把 `docker-compose.yml` 从官方镜像切换到本地构建镜像。
-
-wrapper 层本地镜像、配置快照、恢复演练和 production gate 参考 `docs/wrapper-infra-runbook.md`。
-
-生产部署、edge proxy、离线备份、服务器迁移和灾难恢复参考：
-
-- `docs/production-deployment-runbook.md`
-- `docs/edge-proxy-runbook.md`
-- `docs/cpa-runbook.md`
-- `docs/migration-runbook.md`
-- `docs/disaster-recovery-runbook.md`
-- `docs/git-branching-runbook.md`
-
-## 本地开发
-
-使用 WSL 执行开发命令。运行时使用 Docker，源码和配置在仓库中管理：
-
-```bash
-cp .env.example .env
-# 先替换 CHANGE_ME
-docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml up -d new-api
-```
-
-这会启动 PostgreSQL、Redis 和 New API，并在 `http://localhost:$NEW_API_DEV_PORT` 暴露 New API。默认本地端口是 `3100`；容器内 New API 仍监听 `3000`。生产环境应使用基础 `docker-compose.yml` 并通过 Caddy 访问 `https://$DOMAIN`。
-
-如果需要本地 Uptime Kuma，除非确认 `3001` 空闲，否则使用 `3011`：
-
-```powershell
-$env:KUMA_PORT="3011"
-docker compose --env-file .env -f docker-compose.yml up -d uptime-kuma
-```
-
-重启本地服务或运行浏览器 E2E 前检查端口：
-
-```bash
-bash ops/check-local-ports.sh
-```
-
-## WSL 网络代理
-
-如果包下载或镜像拉取需要 Windows 代理，只在当前 WSL shell 中设置：
-
-```bash
-export host_ip="$(grep nameserver /etc/resolv.conf | awk '{print $2}')"
-export http_proxy="http://$host_ip:10808"
-export https_proxy="$http_proxy"
-```
-
-如果 WSL gateway 地址不可用，使用已知可用 fallback：
-
-```bash
-export HTTP_PROXY=http://10.88.0.6:10808
-export HTTPS_PROXY=http://10.88.0.6:10808
-export http_proxy=http://10.88.0.6:10808
-export https_proxy=http://10.88.0.6:10808
-```
-
-不要把本地代理值写入 `.env`、`docker-compose.yml` 或提交配置。
-
-## 初始后台探索
-
-每个新功能或运维变更前，遵循 `docs/development-workflow.md` 中的 Research Gate。
-
-设计本地扩展前，先检查 New API 原生后台的用户、token、分组、渠道、价格、支付、订阅、日志、设置和模型倍率。新增本地代码前，先把缺口记录到 `docs/new-api-code-map.md`。
-
-首次收费 API relay 验证参考 `docs/phase1-new-api-validation-runbook.md`。
-
-## 每日检查
-
-- New API health endpoint 正常。
-- PostgreSQL 和 Redis 容器健康。
-- `bash ops/validate-ops-profile.sh config/ops-profiles/glm-standard.example.json` 确认预期 GLM standard-pool 配置。
-- `bash ops/channel-health-advisor.sh config/ops-profiles/glm-standard-health.example.json` 在渠道变更或公开状态更新前没有严重失败。
-- 设置 `NEW_API_TEST_TOKEN` 后，`bash ops/relay-diagnostics.sh` 对主测试模型通过。
-- 渠道变更、模型新增或 New API 镜像升级前后，`bash ops/e2e-api-billing.sh` 通过。
-- 风险操作前，`bash ops/export-config-snapshot.sh` 生成当前脱敏配置快照。
-- 上游供应商余额高于告警阈值。
-- 错误率和失败 relay 数没有持续上升。
-- 最近数据库备份存在且可恢复。
-- 最近 restic 离线备份可通过 `restic snapshots` 查询。
-- Uptime Kuma 公开状态页只展示粗粒度状态，不暴露供应商、渠道 ID、余额或内部错误详情。
-
-部署、DNS、Caddy 或 Cloudflare Tunnel 变更后，运行：
-
-```bash
-ENV_FILE=.env.production bash ops/check-production-runtime.sh
-```
-
-## 生产 Cron 监控
-
-定时生产检查统一使用 `ops/production-monitor.sh`。它只编排现有 runtime、本地备份、离线备份、巡检和恢复演练脚本，不改变当前 Docker 拓扑。日志写入 `logs/production-monitor-<mode>.log`；最近一次结果写入 `logs/production-monitor-<mode>.status`。例如 runtime 检查会追加到 `logs/production-monitor-runtime.log`。
-
-在 origin 上手动检查：
+在生产服务器上：
 
 ```bash
 cd /opt/lihan_ai_deploy/current
-ENV_FILE=.env.production bash ops/production-monitor.sh runtime
-ENV_FILE=.env.production bash ops/production-monitor.sh backup
-ENV_FILE=.env.production bash ops/production-monitor.sh offsite
-ENV_FILE=.env.production bash ops/production-monitor.sh audit
-ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
-ENV_FILE=.env.production bash ops/ops-health-report.sh render
+docker compose -p lihan_ai --env-file .env.production \
+  -f docker-compose.yml \
+  -f docker-compose.prod.yml \
+  -f docker-compose.cpa.yml \
+  -f docker-compose.cloudflare-tunnel.yml \
+  ps
+
+COMPOSE_PROJECT_NAME=lihan_ai ENV_FILE=.env.production bash ops/check-production-runtime.sh
+curl -i https://api.lihan3238.com/api/status
+```
+
+如果 CPA 或 Cloudflare Tunnel 未启用，去掉对应 compose overlay。
+
+## Env 样板对齐
+
+生产 env 位置：
+
+```text
+/opt/lihan_ai_deploy/shared/.env.production
+```
+
+Release `prepare` 会在 preflight 前自动调用 `ops/sync-env-template.sh`。也可以在 release checkout 手动执行：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+bash ops/sync-env-template.sh /opt/lihan_ai_deploy/shared/.env.production .env.production.example
+```
+
+规则：
+
+- 先创建 `.bak.<UTC>` 备份。
+- 将 `.env.production.example` 中存在但生产 env 缺失的 key 追加进去。
+- 永不覆盖已有值。
+- 废弃 key 只报告，不删除。
+- `ops/preflight.sh` 仍负责拦截 `CHANGE_ME` 占位值。
+
+## 备份
+
+手动备份：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/backup-postgres.sh
+```
+
+定时备份：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/backup-cron.sh
 ```
 
 建议 crontab：
 
 ```cron
-*/5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
-*/15 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh audit
-15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
-35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
-20 4 1 * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
+15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/backup-cron.sh
 ```
 
-只有需要 webhook 告警时，才在 `.env.production` 设置 `MONITOR_ALERT_WEBHOOK_URL`。`MONITOR_ALERT_REPEAT_SECONDS` 默认是 `3600`，同一个 mode 连续失败不会每次 cron 都刷屏。创建好 Uptime Kuma Push monitors 后，再设置 `MONITOR_PUSH_RUNTIME_URL`、`MONITOR_PUSH_BACKUP_URL`、`MONITOR_PUSH_OFFSITE_URL`、`MONITOR_PUSH_AUDIT_URL`、`MONITOR_PUSH_RESTORE_DRILL_URL`。
+手动下载：
 
-`audit` 会写入 `logs/ops-health/status.json` 并渲染 `logs/ops-health/index.html`。查看详细看板时运行：
+```bash
+scp <deploy-user>@<origin-host>:/opt/lihan_ai_deploy/shared/backups/postgres/<dump>.dump .
+scp <deploy-user>@<origin-host>:/opt/lihan_ai_deploy/shared/backups/postgres/<dump>.dump.sha256 .
+```
+
+恢复演练：
 
 ```bash
 cd /opt/lihan_ai_deploy/current
-ENV_FILE=.env.production bash ops/ops-dashboard.sh open
-ssh -L 3021:127.0.0.1:3021 <deploy-user>@<origin-host>
+ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<dump>.dump
 ```
 
-然后打开 `http://127.0.0.1:3021`。用完后运行 `ENV_FILE=.env.production bash ops/ops-dashboard.sh close`。仓库不会自动安装 cron。
+## New API 分组
 
-## 事故响应
+只保留：
 
-遇到计费、支付或供应商故障时，先禁用受影响渠道或支付路径，导出相关日志，再核对用户余额。不要删除失败订单或用量日志；用管理员备注标记。
+- `default`：普通朋友/用户。
+- `vip`：人工授予的高优先级或优惠用户。
 
-## Operations Profiles
+旧 `standard` 分组不再属于当前运维模型。仓库不会自动改生产数据库；请在 New API 后台手动把用户、token、渠道能力、模型权限和价格从 `standard` 迁到 `default`，只给明确需要的人授予 `vip`。
 
-渠道变更、模型新增、镜像升级或交接给其他操作者前运行：
+只读验收：
 
 ```bash
-bash ops/export-config-snapshot.sh
-bash ops/validate-ops-profile.sh config/ops-profiles/glm-standard.example.json
-bash ops/channel-health-advisor.sh config/ops-profiles/glm-standard-health.example.json
+bash ops/validate-ops-profile.sh config/ops-profiles/glm-default.example.json
+bash ops/channel-health-advisor.sh config/ops-profiles/glm-default-health.example.json
 ```
 
-profile validator 是只读的。它检查 PostgreSQL 中的 channels 和 abilities，报告用户、token、订阅和支付相关配置。只有设置 `NEW_API_TEST_TOKEN` 时才调用 `/v1/models`。完整额度核账请单独运行 `NEW_API_TEST_MODEL=glm-5.1 bash ops/e2e-api-billing.sh`。
+## CPA
 
-health advisor 也是只读的。它汇总启用渠道容量、禁用渠道、近期请求和错误样本、错误率、p95 use time、New API channel-test 时间和操作建议。
+CPA 只保持内部访问。不要公开 `8317`。
 
-搭建期保持 profile `mode: development`。正式收费前复制 profile，切到 `mode: production` 并收紧 standard-pool 阈值。
-
-## 公开状态页
-
-用户侧状态页和内部 Push monitor 摘要使用 Uptime Kuma。monitors、Push URLs 和低额度测试 token 保存在 Kuma UI/volume 或 `.env.production` 中，不进入 git。参考 `docs/kuma-status-runbook.md`。
-
-管理 Kuma 本身时不要公开 admin UI：
+临时 UI 会话：
 
 ```bash
 cd /opt/lihan_ai_deploy/current
-ENV_FILE=.env.production bash ops/kuma-ui.sh open
-ssh -L 3011:127.0.0.1:3011 <deploy-user>@<origin-host>
+ops/cpa-ui.sh open
+ops/cpa-ui.sh ps
 ```
 
-打开 `http://127.0.0.1:3011`。用完后运行 `ENV_FILE=.env.production bash ops/kuma-ui.sh close` 移除本机端口。
-
-发布状态页时，在服务器设置 `STATUS_DOMAIN`，并把 `Caddyfile.status.example` 中的 status-domain block 合并到生产 Caddyfile。基础 `Caddyfile` 默认不公开 Kuma。
-
-## CPA Adapter
-
-CPA 是可选组件，必须放在 New API 后面。使用 `docker-compose.cpa.yml` 让它加入 New API 相同的 Docker 网络；只有需要通过 SSH 隧道访问管理 UI 时才额外使用 `docker-compose.cpa.ui.yml`。不要把 `8317` 暴露到公网。详见 `docs/zh-CN/cpa-runbook.md`。
-
-如果生产环境启用了 Cloudflare Tunnel，临时 CPA 管理 UI 使用 `ops/cpa-ui.sh open|close|ps`。这个 helper 会保留 active Tunnel overlay，并使用 `--no-deps`，避免一次局部 CPA UI 会话重建 `new-api`、`cloudflared` 或 `caddy`。
-
-## Live E2E
-
-不打印 token secret 的真实 API 计费验证：
+本地隧道：
 
 ```bash
-NEW_API_TEST_TOKEN_NAME=test_2505081251 NEW_API_TEST_MODEL=glm-5.1 bash ops/live-e2e-billing-from-db-token.sh
+ssh -L 8317:127.0.0.1:8317 <deploy-user>@<origin-host>
 ```
 
-浏览器级验证：
+用完关闭：
 
 ```bash
-npm run e2e:web:new-api
-KUMA_BASE_URL=http://localhost:3011 npm run e2e:web:kuma
+ops/cpa-ui.sh close
 ```
 
-如果 New API 临时换了端口：
+New API 渠道应指向 Docker 内部 CPA 地址，不要改成公网域名。
+
+## 部署验收
+
+每次生产 promote 后：
 
 ```bash
-NEW_API_BASE_URL=http://localhost:3102 npm run e2e:web:new-api
+cd /opt/lihan_ai_deploy/current
+readlink -f /opt/lihan_ai_deploy/current
+COMPOSE_PROJECT_NAME=lihan_ai ENV_FILE=.env.production bash ops/check-production-runtime.sh
+curl -i https://api.lihan3238.com/api/status
+ENV_FILE=.env.production bash ops/backup-cron.sh
 ```
 
-Windows PowerShell 调用 WSL shell E2E 时，把变量放在 `bash` 命令内部：
+然后在 New API 验证：
 
-```powershell
-bash -lc 'NEW_API_BASE_URL=http://localhost:3102 ./ops/live-e2e-billing-from-db-token.sh test_2505081251'
-```
+- 公网域名首页能打开。
+- 管理后台能登录。
+- `/api/status` 返回 success。
+- 测试 token 能调用 `/v1/models`。
+- 如果启用 CPA，渠道仍使用 Docker 内部地址。
 
-## 生产迁移
+## 清理安全线
 
-迁移到另一台 origin 服务器前：
+归档 `/opt/lihan_ai` 或 `/opt/lihan_ai_runtime` 等旧目录前：
+
+- `readlink -f /opt/lihan_ai_deploy/current` 指向预期 release。
+- 运行时检查通过。
+- 备份和恢复演练通过。
+- `docker inspect relay-cpa` 不再显示旧 runtime 目录挂载。
+- crontab 不再引用旧路径。
+
+先改名归档，稳定后再删：
 
 ```bash
-SOURCE_SSH=root@old TARGET_SSH=root@new DEPLOY_PATH=/opt/lihan_ai bash ops/migration-preflight.sh
+sudo mv /opt/lihan_ai /opt/lihan_ai.legacy-$(date +%Y%m%d)
+sudo mv /opt/lihan_ai_runtime /opt/lihan_ai_runtime.legacy-$(date +%Y%m%d)
 ```
 
-最终维护窗口：
-
-```bash
-CONFIRM_FINAL_CUTOVER=yes SOURCE_SSH=root@old TARGET_SSH=root@new DEPLOY_PATH=/opt/lihan_ai bash ops/migrate-prod.sh
-```
-
-不要在目标服务器通过 `ops/verify-remote-prod.sh` 前更新 DNS 或 edge upstream。
+不要删除 `/opt/containerd`，也不要把 `docker compose down -v` 当清理命令。

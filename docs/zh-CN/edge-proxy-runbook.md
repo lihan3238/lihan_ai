@@ -35,4 +35,4 @@ curl -I https://api.example.com/api/status
 
 - 不要把 `.env.production` 复制到 edge。
 - 不要在 edge 上运行 PostgreSQL、Redis 或 New API，除非你明确要把它提升为 origin。
-- Uptime Kuma 的公开状态页只展示粗粒度服务状态，不暴露渠道名、余额或上游细节。
+- 面向用户的状态说明只展示粗粒度服务状态，不暴露渠道名、余额或上游细节。

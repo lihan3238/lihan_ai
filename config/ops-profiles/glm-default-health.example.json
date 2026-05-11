@@ -1,7 +1,7 @@
 {
-  "name": "glm-standard-health",
-  "description": "Read-only health advisor profile for the GLM standard pool.",
-  "group": "standard",
+  "name": "glm-default-health",
+  "description": "Read-only health advisor profile for the GLM default group.",
+  "group": "default",
   "model": "glm-5.1",
   "mode": "development",
   "window_hours": 24,
@@ -16,11 +16,6 @@
     "max_test_age_hours": 24
   },
   "public_status": {
-    "kuma_components": [
-      "API Gateway",
-      "GLM Standard",
-      "Account & Billing",
-      "Maintenance Notice"
-    ]
+    "notes": "Public status automation is intentionally removed; use this profile for local channel health review only."
   }
 }

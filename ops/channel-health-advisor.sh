@@ -315,7 +315,7 @@ printf '%s\n' "$db_json" | jq -c '.channels[]' | while IFS= read -r channel; do
     printf '  recommendation: re-enable only after upstream key, balance, and model mapping are verified.\n'
   fi
   if [ "$response_time" -gt "$MAX_RESPONSE_TIME_MS" ]; then
-    printf '  recommendation: response time exceeds %sms; lower weight or move out of standard pool.\n' "$MAX_RESPONSE_TIME_MS"
+    printf '  recommendation: response time exceeds %sms; lower weight or move out of default group.\n' "$MAX_RESPONSE_TIME_MS"
   fi
   if [ "$test_age_hours" -gt "$MAX_TEST_AGE_HOURS" ]; then
     printf '  recommendation: channel test is older than %sh; run New API channel test from admin console.\n' "$MAX_TEST_AGE_HOURS"

@@ -41,7 +41,7 @@ Capabilities:
 
 Local deployment note:
 
-- Our repo wraps the official image with PostgreSQL, Redis, Caddy, Uptime Kuma, backups, and local dev port override.
+- Our repo wraps the official image with PostgreSQL, Redis, Caddy, optional Cloudflare Tunnel ingress, local backups, and local dev port override.
 - Business state lives in PostgreSQL. Do not use `docker compose down -v` unless resetting.
 
 ## 3. Relay API Surface
@@ -148,7 +148,7 @@ Selection behavior:
 
 Implication for our product:
 
-- "standard/economy pool" can likely be represented with New API groups, group ratios, model visibility, and token group settings before any code fork.
+- `default` and `vip` pools can likely be represented with New API groups, group ratios, model visibility, and token group settings before any code fork.
 - Cheap or unstable supply should probably be configured as separate groups/channels, not custom routing code at first.
 
 ## 6. Users, Auth, And Security
@@ -452,7 +452,7 @@ Avoid initially:
 
 - Which upstream features satisfy invite-only registration, if any, without local code?
 - Can subscription plans represent our intended monthly token packages exactly?
-- Can groups and group ratios represent standard/economy pools cleanly?
+- Can groups and group ratios represent `default` and `vip` pools cleanly?
 - Which payment provider is realistic for the first legal/operational setup?
 - How much cached-token detail is visible in current logs for OpenAI/Claude/DeepSeek/Zhipu channels?
 - Does New API's Codex/coding-plan support fit our compliance boundary, or should it remain disabled?
@@ -460,11 +460,11 @@ Avoid initially:
 
 ## 16. Health Monitoring Strategy
 
-New API already exposes `/api/status`, stores channel `response_time` and `test_time`, records consume/error logs, and can automatically disable channels based on configured errors. Uptime Kuma is already present in this wrapper deployment and is better suited for a simple public status page than a custom V1 frontend.
+New API already exposes `/api/status`, stores channel `response_time` and `test_time`, records consume/error logs, and can automatically disable channels based on configured errors. For the current small private deployment, use New API's built-in admin visibility plus wrapper runtime checks before adding a separate status frontend.
 
 Development implication:
 
 - Internal health should be read from New API's existing channel, ability, and log tables before adding new runtime code.
-- Public health should be coarse-grained: API Gateway, model pool, billing/account, and maintenance.
+- Any future public health view should be coarse-grained: API gateway, model pool, billing/account, and maintenance.
 - Do not expose provider names, channel IDs, balances, quota sources, or internal errors on the public page.
 - Avoid automatic wrapper-side channel disabling until the read-only advisor has produced enough operational history.
