@@ -274,14 +274,20 @@ Backups and recovery commands should run from `current`:
 
 ```bash
 cd /opt/lihan_ai_deploy/current
-ENV_FILE=.env.production bash ops/backup-postgres.sh
-ENV_FILE=.env.production bash ops/check-production-runtime.sh
+ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+ENV_FILE=.env.production bash ops/production-monitor.sh backup
+ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+ENV_FILE=.env.production bash ops/production-monitor.sh audit
 ```
 
-For cron, write logs into shared storage:
+Suggested cron uses the monitor wrapper so logs, status files, and optional Uptime Kuma Push heartbeats stay consistent:
 
 ```cron
-15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/backup-postgres.sh >> /opt/lihan_ai_deploy/shared/logs/backup.log 2>&1
+*/5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+*/15 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh audit
+15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
+35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+20 4 1 * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
 ```
 
 Do not run `docker compose down -v` during deploy or rollback. PostgreSQL and Redis continue to use Docker named volumes.
