@@ -84,23 +84,11 @@ services:
     networks:
       - relay-internal
 
-  uptime-kuma:
-    image: louislam/uptime-kuma:1
-    container_name: relay-uptime-kuma
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:${KUMA_PORT:-3001}:3001"
-    volumes:
-      - uptime_kuma:/app/data
-    networks:
-      - relay-internal
-
 volumes:
   postgres_data:
   redis_data:
   caddy_data:
   caddy_config:
-  uptime_kuma:
 
 networks:
   relay-internal:

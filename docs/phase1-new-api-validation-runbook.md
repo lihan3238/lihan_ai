@@ -1,4 +1,4 @@
-# Phase 1 New API Validation Runbook
+﻿# Phase 1 New API Validation Runbook
 
 This runbook validates the first paid API relay milestone using upstream New API only. Do not fork relay, billing, auth, or payment code during this phase.
 
@@ -7,7 +7,7 @@ This runbook validates the first paid API relay milestone using upstream New API
 Run a local WSL/Docker New API instance at `http://localhost:3100` and prove the core business loop:
 
 - Admin setup and persistent login configuration.
-- One GPT channel in a `standard` pool.
+- One GPT channel in a `default` pool.
 - One test user and one API token.
 - Manual balance or package crediting.
 - Non-stream and stream OpenAI-compatible requests.
@@ -83,19 +83,19 @@ In the New API admin console, configure the local test instance for small-scope 
 
 Record any setting that is missing or unclear in a gap list before proposing code changes.
 
-## GPT Standard Pool
+## GPT default group
 
 Create one GPT channel using official OpenAI API or an explicitly authorized aggregator.
 
 Recommended first configuration:
 
-- Group: `standard`.
+- Group: `default`.
 - Models: start with one low-cost GPT model, for example `gpt-4o-mini`, then add higher-cost models only after billing is verified.
-- Channel priority/weight: keep simple with one active standard channel.
+- Channel priority/weight: keep simple with one active primary channel.
 - Model mapping: use upstream defaults unless the provider requires mapping.
 - Group/model ratio: set deliberately and document the intended sell price.
 
-Run the New API channel test from the admin console. Do not add an `economy` pool until a second, lower-cost, authorized source exists. Economic supply must not be silently mixed into `standard`.
+Run the New API channel test from the admin console. Do not add an `economy` pool until a second, lower-cost, authorized source exists. Economic supply must not be silently mixed into `default`.
 
 ## User, Token, And Manual Credit
 
@@ -103,7 +103,7 @@ Create a normal test user and one API token.
 
 For the token:
 
-- Assign group `standard`.
+- Assign group `default`.
 - Limit allowed models to the GPT model under test.
 - Set an expiration date if the console supports it.
 - Keep IP allowlist empty for local testing unless you are explicitly testing IP restrictions.
@@ -241,7 +241,7 @@ bash ops/export-config-snapshot.sh
 Phase 1 is complete when all of these are true:
 
 - Local New API stays initialized after restart.
-- GPT standard channel works for non-stream and stream calls.
+- GPT primary channel works for non-stream and stream calls.
 - A normal user's API token can call only allowed models.
 - Manual crediting and quota deduction are visible and reconcilable.
 - Failure paths do not silently consume quota.

@@ -6,7 +6,7 @@ This map records what exists upstream before any local customization. The goal i
 
 - Official image: `calciumion/new-api:latest`.
 - Upstream compose: `vendor/new-api/docker-compose.yml` runs New API with PostgreSQL and Redis.
-- Local wrapper compose in this repository keeps the same official image and adds safer env interpolation, local port override, Caddy for production HTTPS, and Uptime Kuma for optional monitoring.
+- Local wrapper compose in this repository keeps the same official image and adds safer env interpolation, local port override, Caddy for production HTTPS, optional Cloudflare Tunnel ingress, and local backup tooling.
 - Main environment concepts are in `vendor/new-api/.env.example`, including database, Redis, cache sync, relay timeouts, session secret, LinuxDO endpoints, node type, and trusted redirect domains.
 
 ## Backend Structure

@@ -1,10 +1,8 @@
 # Release 部署 Runbook
 
-这是生产 origin 的推荐部署方式。它使用 Capistrano 风格的目录结构和 Git worktree，把 Git 更新、候选版本测试和正在运行的生产目录分开。
+这是推荐的生产部署模型。它把 Git 更新、候选版本验证、运行时文件和正在运行的生产目录分开。
 
 ## 目录模型
-
-默认根目录：
 
 ```text
 /opt/lihan_ai_deploy/
@@ -16,6 +14,7 @@
   shared/
     .env.production
     data/cpa/
+    cloudflared/
     logs/
     backups/
     snapshots/
@@ -23,17 +22,25 @@
 
 规则：
 
-- `main` 仍然是生产分支。生产 release 部署默认拒绝非 `main` ref，只有已记录的紧急情况才设置 `ALLOW_NON_MAIN_PROD_DEPLOY=1`。
-- `git fetch`、候选 release 创建和候选 smoke 测试都不修改 `current`。
-- `prepare` 成功后会更新 `candidate`；正常 `smoke` 和 `promote` 不传 `RELEASE_ID` 时会使用这个候选 release。
-- Docker Compose 永远从 `current` 运行，并固定使用 `docker compose -p "$DEPLOY_COMPOSE_PROJECT"`。
-- 运行时文件放在 `shared/`，不放在某个 release checkout 里。
-- 本方案不追求零停机。`promote` 会切换 `current` 并重启 Compose stack。
-- PM2 和 Paru 已评估过部署/回滚心智，但不作为核心依赖。本仓库保持 Shell 脚本 + Docker + Git 的控制面。
+- 生产部署使用 `main`，除非为了已记录的紧急情况设置 `ALLOW_NON_MAIN_PROD_DEPLOY=1`。
+- `prepare` 创建 detached Git worktree 并更新 `candidate`，不触碰 `current`。
+- 正常 `smoke` 和 `promote` 在不传 `RELEASE_ID` 时自动使用 `candidate`。
+- Compose 固定使用 `docker compose -p "$DEPLOY_COMPOSE_PROJECT"`。
+- 运行时文件放在 `shared/`，不放在 release checkout 里。
+- Promote 会重启 Docker Compose stack；这不是零停机部署。
+- PM2 和 Paru 已考虑过，但生产控制面仍保持 shell、Git 和 Docker。
 
-## 环境变量
+## Prepare 时的 Env 对齐
 
-生产默认值：
+`prepare` 会在 preflight 前运行：
+
+```bash
+bash ops/sync-env-template.sh /opt/lihan_ai_deploy/shared/.env.production .env.production.example
+```
+
+同步会创建 `.bak.<UTC>` 备份，追加 `.env.production.example` 中存在但生产 env 缺失的键，保留已有值，并报告废弃键但不删除。`ops/preflight.sh` 仍会拦截 `CHANGE_ME` 占位值。
+
+## 必需 Env
 
 ```env
 DEPLOY_ROOT=/opt/lihan_ai_deploy
@@ -44,9 +51,7 @@ DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0
 RELEASE_KEEP=5
 ```
 
-默认情况下，release 命令会从远端 `.env.production` 读取 `DEPLOY_COMPOSE_PROJECT`、`DEPLOY_INCLUDE_CPA` 和 `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL`。只有临时覆盖时才在本地显式传这些变量。
-
-如果启用 CPA，把 CPA 运行时文件放到 shared：
+CPA 运行时文件应放在 shared：
 
 ```env
 DEPLOY_INCLUDE_CPA=1
@@ -55,9 +60,7 @@ CPA_AUTH_PATH=/opt/lihan_ai_deploy/shared/data/cpa
 CPA_LOG_PATH=/opt/lihan_ai_deploy/shared/logs/cpa
 ```
 
-`docker-compose.cpa.ui.yml` 不进入默认 promote。只有需要临时管理 UI 时，按 `docs/zh-CN/cpa-runbook.md` 通过 SSH 隧道短时间启用。
-
-如果启用 Cloudflare Tunnel，把 tunnel runtime 文件放在 shared 目录：
+Cloudflare Tunnel 运行时文件也放在 shared：
 
 ```env
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1
@@ -65,32 +68,29 @@ CLOUDFLARED_CONFIG_PATH=/opt/lihan_ai_deploy/shared/cloudflared/config.yml
 CLOUDFLARED_CREDENTIALS_PATH=/opt/lihan_ai_deploy/shared/cloudflared/tunnel.json
 ```
 
-这两个路径在 `prepare` 或 `promote` 前必须已经是普通文件：
+两个 tunnel 路径必须是普通文件：
 
 ```bash
 test -f /opt/lihan_ai_deploy/shared/cloudflared/config.yml && echo "config.yml is file"
 test -f /opt/lihan_ai_deploy/shared/cloudflared/tunnel.json && echo "tunnel.json is file"
 ```
 
-Tunnel 发布会追加 `docker-compose.cloudflare-tunnel.yml`，并用 `--scale caddy=0` 让源站不再发布公网 `80/443`。
+Tunnel 模式会追加 `docker-compose.cloudflare-tunnel.yml` 并把 Caddy 缩容为 0，所以源站不再需要公网 `80/443`。
 
 ## 从开发到生产
 
-正常变更流程：
+1. 在 `codex/<topic>` 这样的短生命周期分支本地开发。
+2. 创建 PR，检查通过后合并到 `main`。
+3. 对 `DEPLOY_REF=main` 运行 `prepare`。
+4. 运行 `smoke`；需要指定 dump 时传 `SMOKE_BACKUP_PATH`。
+5. Smoke 通过后才运行 `promote`。
+6. 验证 runtime、备份、New API 后台、测试 token、可选 CPA 路由和可选 tunnel 路由。
 
-1. 在 WSL 或其他 Linux-like 环境本地开发。
-2. 在短生命周期分支提交，例如 `codex/<topic>` 或 `feature/<topic>`。
-3. 创建 PR，review 和检查通过后合并到 `main`。
-4. 从本地仓库对 `DEPLOY_REF=main` 运行 `prepare`。
-5. 对准备好的 `candidate` 运行 `smoke`；需要固定备份时设置 `SMOKE_BACKUP_PATH`。
-6. 只有 smoke 通过后才运行 `promote`。
-7. 验证 `current`、Docker 服务、备份、New API 后台、CPA 渠道和 Kuma。
-
-生产服务器不再作为开发工作目录使用。迁移窗口内可以短期保留旧的 `/opt/lihan_ai` clone，但生产应从 `/opt/lihan_ai_deploy/current` 运行。
+生产服务器不应作为开发工作目录。迁移期间可以短期保留旧 `/opt/lihan_ai` clone，但生产应从 `/opt/lihan_ai_deploy/current` 运行。
 
 ## Bootstrap
 
-从本地执行一次：
+从本地机器执行一次：
 
 ```bash
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh bootstrap
@@ -98,143 +98,78 @@ DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh bootstrap
 
 `bootstrap` 会创建 `DEPLOY_ROOT`、初始化 `repo.git`、创建 `shared/`，并从 `LEGACY_DEPLOY_PATH` 复制缺失的运行时文件。`LEGACY_DEPLOY_PATH` 默认是 `/opt/lihan_ai`。
 
-执行后检查或编辑：
+Bootstrap 后：
 
 ```bash
 sudo ls -la /opt/lihan_ai_deploy/shared
 sudo nano /opt/lihan_ai_deploy/shared/.env.production
 ```
 
-如果复制过来的 env 仍然把 CPA 指向 `/opt/lihan_ai`，在设置 `DEPLOY_INCLUDE_CPA=1` 前改成 `/opt/lihan_ai_deploy/shared/...`。
+如果 CPA config 从 `/opt/lihan_ai_runtime` 迁移过来，确认 `.env.production` 已指向 `/opt/lihan_ai_deploy/shared/data/cpa`。
 
-在 release 部署、备份和 rollback 都验证稳定前，先保留旧的 `/opt/lihan_ai` 目录。
-
-如果 `/opt/lihan_ai_deploy/shared/data/cpa/config.yaml` 被 Docker bind mount 误创建成目录，先停止并删除 `relay-cpa`，把该路径替换成真实的 CPA `config.yaml` 文件，然后再启动 CPA。这个路径必须是文件，不是目录。
-
-## Prepare
-
-创建候选 release，不影响生产：
+## Prepare、Smoke、Promote
 
 ```bash
 DEPLOY_HOST=<deploy-user>@<origin-host> DEPLOY_REF=main bash ops/deploy-release.sh prepare
-```
-
-`prepare` 会 fetch 指定 ref，在 `releases/<timestamp>-<sha>` 下创建 detached worktree，初始化 submodule，链接 shared 运行时路径，运行 `ops/preflight.sh`，渲染 Compose config，并把 `/opt/lihan_ai_deploy/candidate` 指向这次准备好的 release。
-
-脚本仍会输出 `RELEASE_ID`，用于审计或应急时指定旧 release：
-
-```text
-RELEASE_ID=20260510T120000Z-abcdef0
-candidate -> releases/20260510T120000Z-abcdef0
-```
-
-## Smoke
-
-用隔离恢复栈测试候选 release：
-
-```bash
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh smoke
-```
-
-`smoke` 默认使用 `/opt/lihan_ai_deploy/candidate`。它默认使用最新的 `shared/backups/postgres/*.dump`，也可以通过 `SMOKE_BACKUP_PATH` 指定 dump。它会运行 `ops/drill-restore-stack.sh`，在独立 Docker network 中启动临时 PostgreSQL、Redis 和 New API。它不连接生产数据库，也不绑定公网端口。
-
-## Promote
-
-发布已测试的 release：
-
-```bash
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
 ```
 
-`promote` 默认使用 `/opt/lihan_ai_deploy/candidate`。它会在存在当前生产 stack 时先备份 PostgreSQL，把 `previous` 指向旧 release，原子切换 `current`，然后运行：
-
-```bash
-docker compose -p lihan_ai --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
-```
-
-并验证 New API `/api/status`。如果 `DEPLOY_INCLUDE_CPA=1`，会追加 `docker-compose.cpa.yml`。如果 `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1`，会追加 `docker-compose.cloudflare-tunnel.yml` 并应用 `--scale caddy=0`。发布成功后会清掉 `candidate` 指针。如果发布失败，脚本会把 `current` 切回上一版，并尝试重启上一版 stack。
-
-如果要操作某个指定 release，而不是当前 candidate，可以传 `RELEASE_ID=<release-id>` 或位置参数：
+只有明确需要操作某个旧 prepared release 时才传：
 
 ```bash
 DEPLOY_HOST=<deploy-user>@<origin-host> RELEASE_ID=<release-id> bash ops/deploy-release.sh smoke
 DEPLOY_HOST=<deploy-user>@<origin-host> RELEASE_ID=<release-id> bash ops/deploy-release.sh promote
 ```
 
-## Rollback
-
-回滚到上一条成功 release：
+用指定备份 smoke：
 
 ```bash
-DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh rollback
+DEPLOY_HOST=<deploy-user>@<origin-host> \
+SMOKE_BACKUP_PATH=/opt/lihan_ai_deploy/shared/backups/postgres/<dump>.dump \
+bash ops/deploy-release.sh smoke
 ```
-
-Rollback 只切换代码和 Compose 定义，不恢复数据库状态。如果失败 release 已经写入数据，先导出当前数据库用于审计，再恢复已知可用的 PostgreSQL dump。
-
-## 查看和清理
-
-```bash
-DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh list
-DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh current
-DEPLOY_HOST=<deploy-user>@<origin-host> RELEASE_KEEP=5 bash ops/deploy-release.sh cleanup
-```
-
-`cleanup` 保留最新 release 以及 `current`、`previous`、`candidate`，删除更旧 worktree，并清理 `repo.git` 的 worktree 元数据。
 
 ## Promote 后验收
 
-每次生产 promote 后运行这些检查：
+服务器上：
 
 ```bash
-readlink -f /opt/lihan_ai_deploy/current
-
 cd /opt/lihan_ai_deploy/current
-docker compose -p lihan_ai --env-file .env.production \
-  -f docker-compose.yml \
-  -f docker-compose.prod.yml \
-  -f docker-compose.cpa.yml \
-  ps
-
-ENV_FILE=.env.production bash ops/check-production-runtime.sh
-
-backup="$(ENV_FILE=.env.production bash ops/backup-postgres.sh)"
-echo "$backup"
-ENV_FILE=.env.production bash ops/verify-postgres-backup.sh "$backup"
-
-docker logs --tail=80 relay-cpa
+readlink -f /opt/lihan_ai_deploy/current
+COMPOSE_PROJECT_NAME=lihan_ai ENV_FILE=.env.production bash ops/check-production-runtime.sh
+ENV_FILE=.env.production bash ops/backup-cron.sh
+curl -i https://api.lihan3238.com/api/status
 ```
 
-验证 New API 能通过 Docker 内网访问 CPA：
+New API 里确认：
 
-```bash
-docker exec relay-new-api wget -q -O - http://cli-proxy-api:8317/v1/models \
-  --header="Authorization: Bearer <CPA_API_KEY>"
-```
-
-`<CPA_API_KEY>` 使用 CPA `api-keys` 中的一个值。
+- 管理后台能登录。
+- `/api/status` 返回 success。
+- 测试 token 可以调用 `/v1/models`。
+- 当前业务分组只保留 `default` 和 `vip`。
+- 如果启用 CPA，渠道指向 Docker 内部 CPA 地址。
 
 ## 旧目录清理
 
-第一次成功 promote 后不要立刻删除旧目录。
-
-迁移期间常见目录：
+迁移期间这些目录可能共存：
 
 ```text
 /opt/containerd           container runtime 数据，不要动
-/opt/lihan_ai             legacy 直接 Git checkout，验证稳定后归档
+/opt/lihan_ai             legacy 直接 Git checkout，稍后归档
 /opt/lihan_ai_deploy      当前 release 部署根目录
-/opt/lihan_ai_runtime     旧 ad hoc CPA runtime，CPA 迁移后再归档
+/opt/lihan_ai_runtime     旧 ad hoc CPA runtime，CPA 迁移后归档
 ```
 
-归档旧目录前必须满足：
+归档旧目录前：
 
-- `readlink -f /opt/lihan_ai_deploy/current` 指向你期望运行的 release。
-- `docker compose -p lihan_ai ... ps` 显示 New API、PostgreSQL、Redis、Uptime Kuma 和可选 CPA 按预期 healthy 或 running。
-- 直连源站模式下，`relay-caddy` 正在运行并发布 `80/443`；Cloudflare Tunnel 模式下，`relay-cloudflared` 正在运行，且 `relay-caddy` 没有发布 `80/443`。
-- 从 `/opt/lihan_ai_deploy/current` 运行 `ENV_FILE=.env.production bash ops/backup-postgres.sh` 成功。
-- CPA 配置和 auth 文件已经位于 `/opt/lihan_ai_deploy/shared/data/cpa`。
-- `docker inspect relay-cpa` 不再显示任何 `/opt/lihan_ai_runtime` 挂载。
-- 迁移后至少完整跑通过一次 release deploy、smoke、promote 和 backup。
+- `readlink -f /opt/lihan_ai_deploy/current` 指向预期 release。
+- runtime 检查通过。
+- `ENV_FILE=.env.production bash ops/backup-cron.sh` 通过。
+- `ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<dump>.dump` 通过。
+- CPA 文件位于 `/opt/lihan_ai_deploy/shared/data/cpa`。
+- `docker inspect relay-cpa` 不显示 `/opt/lihan_ai_runtime` 挂载源。
+- crontab 不再引用旧路径。
 
 检查 CPA 挂载：
 
@@ -242,51 +177,26 @@ docker exec relay-new-api wget -q -O - http://cli-proxy-api:8317/v1/models \
 docker inspect relay-cpa --format '{{range .Mounts}}{{println .Source "->" .Destination}}{{end}}'
 ```
 
-先改名归档，稳定后再删除：
+先归档：
 
 ```bash
 sudo mv /opt/lihan_ai /opt/lihan_ai.legacy-$(date +%Y%m%d)
 sudo mv /opt/lihan_ai_runtime /opt/lihan_ai_runtime.legacy-$(date +%Y%m%d)
 ```
 
-观察几天稳定后，确认没有 mount、cron 或操作流程引用旧目录，再删除归档目录。不要删除 `/opt/containerd`，清理时也不要运行 `docker compose down -v`。
+稳定观察几天后再删除。不要删除 `/opt/containerd`，也不要用 `docker compose down -v` 做清理。
 
-## 新机器或灾难恢复
+## 新服务器或灾难恢复
 
-新机器恢复先按 `docs/zh-CN/disaster-recovery-runbook.md` 执行。
-
-release 相关恢复概要：
+先执行 `docs/zh-CN/disaster-recovery-runbook.md`。Release 相关概要：
 
 1. 准备 Docker 和 deploy 用户。
-2. 创建 `/opt/lihan_ai_deploy` 并把 owner 改给 deploy 用户。
-3. 运行 `ops/deploy-release.sh bootstrap`。
-4. 恢复 `/opt/lihan_ai_deploy/shared/.env.production`、CPA runtime 文件和 PostgreSQL dumps。
-5. 对 `main` 运行 `prepare`。
-6. 用 `SMOKE_BACKUP_PATH` 指向已知 dump 运行 `smoke`。
-7. promote release 启动 stack。
-8. 如果是完整灾难恢复，恢复选定的 PostgreSQL dump。
-9. DNS 切换或付费流量恢复前，跑完 promote 后验收检查。
+2. Bootstrap `/opt/lihan_ai_deploy`。
+3. 恢复 `/opt/lihan_ai_deploy/shared/.env.production`。
+4. 如使用 CPA 或 Cloudflare Tunnel，恢复对应运行时文件。
+5. 把选定 PostgreSQL dump 复制到 `/opt/lihan_ai_deploy/shared/backups/postgres/`。
+6. 运行 `prepare`，带 `SMOKE_BACKUP_PATH` 运行 `smoke`，然后 `promote`。
+7. 用选定 dump 执行 `ops/restore-postgres.sh`。
+8. DNS 或 tunnel 切换前跑 runtime 检查。
 
-## 运维说明
-
-备份和运行时检查从 `current` 执行：
-
-```bash
-cd /opt/lihan_ai_deploy/current
-ENV_FILE=.env.production bash ops/production-monitor.sh runtime
-ENV_FILE=.env.production bash ops/production-monitor.sh backup
-ENV_FILE=.env.production bash ops/production-monitor.sh offsite
-ENV_FILE=.env.production bash ops/production-monitor.sh audit
-```
-
-建议 cron 统一使用 monitor wrapper，这样日志、状态文件和可选 Uptime Kuma Push heartbeat 都保持一致：
-
-```cron
-*/5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
-*/15 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh audit
-15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
-35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
-20 4 1 * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
-```
-
-部署或回滚时不要运行 `docker compose down -v`。PostgreSQL 和 Redis 继续使用 Docker named volumes。
+部署、回滚、清理或恢复期间都不要运行 `docker compose down -v`。

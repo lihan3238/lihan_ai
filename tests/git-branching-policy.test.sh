@@ -53,7 +53,7 @@ override_output="$(ALLOW_NON_MAIN_PROD_DEPLOY=1 DEPLOY_ENV=production DEPLOY_REF
 printf '%s' "$override_output" | grep -q "WARN non-main production deploy override" || fail "override dry-run missing warning: $override_output"
 printf '%s' "$override_output" | grep -q "DRY RUN deploy to root@example" || fail "override dry-run did not continue: $override_output"
 
-if printf '%s\n%s\n%s' "$blocked_output" "$main_output" "$override_output" | grep -Eiq 'sk-[A-Za-z0-9]|SESSION_SECRET|POSTGRES_PASSWORD|REDIS_PASSWORD|RESTIC_PASSWORD'; then
+if printf '%s\n%s\n%s' "$blocked_output" "$main_output" "$override_output" | grep -Eiq 'sk-[A-Za-z0-9]|SESSION_SECRET|POSTGRES_PASSWORD|REDIS_PASSWORD'; then
   fail "branch policy output contains secret-looking content"
 fi
 

@@ -23,6 +23,7 @@ cd "$ROOT_DIR"
 run git diff --check
 run bash -n ops/preflight.sh
 run bash -n ops/backup-postgres.sh
+run bash -n ops/backup-cron.sh
 run bash -n ops/verify-postgres-backup.sh
 run bash -n ops/restore-postgres.sh
 run bash -n ops/relay-diagnostics.sh
@@ -35,19 +36,17 @@ run bash -n ops/drill-restore-stack.sh
 run bash -n ops/ai-dev-check.sh
 run bash -n ops/validate-ops-profile.sh
 run bash -n ops/check-production-runtime.sh
-run bash -n ops/production-monitor.sh
-run bash -n ops/ops-health-report.sh
-run bash -n ops/kuma-ui.sh
-run bash -n ops/ops-dashboard.sh
+run bash -n ops/sync-env-template.sh
 run bash -n ops/sync-cpa-upstream-assets.sh
 run bash -n ops/cpa-ui.sh
 run bash -n ops/bootstrap-server.sh
 run bash -n ops/deploy-prod.sh
 run bash -n ops/deploy-release.sh
 run bash -n ops/verify-remote-prod.sh
-run bash -n ops/offsite-backup.sh
 run bash -n ops/migration-preflight.sh
 run bash -n ops/migrate-prod.sh
+run bash tests/backup-cron.test.sh
+run bash tests/env-template-sync.test.sh
 run bash tests/ai-dev-check.test.sh
 run bash tests/spec-kit-init.test.sh
 run bash tests/channel-health-advisor.test.sh
@@ -57,16 +56,12 @@ run bash tests/browser-e2e-scaffold.test.sh
 run bash tests/github-actions-ci.test.sh
 run bash tests/cloudflare-saas-domain.test.sh
 run bash tests/cloudflare-tunnel-compose.test.sh
-run bash tests/production-monitor.test.sh
 run bash tests/prod-deploy-migration.test.sh
 run bash tests/prod-deploy-hardening.test.sh
 run bash tests/release-deploy.test.sh
 run bash tests/cpa-compose.test.sh
 run bash tests/cpa-ui-script.test.sh
 run bash tests/docs-i18n.test.sh
-run bash tests/ops-health-report.test.sh
-run bash tests/kuma-ui-script.test.sh
-run bash tests/ops-dashboard.test.sh
 run bash tests/git-branching-policy.test.sh
 run bash tests/e2e-api-billing.test.sh
 run bash tests/wrapper-infra.test.sh
@@ -85,10 +80,8 @@ run docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.y
 run docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local-build.yml config
 run docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.prod.yml config
 run docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml config
-run docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.kuma.ui.yml config
 run docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cloudflare-tunnel.yml config
 run docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml -f docker-compose.cloudflare-tunnel.yml config
-run docker compose --env-file .env.production.example -f docker-compose.ops-dashboard.yml config
 run docker compose --env-file .env.production.example -f docker-compose.edge.yml config
 
 backup="$(bash ops/backup-postgres.sh)"

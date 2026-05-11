@@ -176,6 +176,7 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
       echo "git submodule update --init --recursive"
       echo "link $DEPLOY_ROOT/shared/$DEPLOY_ENV_FILE into release"
       echo "link shared data/logs/backups/snapshots into release"
+      echo "bash ops/sync-env-template.sh $DEPLOY_ROOT/shared/$DEPLOY_ENV_FILE .env.production.example"
       echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT ENV_FILE=$DEPLOY_ENV_FILE bash ops/preflight.sh"
       echo "$(compose_preview) config"
       echo "candidate -> releases/<timestamp>-<sha>"
@@ -487,6 +488,7 @@ cmd_prepare() {
 
   (
     cd "$release_path"
+    bash ops/sync-env-template.sh "$shared_dir/$DEPLOY_ENV_FILE" ".env.production.example"
     if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ] && [ ! -f docker-compose.cloudflare-tunnel.yml ]; then
       fail "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 but docker-compose.cloudflare-tunnel.yml is missing"
     fi

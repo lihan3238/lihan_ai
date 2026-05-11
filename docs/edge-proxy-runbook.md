@@ -35,4 +35,4 @@ If streaming responses feel delayed, compare direct origin and edge timings befo
 
 - Do not copy `.env.production` to the edge.
 - Do not run PostgreSQL, Redis, or New API on the edge unless you intentionally promote it to origin.
-- Keep Uptime Kuma public status coarse; do not expose channel names, balances, or upstream details.
+- Keep any user-facing status text coarse; do not expose channel names, balances, or upstream details.

@@ -1,9 +1,0 @@
-services:
-  ops-dashboard:
-    image: nginx:1.27-alpine
-    container_name: relay-ops-dashboard
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:${OPS_DASHBOARD_PORT:-3021}:80"
-    volumes:
-      - ./logs/ops-health:/usr/share/nginx/html:ro

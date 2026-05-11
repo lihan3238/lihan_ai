@@ -1,7 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const newApiBaseURL = process.env.NEW_API_BASE_URL || 'http://localhost:3100';
-const kumaBaseURL = process.env.KUMA_BASE_URL || 'http://localhost:3011';
 
 export default defineConfig({
   testDir: './e2e',
@@ -23,8 +22,7 @@ export default defineConfig({
   ],
   metadata: {
     NEW_API_BASE_URL: newApiBaseURL,
-    KUMA_BASE_URL: kumaBaseURL,
   },
 });
 
-export { newApiBaseURL, kumaBaseURL };
+export { newApiBaseURL };

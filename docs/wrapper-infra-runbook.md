@@ -1,4 +1,4 @@
-# Wrapper Infrastructure Runbook
+﻿# Wrapper Infrastructure Runbook
 
 This runbook covers the first wrapper-level customization layer around upstream New API. It does not change `vendor/new-api` source.
 
@@ -68,14 +68,14 @@ Snapshots are written under `snapshots/config/` by default and are ignored by gi
 
 ## Operations Profile Validation
 
-Validate the expected GLM standard pool without changing New API data:
+Validate the expected GLM Default pool without changing New API data:
 
 ```bash
 bash ops/export-config-snapshot.sh
-bash ops/validate-ops-profile.sh config/ops-profiles/glm-standard.example.json
+bash ops/validate-ops-profile.sh config/ops-profiles/glm-default.example.json
 ```
 
-The validator checks PostgreSQL channels and abilities for `standard` + `glm-5.1`, reports safe counts for users, tokens, subscriptions, and payment-looking options, and does not print secrets. Set `NEW_API_TEST_TOKEN` only if you also want a read-only `/v1/models` visibility check. Run `ops/e2e-api-billing.sh` separately for real upstream and quota-accounting validation.
+The validator checks PostgreSQL channels and abilities for `default` + `glm-5.1`, reports safe counts for users, tokens, subscriptions, and payment-looking options, and does not print secrets. Set `NEW_API_TEST_TOKEN` only if you also want a read-only `/v1/models` visibility check. Run `ops/e2e-api-billing.sh` separately for real upstream and quota-accounting validation.
 
 ## Restore Drill
 
@@ -101,7 +101,7 @@ Run the full gate before New API upgrades, channel changes, production deploymen
 export NEW_API_TEST_TOKEN="sk-..."
 export NEW_API_TEST_MODEL="glm-5.1"
 export CONFIG_SNAPSHOT_GPG_RECIPIENT="<gpg-key-id-or-email>"
-export OPS_PROFILE_FILE="config/ops-profiles/glm-standard.example.json"
+export OPS_PROFILE_FILE="config/ops-profiles/glm-default.example.json"
 bash ops/production-gate.sh
 ```
 
@@ -118,13 +118,13 @@ bash ops/production-gate.sh
 
 ## Production Deployment Kit
 
-For server bootstrap, SSH deploy, off-server restic backup, edge proxying, and no-loss migration, use:
+For server bootstrap, SSH deploy, local backup, edge proxying, and no-loss migration, use:
 
 ```bash
 bash ops/bootstrap-server.sh
 DEPLOY_HOST=root@x.x.x.x DEPLOY_PATH=/opt/lihan_ai bash ops/deploy-prod.sh
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
-ENV_FILE=.env.production bash ops/offsite-backup.sh
+ENV_FILE=.env.production bash ops/backup-cron.sh
 SOURCE_SSH=root@old TARGET_SSH=root@new bash ops/migration-preflight.sh
 ```
 

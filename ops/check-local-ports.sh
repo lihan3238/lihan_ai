@@ -19,7 +19,6 @@ print_result() {
 }
 
 OVERRIDE_NEW_API_DEV_PORT="${NEW_API_DEV_PORT:-}"
-OVERRIDE_KUMA_PORT="${KUMA_PORT:-}"
 
 if [ ! -f "$ENV_FILE" ]; then
   echo "missing env file: $ENV_FILE" >&2
@@ -32,7 +31,6 @@ set -a
 set +a
 
 NEW_API_DEV_PORT="${OVERRIDE_NEW_API_DEV_PORT:-${NEW_API_DEV_PORT:-3100}}"
-KUMA_PORT="${OVERRIDE_KUMA_PORT:-${KUMA_PORT:-3011}}"
 
 docker_ports="$(docker ps --format '{{.Names}} {{.Ports}}' 2>/dev/null || true)"
 
@@ -85,7 +83,6 @@ check_port() {
 }
 
 check_port "NEW_API_DEV_PORT" "$NEW_API_DEV_PORT" "relay-new-api"
-check_port "KUMA_PORT" "$KUMA_PORT" "relay-uptime-kuma"
 
 printf '\nSummary: pass=%s fail=%s\n' "$pass_count" "$fail_count"
 
