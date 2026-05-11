@@ -97,9 +97,11 @@ ingress:
 锁定权限：
 
 ```bash
-chmod 600 /opt/lihan_ai_deploy/shared/cloudflared/tunnel.json
-chmod 600 /opt/lihan_ai_deploy/shared/cloudflared/config.yml
+chmod 644 /opt/lihan_ai_deploy/shared/cloudflared/tunnel.json
+chmod 644 /opt/lihan_ai_deploy/shared/cloudflared/config.yml
 ```
+
+运行中的 `cloudflare/cloudflared` 容器默认不是 root，因此 bind-mounted `config.yml` 和 `tunnel.json` 必须能被容器用户读取。原始 `<tunnel-uuid>.json` 和 `cert.pem` 不要进 git；不作为 runtime bind mount 时，可以用更严格的权限保存。
 
 启动 stack 前确认这两个 bind mount 源路径都是普通文件。只要路径不存在，Docker 可能会自动创建同名目录，随后 `cloudflared` 会因为 `read /etc/cloudflared/config.yml: is a directory` 反复重启。
 
@@ -114,8 +116,10 @@ test -f /opt/lihan_ai_deploy/shared/cloudflared/tunnel.json && echo "tunnel.json
 sudo find /opt/lihan_ai_deploy/shared/cloudflared -maxdepth 3 -ls
 sudo rm -rf /opt/lihan_ai_deploy/shared/cloudflared/config.yml
 sudoedit /opt/lihan_ai_deploy/shared/cloudflared/config.yml
-chmod 600 /opt/lihan_ai_deploy/shared/cloudflared/config.yml
+chmod 644 /opt/lihan_ai_deploy/shared/cloudflared/config.yml
 ```
+
+如果 `tunnel.json` 丢失，需要找回或重新创建 Cloudflare 生成的 tunnel credentials。这个文件包含 Cloudflare Tunnel 凭据，不能手写伪造（cannot be hand-written）。
 
 ## 生产 Env
 
