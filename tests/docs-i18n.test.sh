@@ -137,11 +137,11 @@ for keyword in "ops/production-monitor.sh runtime" "ops/production-monitor.sh ba
   assert_contains "docs/zh-CN/release-deployment-runbook.md" "$keyword"
 done
 
-for keyword in "Daily quick check" "Arch Linux" "cronie" "systemctl is-active cronie" "production-monitor.sh runtime" "production-monitor.sh audit" "ops/deploy-release.sh promote" "ops/verify-remote-prod.sh" "set -a; . ./.env.production; set +a" "restic snapshots" "restore-postgres.sh" "df -Pi" "inode_status"; do
+for keyword in "Daily quick check" "Arch Linux" "cronie" "systemctl is-active cronie" "production-monitor.sh runtime" "production-monitor.sh audit" "Run from your local machine" "ssh -N -L 13021:127.0.0.1:3021" "ssh -N -L 13011:127.0.0.1:3011" "ops/deploy-release.sh promote" "ops/verify-remote-prod.sh" "set -a; . ./.env.production; set +a" "restic snapshots" "restore-postgres.sh" "df -Pi" "inode_status"; do
   assert_contains "docs/ops-quick-reference.md" "$keyword"
 done
 
-for keyword in "Arch Linux" "cronie" "systemctl is-active cronie" "production-monitor.sh runtime" "production-monitor.sh audit" "ops/deploy-release.sh promote" "ops/verify-remote-prod.sh" "set -a; . ./.env.production; set +a" "restic snapshots" "restore-postgres.sh" "df -Pi" "inode_status"; do
+for keyword in "Arch Linux" "cronie" "systemctl is-active cronie" "production-monitor.sh runtime" "production-monitor.sh audit" "在本地电脑/WSL" "ssh -N -L 13021:127.0.0.1:3021" "ssh -N -L 13011:127.0.0.1:3011" "ops/deploy-release.sh promote" "ops/verify-remote-prod.sh" "set -a; . ./.env.production; set +a" "restic snapshots" "restore-postgres.sh" "df -Pi" "inode_status"; do
   assert_contains "docs/zh-CN/ops-quick-reference.md" "$keyword"
 done
 
