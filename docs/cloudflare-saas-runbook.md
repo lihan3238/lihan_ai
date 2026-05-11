@@ -158,6 +158,8 @@ DOMAIN=origin.lihan3238.top
 
 Prepare, smoke, and promote the next release from your local repository:
 
+The normal release path now reads `DEPLOY_INCLUDE_CPA=1` and `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1` from the remote `.env.production`. The explicit variables below are kept as an emergency override example; daily deploys can use the shorter README commands.
+
 ```bash
 DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
 DEPLOY_REF=main \

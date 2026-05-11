@@ -158,6 +158,8 @@ DOMAIN=origin.lihan3238.top
 
 从本地仓库执行 prepare、smoke、promote：
 
+正常 release 路径现在会从远端 `.env.production` 读取 `DEPLOY_INCLUDE_CPA=1` 和 `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1`。下面保留显式变量作为应急覆盖示例；日常发布可以使用 README 里的短命令。
+
 ```bash
 DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
 DEPLOY_REF=main \

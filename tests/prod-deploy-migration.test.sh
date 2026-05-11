@@ -114,6 +114,31 @@ dry_deploy_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@ex
 printf '%s' "$dry_deploy_output" | grep -q "DRY RUN" || fail "deploy dry-run did not announce dry run: $dry_deploy_output"
 printf '%s' "$dry_deploy_output" | grep -q "ssh root@example" || fail "deploy dry-run did not show ssh target: $dry_deploy_output"
 
+verify_ssh_log="$tmp_dir/verify-ssh.log"
+verify_stdin_log="$tmp_dir/verify-stdin.sh"
+cat > "$fake_bin/ssh" <<'SSH'
+#!/usr/bin/env sh
+printf '%s\n' "$*" > "$FAKE_VERIFY_SSH_LOG"
+cat > "$FAKE_VERIFY_STDIN_LOG"
+exit 0
+SSH
+chmod +x "$fake_bin/ssh"
+
+PATH="$fake_bin:$PATH" FAKE_VERIFY_SSH_LOG="$verify_ssh_log" FAKE_VERIFY_STDIN_LOG="$verify_stdin_log" DEPLOY_HOST=root@example "$ROOT_DIR/ops/verify-remote-prod.sh"
+verify_ssh_command="$(cat "$verify_ssh_log")"
+verify_remote_script="$(cat "$verify_stdin_log")"
+printf '%s' "$verify_ssh_command" | grep -q "DEPLOY_PATH=''" || fail "verify should not force legacy DEPLOY_PATH when unset: $verify_ssh_command"
+printf '%s' "$verify_ssh_command" | grep -q "DEPLOY_PATH_EXPLICIT='0'" || fail "verify should mark DEPLOY_PATH as implicit: $verify_ssh_command"
+printf '%s' "$verify_remote_script" | grep -q "/opt/lihan_ai_deploy/current" || fail "verify remote script should prefer release current path: $verify_remote_script"
+printf '%s' "$verify_remote_script" | grep -q "docker-compose.cpa.yml" || fail "verify remote script should support CPA overlay: $verify_remote_script"
+printf '%s' "$verify_remote_script" | grep -q "docker-compose.cloudflare-tunnel.yml" || fail "verify remote script should support Tunnel overlay: $verify_remote_script"
+printf '%s' "$verify_remote_script" | grep -q "ops/check-production-runtime.sh" || fail "verify remote script should reuse runtime checker: $verify_remote_script"
+
+PATH="$fake_bin:$PATH" FAKE_VERIFY_SSH_LOG="$verify_ssh_log" FAKE_VERIFY_STDIN_LOG="$verify_stdin_log" DEPLOY_HOST=root@example DEPLOY_PATH=/custom/current "$ROOT_DIR/ops/verify-remote-prod.sh"
+verify_ssh_command="$(cat "$verify_ssh_log")"
+printf '%s' "$verify_ssh_command" | grep -q "DEPLOY_PATH='/custom/current'" || fail "verify should pass explicit DEPLOY_PATH: $verify_ssh_command"
+printf '%s' "$verify_ssh_command" | grep -q "DEPLOY_PATH_EXPLICIT='1'" || fail "verify should mark DEPLOY_PATH as explicit: $verify_ssh_command"
+
 dry_migration_output="$(PATH="$fake_bin:$PATH" MIGRATION_DRY_RUN=1 CONFIRM_FINAL_CUTOVER=yes SOURCE_SSH=root@old TARGET_SSH=root@new "$ROOT_DIR/ops/migrate-prod.sh")"
 printf '%s' "$dry_migration_output" | grep -q "DRY RUN" || fail "migration dry-run did not announce dry run: $dry_migration_output"
 printf '%s' "$dry_migration_output" | grep -q "final dump" || fail "migration dry-run missing final dump step: $dry_migration_output"

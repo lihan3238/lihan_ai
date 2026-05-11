@@ -89,7 +89,7 @@ DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
 ```
 
-`bootstrap` prepares the release directory model. `prepare` records a remote `candidate`, so normal `smoke` and `promote` do not need `RELEASE_ID`.
+`bootstrap` prepares the release directory model. `prepare` records a remote `candidate`, so normal `smoke` and `promote` do not need `RELEASE_ID`. Release commands read CPA and Cloudflare Tunnel topology from the remote `.env.production` by default; pass `DEPLOY_INCLUDE_*` only for an intentional temporary override.
 
 ### Update production to latest main
 
@@ -106,7 +106,7 @@ DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
 ```
 
-Use `RELEASE_ID=<release-id>` only when deliberately operating on an older prepared release.
+Use `RELEASE_ID=<release-id>` only when deliberately operating on an older prepared release. Release commands read CPA and Cloudflare Tunnel topology from the remote `.env.production` by default; pass `DEPLOY_INCLUDE_*` only for an intentional temporary override.
 
 ### Open and close CPA UI
 
@@ -203,7 +203,7 @@ DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh promote
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ```
 
-`prepare` records the newest prepared release as `candidate`, so normal `smoke` and `promote` commands do not need a copied `RELEASE_ID`. Set `RELEASE_ID=<release-id>` only when you intentionally want to smoke or promote a specific older release.
+`prepare` records the newest prepared release as `candidate`, so normal `smoke` and `promote` commands do not need a copied `RELEASE_ID`. The release script reads CPA and Cloudflare Tunnel topology from the remote `.env.production` by default. Set `RELEASE_ID=<release-id>` only when you intentionally want to smoke or promote a specific older release.
 
 Legacy direct-checkout deploy remains available:
 

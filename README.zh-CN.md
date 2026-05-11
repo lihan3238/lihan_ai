@@ -91,7 +91,7 @@ DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
 ```
 
-`bootstrap` 会准备 release 目录模型。`prepare` 会在远端记录 `candidate`，所以正常 `smoke` 和 `promote` 不需要再手动填写 `RELEASE_ID`。
+`bootstrap` 会准备 release 目录模型。`prepare` 会在远端记录 `candidate`，所以正常 `smoke` 和 `promote` 不需要再手动填写 `RELEASE_ID`。release 命令默认从远端 `.env.production` 读取 CPA 和 Cloudflare Tunnel 拓扑；只有临时覆盖时才手动传 `DEPLOY_INCLUDE_*`。
 
 ### 更新最新版本到生产环境
 
@@ -108,7 +108,7 @@ DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
 ```
 
-只有明确要操作某个旧 release 时，才额外设置 `RELEASE_ID=<release-id>`。
+只有明确要操作某个旧 release 时，才额外设置 `RELEASE_ID=<release-id>`。release 命令默认从远端 `.env.production` 读取 CPA 和 Cloudflare Tunnel 拓扑；只有临时覆盖时才手动传 `DEPLOY_INCLUDE_*`。
 
 ### 打开和关闭 CPA UI
 
@@ -205,7 +205,7 @@ DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh promote
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ```
 
-`prepare` 会把最新准备好的 release 记录为 `candidate`，所以正常的 `smoke` 和 `promote` 不需要再手动复制 `RELEASE_ID`。只有明确要测试或发布某个旧 release 时，才额外设置 `RELEASE_ID=<release-id>`。
+`prepare` 会把最新准备好的 release 记录为 `candidate`，所以正常的 `smoke` 和 `promote` 不需要再手动复制 `RELEASE_ID`。release 脚本默认从远端 `.env.production` 读取 CPA 和 Cloudflare Tunnel 拓扑。只有明确要测试或发布某个旧 release 时，才额外设置 `RELEASE_ID=<release-id>`。
 
 legacy 直接 checkout 部署仍保留：
 
