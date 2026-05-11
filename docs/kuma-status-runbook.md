@@ -24,6 +24,20 @@ Configure monitors manually in Uptime Kuma first. Keep any test API token inside
 
 Only add a real chat-completion probe if you accept small recurring token cost. Keep the prompt short and the token quota low.
 
+## Internal Ops Monitors
+
+Create a separate internal status page group for production operations. This group is meant for operators, not for the public status page:
+
+- `Runtime`: Push monitor receiving `MONITOR_PUSH_RUNTIME_URL`.
+- `Backup`: Push monitor receiving `MONITOR_PUSH_BACKUP_URL`.
+- `Offsite`: Push monitor receiving `MONITOR_PUSH_OFFSITE_URL`.
+- `Audit`: Push monitor receiving `MONITOR_PUSH_AUDIT_URL`.
+- `Restore Drill`: Push monitor receiving `MONITOR_PUSH_RESTORE_DRILL_URL`.
+
+Store the Push URLs only in `.env.production` or inside Kuma. The monitor wrapper sends `status=up|down`, a short `msg`, and a `ping` duration; it must not include API tokens, restic passwords, webhook URLs, provider names, or backup filenames.
+
+New API can continue to read the Uptime Kuma status page group through its existing dashboard integration for high-level red/green state. Detailed backup inventory, restore-drill age, disk pressure, container health, and cron freshness live in the local Ops Dashboard generated under `logs/ops-health/`.
+
 ## Publishing With Caddy
 
 The base `Caddyfile` does not publish Kuma by default. To expose a status subdomain:
@@ -51,7 +65,31 @@ Use the advisor output for internal decisions. Translate it into a short user-fa
 
 ## Local Port
 
-Use local host port `3011` for Kuma on this workstation because `3001` may already be used by other Docker projects:
+Use local host port `3011` for Kuma on this workstation because `3001` may already be used by other Docker projects.
+
+On production, temporarily open the admin UI only on the server loopback interface:
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/kuma-ui.sh open
+ENV_FILE=.env.production bash ops/kuma-ui.sh ps
+```
+
+From your local machine, forward the loopback port:
+
+```bash
+ssh -L 3011:127.0.0.1:3011 <deploy-user>@<origin-host>
+```
+
+Open `http://127.0.0.1:3011`. When finished, close the temporary UI binding:
+
+```bash
+ENV_FILE=.env.production bash ops/kuma-ui.sh close
+```
+
+`ops/kuma-ui.sh` uses `docker-compose.kuma.ui.yml`, binds only `127.0.0.1:${KUMA_PORT:-3011}`, recreates only `uptime-kuma`, and does not use `--remove-orphans`.
+
+For local workstation testing without the helper:
 
 ```powershell
 $env:KUMA_PORT="3011"

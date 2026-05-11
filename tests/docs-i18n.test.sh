@@ -61,7 +61,7 @@ for keyword in "Common Production Commands" "Initial production deployment" "Upd
   assert_contains "README.md" "$keyword"
 done
 
-for keyword in "Production Cron monitoring" "ops/production-monitor.sh runtime" "ops/production-monitor.sh backup" "ops/production-monitor.sh offsite" "MONITOR_ALERT_WEBHOOK_URL"; do
+for keyword in "Production Cron monitoring" "ops/production-monitor.sh runtime" "ops/production-monitor.sh backup" "ops/production-monitor.sh offsite" "ops/production-monitor.sh audit" "ops/production-monitor.sh restore-drill" "MONITOR_ALERT_WEBHOOK_URL" "MONITOR_PUSH_AUDIT_URL" "ops-dashboard.sh open"; do
   assert_contains "README.md" "$keyword"
 done
 
@@ -69,7 +69,7 @@ for keyword in "生产常用命令" "初始部署" "更新最新版本到生产�
   assert_contains "README.zh-CN.md" "$keyword"
 done
 
-for keyword in "ops/production-monitor.sh runtime" "ops/production-monitor.sh backup" "ops/production-monitor.sh offsite" "MONITOR_ALERT_WEBHOOK_URL"; do
+for keyword in "ops/production-monitor.sh runtime" "ops/production-monitor.sh backup" "ops/production-monitor.sh offsite" "ops/production-monitor.sh audit" "ops/production-monitor.sh restore-drill" "MONITOR_ALERT_WEBHOOK_URL" "MONITOR_PUSH_AUDIT_URL" "ops-dashboard.sh open"; do
   assert_contains "README.zh-CN.md" "$keyword"
 done
 
@@ -78,7 +78,7 @@ for keyword in "CONFIRM_FINAL_CUTOVER=yes" "ops/migrate-prod.sh" "SOURCE_SSH" "T
   assert_contains "docs/zh-CN/migration-runbook.md" "$keyword"
 done
 
-for keyword in "RESTIC_REPOSITORY" "ops/offsite-backup.sh" "ops/restore-postgres.sh"; do
+for keyword in "RESTIC_REPOSITORY" "ops/offsite-backup.sh" "ops/restore-postgres.sh" "ops/production-monitor.sh backup" "ops/production-monitor.sh offsite" "ops/production-monitor.sh audit" "ops/production-monitor.sh restore-drill" "MONITOR_PUSH_RESTORE_DRILL_URL"; do
   assert_contains "docs/disaster-recovery-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/disaster-recovery-runbook.md" "$keyword"
 done
@@ -93,7 +93,7 @@ for keyword in "api.lihan3238.com" "origin.lihan3238.top" "Cloudflare Tunnel" "c
   assert_contains "docs/zh-CN/cloudflare-saas-runbook.md" "$keyword"
 done
 
-for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai/data/cpa" "docker compose -p lihan_ai" "docker-compose.cloudflare-tunnel.yml" "ops/cpa-ui.sh" "--no-deps"; do
+for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai/data/cpa" "docker compose -p lihan_ai" "docker-compose.cloudflare-tunnel.yml" "ops/cpa-ui.sh" "--no-deps" "Ops Dashboard" "Uptime Kuma Push monitors"; do
   assert_contains "docs/cpa-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
 done
@@ -119,7 +119,7 @@ for keyword in "drill-restore-stack.sh" "ENV_FILE=.env.production" "check-produc
   assert_contains "docs/zh-CN/backup-strategy.md" "$keyword"
 done
 
-for keyword in "ops/production-monitor.sh runtime" "ops/production-monitor.sh backup" "ops/production-monitor.sh offsite" "MONITOR_ALERT_WEBHOOK_URL" "production-monitor-runtime.log"; do
+for keyword in "ops/production-monitor.sh runtime" "ops/production-monitor.sh backup" "ops/production-monitor.sh offsite" "ops/production-monitor.sh audit" "ops/production-monitor.sh restore-drill" "MONITOR_ALERT_WEBHOOK_URL" "MONITOR_PUSH_AUDIT_URL" "ops-dashboard.sh open" "production-monitor-runtime.log"; do
   assert_contains "docs/backup-strategy.md" "$keyword"
   assert_contains "docs/zh-CN/backup-strategy.md" "$keyword"
   assert_contains "docs/operations-runbook.md" "$keyword"

@@ -60,7 +60,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docs/edge-proxy-runbook.md`: China-optimized edge reverse proxy setup.
 - `docs/migration-runbook.md`: no-loss server migration flow.
 - `docs/disaster-recovery-runbook.md`: off-server backup and restore flow.
-- `docs/kuma-status-runbook.md`: Uptime Kuma public status-page setup.
+- `docs/kuma-status-runbook.md`: Uptime Kuma public status page and internal Push monitor setup.
 - `docs/cpa-runbook.md`: optional CPA deployment and SSH-tunneled management UI.
 - `docs/development-workflow.md`: research-first development workflow.
 - `docs/templates/ai-dev/`: Spec Kit style templates for AI-assisted development.
@@ -136,7 +136,9 @@ ops/cpa-ui.sh ps
 
 ### Production Cron monitoring
 
-Production cron should call the wrapper script instead of calling backup/runtime scripts directly. The wrapper writes `logs/production-monitor-<mode>.log`, updates `logs/production-monitor-<mode>.status`, and sends optional coarse alerts when `MONITOR_ALERT_WEBHOOK_URL` is set in `.env.production`.
+Production cron should call the wrapper script instead of calling backup/runtime scripts directly. The wrapper writes `logs/production-monitor-<mode>.log`, updates `logs/production-monitor-<mode>.status`, sends optional coarse alerts when `MONITOR_ALERT_WEBHOOK_URL` is set in `.env.production`, and can push heartbeat status to Uptime Kuma when `MONITOR_PUSH_*_URL` values are set.
+
+After creating the matching Uptime Kuma Push monitors, set `MONITOR_PUSH_RUNTIME_URL`, `MONITOR_PUSH_BACKUP_URL`, `MONITOR_PUSH_OFFSITE_URL`, `MONITOR_PUSH_AUDIT_URL`, and `MONITOR_PUSH_RESTORE_DRILL_URL` in `.env.production`.
 
 Manual checks on the production server:
 
@@ -145,17 +147,23 @@ cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/production-monitor.sh runtime
 ENV_FILE=.env.production bash ops/production-monitor.sh backup
 ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+ENV_FILE=.env.production bash ops/production-monitor.sh audit
+ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
+ENV_FILE=.env.production bash ops/ops-health-report.sh render
+ENV_FILE=.env.production bash ops/ops-dashboard.sh open
 ```
 
 Suggested crontab entries:
 
 ```cron
 */5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+*/15 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh audit
 15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
 35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+20 4 1 * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
 ```
 
-The repository does not install cron automatically; copy the entries deliberately on the origin server.
+`audit` generates `logs/ops-health/status.json` and `logs/ops-health/index.html`. `ops-dashboard.sh open` serves that static dashboard only on `127.0.0.1:${OPS_DASHBOARD_PORT:-3021}`; view it through an SSH tunnel when needed. The repository does not install cron automatically; copy the entries deliberately on the origin server.
 
 ## Other Useful Commands
 
@@ -286,4 +294,4 @@ It reads New API PostgreSQL tables and reports channel capacity, recent errors, 
 
 The default health profile uses `mode: development`, which treats noisy setup errors and slow probes as warnings unless the error rate itself is unhealthy. Before paid production traffic, copy the profile and switch to `mode: production` with stricter thresholds.
 
-For user-facing availability, use Uptime Kuma. Follow `docs/kuma-status-runbook.md` and publish only coarse components such as API Gateway, GLM Standard, Account & Billing, and Maintenance Notice.
+For user-facing availability, use Uptime Kuma. Follow `docs/kuma-status-runbook.md` and publish only coarse components such as API Gateway, GLM Standard, Account & Billing, and Maintenance Notice. The same runbook also covers internal Push monitors for ops and backup health.

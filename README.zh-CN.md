@@ -62,7 +62,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docs/edge-proxy-runbook.md`：中国优化 edge 反代流程。
 - `docs/migration-runbook.md`：无损迁移流程。
 - `docs/disaster-recovery-runbook.md`：离线备份和灾难恢复流程。
-- `docs/kuma-status-runbook.md`：Uptime Kuma 公开状态页配置。
+- `docs/kuma-status-runbook.md`：Uptime Kuma 公开状态页和内部 Push monitor 配置。
 - `docs/cpa-runbook.md`：可选 CPA 部署和 SSH 隧道管理 UI。
 - `docs/development-workflow.md`：research-first 开发流程。
 - `docs/templates/ai-dev/`：AI 辅助开发模板。
@@ -138,7 +138,9 @@ ops/cpa-ui.sh ps
 
 ### 生产 Cron 监控
 
-生产 cron 统一调用 wrapper，不再直接散落调用 backup/runtime 脚本。它会写入 `logs/production-monitor-<mode>.log`，更新 `logs/production-monitor-<mode>.status`；如果 `.env.production` 设置了 `MONITOR_ALERT_WEBHOOK_URL`，失败和恢复时会发送粗粒度 webhook 告警。
+生产 cron 统一调用 wrapper，不再直接散落调用 backup/runtime 脚本。它会写入 `logs/production-monitor-<mode>.log`，更新 `logs/production-monitor-<mode>.status`；如果 `.env.production` 设置了 `MONITOR_ALERT_WEBHOOK_URL`，失败和恢复时会发送粗粒度 webhook 告警；如果设置了 `MONITOR_PUSH_*_URL`，也会向 Uptime Kuma Push monitor 发送心跳。
+
+创建对应的 Uptime Kuma Push monitors 后，在 `.env.production` 设置 `MONITOR_PUSH_RUNTIME_URL`、`MONITOR_PUSH_BACKUP_URL`、`MONITOR_PUSH_OFFSITE_URL`、`MONITOR_PUSH_AUDIT_URL`、`MONITOR_PUSH_RESTORE_DRILL_URL`。
 
 在生产服务器手动检查：
 
@@ -147,17 +149,23 @@ cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/production-monitor.sh runtime
 ENV_FILE=.env.production bash ops/production-monitor.sh backup
 ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+ENV_FILE=.env.production bash ops/production-monitor.sh audit
+ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
+ENV_FILE=.env.production bash ops/ops-health-report.sh render
+ENV_FILE=.env.production bash ops/ops-dashboard.sh open
 ```
 
 建议 crontab：
 
 ```cron
 */5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+*/15 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh audit
 15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
 35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+20 4 1 * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
 ```
 
-仓库不会自动安装 cron；在 origin 服务器上确认后手动复制这些条目。
+`audit` 会生成 `logs/ops-health/status.json` 和 `logs/ops-health/index.html`。`ops-dashboard.sh open` 只在 `127.0.0.1:${OPS_DASHBOARD_PORT:-3021}` 提供静态看板，需要查看时通过 SSH 隧道打开。仓库不会自动安装 cron；在 origin 服务器上确认后手动复制这些条目。
 
 ## 其他常用命令
 
@@ -287,4 +295,4 @@ bash ops/channel-health-advisor.sh config/ops-profiles/glm-standard-health.examp
 
 默认健康 profile 使用 `mode: development`，会把搭建期噪声错误和慢探测降级为 warning。正式收费前，复制 profile 并切到 `mode: production`，再收紧阈值。
 
-用户侧状态页使用 Uptime Kuma。按 `docs/kuma-status-runbook.md` 发布粗粒度组件，例如 API Gateway、GLM Standard、Account & Billing、Maintenance Notice。
+用户侧状态页使用 Uptime Kuma。按 `docs/kuma-status-runbook.md` 发布粗粒度组件，例如 API Gateway、GLM Standard、Account & Billing、Maintenance Notice。内部 ops/backup Push monitors 也在同一份 runbook 里配置。
