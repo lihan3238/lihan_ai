@@ -44,6 +44,8 @@ DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0
 RELEASE_KEEP=5
 ```
 
+默认情况下，release 命令会从远端 `.env.production` 读取 `DEPLOY_COMPOSE_PROJECT`、`DEPLOY_INCLUDE_CPA` 和 `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL`。只有临时覆盖时才在本地显式传这些变量。
+
 如果启用 CPA，把 CPA 运行时文件放到 shared：
 
 ```env

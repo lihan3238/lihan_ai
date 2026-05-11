@@ -57,11 +57,11 @@ for keyword in ".github/workflows/ci.yml" "GitHub Actions PR CI"; do
   assert_contains "README.zh-CN.md" "$keyword"
 done
 
-for keyword in "Common Production Commands" "Initial production deployment" "Update production to latest main" "Open and close CPA UI" "ops/deploy-release.sh bootstrap" "ops/deploy-release.sh prepare" "ops/deploy-release.sh smoke" "ops/deploy-release.sh promote" "ops/cpa-ui.sh open" "ops/cpa-ui.sh close" "ssh -L 8317"; do
+for keyword in "Common Production Commands" "Initial production deployment" "Update production to latest main" "Open and close CPA UI" "ops/deploy-release.sh bootstrap" "ops/deploy-release.sh prepare" "ops/deploy-release.sh smoke" "ops/deploy-release.sh promote" 'remote `.env.production`' "DEPLOY_INCLUDE_*" "ops/cpa-ui.sh open" "ops/cpa-ui.sh close" "ssh -L 8317"; do
   assert_contains "README.md" "$keyword"
 done
 
-for keyword in "生产常用命令" "初始部署" "更新最新版本到生产环境" "打开和关闭 CPA UI" "ops/deploy-release.sh bootstrap" "ops/deploy-release.sh prepare" "ops/deploy-release.sh smoke" "ops/deploy-release.sh promote" "ops/cpa-ui.sh open" "ops/cpa-ui.sh close" "ssh -L 8317"; do
+for keyword in "生产常用命令" "初始部署" "更新最新版本到生产环境" "打开和关闭 CPA UI" "ops/deploy-release.sh bootstrap" "ops/deploy-release.sh prepare" "ops/deploy-release.sh smoke" "ops/deploy-release.sh promote" "DEPLOY_INCLUDE_*" "ops/cpa-ui.sh open" "ops/cpa-ui.sh close" "ssh -L 8317"; do
   assert_contains "README.zh-CN.md" "$keyword"
 done
 

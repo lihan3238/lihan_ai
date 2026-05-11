@@ -26,6 +26,7 @@ Rules:
 - `main` remains the production branch. Production release deploys refuse non-`main` refs unless `ALLOW_NON_MAIN_PROD_DEPLOY=1` is set for a documented emergency.
 - `git fetch`, candidate release creation, and candidate smoke tests do not modify `current`.
 - Successful `prepare` updates `candidate`; normal `smoke` and `promote` use that candidate when `RELEASE_ID` is omitted.
+- When `DEPLOY_INCLUDE_CPA`, `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL`, or `DEPLOY_COMPOSE_PROJECT` are not passed locally, release commands read them from the remote env file. Pass them locally only for an intentional temporary override.
 - Docker Compose is always run from `current` with `docker compose -p "$DEPLOY_COMPOSE_PROJECT"`.
 - Runtime files live under `shared/`, not inside a release checkout.
 - Releases are not zero-downtime. `promote` switches `current` and restarts the Compose stack.
@@ -144,7 +145,7 @@ Promote a tested release:
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
 ```
 
-`promote` uses `/opt/lihan_ai_deploy/candidate` by default. It backs up the current production PostgreSQL database when a current stack exists, points `previous` at the old release, atomically switches `current`, runs:
+`promote` uses `/opt/lihan_ai_deploy/candidate` by default. It resolves CPA, Cloudflare Tunnel, and Compose project settings from the remote `.env.production` unless explicitly overridden by local environment variables. It backs up the current production PostgreSQL database when a current stack exists, points `previous` at the old release, atomically switches `current`, runs:
 
 ```bash
 docker compose -p lihan_ai --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans

@@ -34,9 +34,21 @@ DEPLOY_ENV="${DEPLOY_ENV:-production}"
 DEPLOY_ENV_FILE="${DEPLOY_ENV_FILE:-.env.production}"
 DEPLOY_REF="${DEPLOY_REF:-main}"
 DEPLOY_REPO="${DEPLOY_REPO:-$(git -C "$ROOT_DIR" config --get remote.origin.url 2>/dev/null || true)}"
-DEPLOY_COMPOSE_PROJECT="${DEPLOY_COMPOSE_PROJECT:-lihan_ai}"
-DEPLOY_INCLUDE_CPA="${DEPLOY_INCLUDE_CPA:-0}"
-DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL="${DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL:-0}"
+DEPLOY_COMPOSE_PROJECT_EXPLICIT=0
+if [ "${DEPLOY_COMPOSE_PROJECT+x}" = "x" ] && [ -n "${DEPLOY_COMPOSE_PROJECT:-}" ]; then
+  DEPLOY_COMPOSE_PROJECT_EXPLICIT=1
+fi
+DEPLOY_COMPOSE_PROJECT="${DEPLOY_COMPOSE_PROJECT:-}"
+DEPLOY_INCLUDE_CPA_EXPLICIT=0
+if [ "${DEPLOY_INCLUDE_CPA+x}" = "x" ] && [ -n "${DEPLOY_INCLUDE_CPA:-}" ]; then
+  DEPLOY_INCLUDE_CPA_EXPLICIT=1
+fi
+DEPLOY_INCLUDE_CPA="${DEPLOY_INCLUDE_CPA:-}"
+DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT=0
+if [ "${DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL+x}" = "x" ] && [ -n "${DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL:-}" ]; then
+  DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT=1
+fi
+DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL="${DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL:-}"
 RELEASE_KEEP="${RELEASE_KEEP:-5}"
 RUN_REMOTE_BACKUP="${RUN_REMOTE_BACKUP:-1}"
 ALLOW_NON_MAIN_PROD_DEPLOY="${ALLOW_NON_MAIN_PROD_DEPLOY:-0}"
@@ -57,6 +69,69 @@ if [ "$DEPLOY_ENV" = "production" ] && [ "$DEPLOY_REF" != "main" ]; then
   echo "WARN non-main production release deploy override: DEPLOY_REF=$DEPLOY_REF" >&2
 fi
 
+env_value_from_file() {
+  file="$1"
+  key="$2"
+  [ -f "$file" ] || return 0
+  awk -F= -v key="$key" '
+    $0 !~ /^[[:space:]]*#/ && $1 == key {
+      value = substr($0, index($0, "=") + 1)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      gsub(/^"|"$/, "", value)
+      gsub(/^'\''|'\''$/, "", value)
+      print value
+      exit
+    }
+  ' "$file"
+}
+
+local_env_defaults_file() {
+  case "$DEPLOY_ENV_FILE" in
+    /*) printf '%s' "$DEPLOY_ENV_FILE" ;;
+    *) printf '%s/%s' "$ROOT_DIR" "$DEPLOY_ENV_FILE" ;;
+  esac
+}
+
+resolve_preview_config() {
+  defaults_file="$(local_env_defaults_file)"
+
+  if [ "$DEPLOY_COMPOSE_PROJECT_EXPLICIT" = "1" ]; then
+    DEPLOY_COMPOSE_PROJECT_SOURCE="explicit env"
+  else
+    value="$(env_value_from_file "$defaults_file" DEPLOY_COMPOSE_PROJECT)"
+    DEPLOY_COMPOSE_PROJECT="${value:-lihan_ai}"
+    if [ -n "$value" ]; then
+      DEPLOY_COMPOSE_PROJECT_SOURCE="remote env default"
+    else
+      DEPLOY_COMPOSE_PROJECT_SOURCE="built-in default"
+    fi
+  fi
+
+  if [ "$DEPLOY_INCLUDE_CPA_EXPLICIT" = "1" ]; then
+    DEPLOY_INCLUDE_CPA_SOURCE="explicit env"
+  else
+    value="$(env_value_from_file "$defaults_file" DEPLOY_INCLUDE_CPA)"
+    DEPLOY_INCLUDE_CPA="${value:-0}"
+    if [ -n "$value" ]; then
+      DEPLOY_INCLUDE_CPA_SOURCE="remote env default"
+    else
+      DEPLOY_INCLUDE_CPA_SOURCE="built-in default"
+    fi
+  fi
+
+  if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT" = "1" ]; then
+    DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_SOURCE="explicit env"
+  else
+    value="$(env_value_from_file "$defaults_file" DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL)"
+    DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL="${value:-0}"
+    if [ -n "$value" ]; then
+      DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_SOURCE="remote env default"
+    else
+      DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_SOURCE="built-in default"
+    fi
+  fi
+}
+
 compose_preview() {
   printf 'docker compose -p %s --env-file %s -f docker-compose.yml -f docker-compose.prod.yml' "$DEPLOY_COMPOSE_PROJECT" "$DEPLOY_ENV_FILE"
   if [ "$DEPLOY_INCLUDE_CPA" = "1" ]; then
@@ -76,12 +151,14 @@ compose_up_preview() {
 }
 
 if [ "$DEPLOY_DRY_RUN" = "1" ]; then
+  resolve_preview_config
   echo "DRY RUN release $command to $DEPLOY_HOST"
   echo "DEPLOY_ROOT=$DEPLOY_ROOT"
   echo "DEPLOY_REPO=$DEPLOY_REPO"
   echo "DEPLOY_REF=$DEPLOY_REF"
-  echo "DEPLOY_COMPOSE_PROJECT=$DEPLOY_COMPOSE_PROJECT"
-  echo "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL"
+  echo "DEPLOY_COMPOSE_PROJECT=$DEPLOY_COMPOSE_PROJECT ($DEPLOY_COMPOSE_PROJECT_SOURCE)"
+  echo "DEPLOY_INCLUDE_CPA=$DEPLOY_INCLUDE_CPA ($DEPLOY_INCLUDE_CPA_SOURCE)"
+  echo "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL ($DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_SOURCE)"
   echo "repo: $DEPLOY_ROOT/repo.git"
   echo "releases: $DEPLOY_ROOT/releases"
   echo "shared: $DEPLOY_ROOT/shared"
@@ -144,7 +221,7 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
 fi
 
 ssh "$DEPLOY_HOST" \
-  "DEPLOY_ROOT='$DEPLOY_ROOT' DEPLOY_ENV='$DEPLOY_ENV' DEPLOY_ENV_FILE='$DEPLOY_ENV_FILE' DEPLOY_REF='$DEPLOY_REF' DEPLOY_REPO='$DEPLOY_REPO' DEPLOY_COMPOSE_PROJECT='$DEPLOY_COMPOSE_PROJECT' DEPLOY_INCLUDE_CPA='$DEPLOY_INCLUDE_CPA' DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL='$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL' RELEASE_KEEP='$RELEASE_KEEP' RUN_REMOTE_BACKUP='$RUN_REMOTE_BACKUP' LEGACY_DEPLOY_PATH='$LEGACY_DEPLOY_PATH' RELEASE_ID='$RELEASE_ID' SMOKE_BACKUP_PATH='${SMOKE_BACKUP_PATH:-}' sh -s -- '$command' '$release_arg'" <<'REMOTE'
+  "DEPLOY_ROOT='$DEPLOY_ROOT' DEPLOY_ENV='$DEPLOY_ENV' DEPLOY_ENV_FILE='$DEPLOY_ENV_FILE' DEPLOY_REF='$DEPLOY_REF' DEPLOY_REPO='$DEPLOY_REPO' DEPLOY_COMPOSE_PROJECT='$DEPLOY_COMPOSE_PROJECT' DEPLOY_COMPOSE_PROJECT_EXPLICIT='$DEPLOY_COMPOSE_PROJECT_EXPLICIT' DEPLOY_INCLUDE_CPA='$DEPLOY_INCLUDE_CPA' DEPLOY_INCLUDE_CPA_EXPLICIT='$DEPLOY_INCLUDE_CPA_EXPLICIT' DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL='$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL' DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT='$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT' RELEASE_KEEP='$RELEASE_KEEP' RUN_REMOTE_BACKUP='$RUN_REMOTE_BACKUP' LEGACY_DEPLOY_PATH='$LEGACY_DEPLOY_PATH' RELEASE_ID='$RELEASE_ID' SMOKE_BACKUP_PATH='${SMOKE_BACKUP_PATH:-}' sh -s -- '$command' '$release_arg'" <<'REMOTE'
 set -eu
 
 command="$1"
@@ -165,6 +242,60 @@ log() {
 fail() {
   echo "$*" >&2
   exit 1
+}
+
+env_value_from_file() {
+  file="$1"
+  key="$2"
+  [ -f "$file" ] || return 0
+  awk -F= -v key="$key" '
+    $0 !~ /^[[:space:]]*#/ && $1 == key {
+      value = substr($0, index($0, "=") + 1)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      gsub(/^"|"$/, "", value)
+      gsub(/^'\''|'\''$/, "", value)
+      print value
+      exit
+    }
+  ' "$file"
+}
+
+deploy_defaults_file() {
+  preferred_release="${1:-}"
+  if [ -n "$preferred_release" ] && [ -f "$preferred_release/$DEPLOY_ENV_FILE" ]; then
+    printf '%s/%s' "$preferred_release" "$DEPLOY_ENV_FILE"
+    return
+  fi
+  if [ -f "$shared_dir/$DEPLOY_ENV_FILE" ]; then
+    printf '%s/%s' "$shared_dir" "$DEPLOY_ENV_FILE"
+    return
+  fi
+  current="$(current_target)"
+  if [ -n "$current" ] && [ -f "$current/$DEPLOY_ENV_FILE" ]; then
+    printf '%s/%s' "$current" "$DEPLOY_ENV_FILE"
+  fi
+}
+
+resolve_deploy_config() {
+  defaults_file="$(deploy_defaults_file "${1:-}")"
+
+  if [ "${DEPLOY_COMPOSE_PROJECT_EXPLICIT:-0}" != "1" ]; then
+    value="$(env_value_from_file "$defaults_file" DEPLOY_COMPOSE_PROJECT)"
+    DEPLOY_COMPOSE_PROJECT="${value:-lihan_ai}"
+  fi
+  DEPLOY_COMPOSE_PROJECT="${DEPLOY_COMPOSE_PROJECT:-lihan_ai}"
+
+  if [ "${DEPLOY_INCLUDE_CPA_EXPLICIT:-0}" != "1" ]; then
+    value="$(env_value_from_file "$defaults_file" DEPLOY_INCLUDE_CPA)"
+    DEPLOY_INCLUDE_CPA="${value:-0}"
+  fi
+  DEPLOY_INCLUDE_CPA="${DEPLOY_INCLUDE_CPA:-0}"
+
+  if [ "${DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT:-0}" != "1" ]; then
+    value="$(env_value_from_file "$defaults_file" DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL)"
+    DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL="${value:-0}"
+  fi
+  DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL="${DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL:-0}"
 }
 
 latest_release_id() {
@@ -352,6 +483,7 @@ cmd_prepare() {
   link_shared "$release_path"
 
   [ -f "$shared_dir/$DEPLOY_ENV_FILE" ] || fail "missing shared env file: $shared_dir/$DEPLOY_ENV_FILE"
+  resolve_deploy_config "$release_path"
 
   (
     cd "$release_path"
@@ -373,6 +505,7 @@ cmd_smoke() {
   release_id="$(release_id_from_input)"
   release_path="$(release_path_for "$release_id")"
   [ -d "$release_path" ] || fail "release does not exist: $release_id"
+  resolve_deploy_config "$release_path"
   backup="$(find_latest_backup)"
   [ -n "$backup" ] || fail "no smoke backup found under $shared_dir/backups/postgres; set SMOKE_BACKUP_PATH"
   [ -f "$backup" ] || fail "smoke backup not found: $backup"
@@ -388,6 +521,7 @@ cmd_promote() {
   release_path="$(release_path_for "$release_id")"
   [ -d "$release_path" ] || fail "release does not exist: $release_id"
   [ -f "$release_path/$DEPLOY_ENV_FILE" ] || fail "release is missing linked env file: $release_path/$DEPLOY_ENV_FILE"
+  resolve_deploy_config "$release_path"
 
   old_target="$(current_target)"
   old_id="none"
@@ -423,6 +557,7 @@ cmd_promote() {
     echo "release promote failed; attempting rollback to previous release" >&2
     if [ -n "$old_target" ] && [ -d "$old_target" ]; then
       switch_current_to "$old_target"
+      resolve_deploy_config "$old_target"
       (
         cd "$current_link"
         compose_up
@@ -440,6 +575,7 @@ cmd_promote() {
 cmd_rollback() {
   prev="$(previous_target)"
   [ -n "$prev" ] && [ -d "$prev" ] || fail "previous release is not available"
+  resolve_deploy_config "$prev"
   old_target="$(current_target)"
   if [ -n "$old_target" ] && [ -d "$old_target" ]; then
     ln -sfn "$old_target" "$previous_link"
