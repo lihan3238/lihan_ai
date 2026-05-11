@@ -110,6 +110,70 @@ Recommended New API channel settings:
 
 Do not use the public origin domain for New API-to-CPA traffic. That would leave Docker, go out through Caddy or public networking, and make debugging harder.
 
+## CPA Upstream Egress Proxy
+
+When New API uses CPA as its upstream adapter, CPA is the component that opens outbound connections to model providers:
+
+```text
+client -> New API -> cli-proxy-api -> upstream provider
+```
+
+In this topology, configure residential or ISP egress proxies in CPA, not in the New API channel. The New API channel should keep:
+
+- Base URL: `http://cli-proxy-api:8317`
+- Proxy Address: empty
+
+Set a global CPA proxy in `/opt/lihan_ai_deploy/shared/data/cpa/config.yaml` when all CPA upstream traffic should leave through the same egress host:
+
+```yaml
+proxy-url: "socks5://newapi:<password>@38.125.120.23:1080/"
+```
+
+Alternatively, leave the top-level `proxy-url: ""` empty and set `proxy-url` only on a specific provider or credential entry. CPA also supports `proxy-url: "direct"` or `proxy-url: "none"` on an entry to bypass the global proxy and environment proxies.
+
+For a small GOST SOCKS5 egress VPS, keep the proxy private:
+
+- Bind GOST to `0.0.0.0:1080`, but allow inbound `1080/tcp` only from the origin public IP.
+- Keep SSH explicitly allowed before enabling a default-deny firewall.
+- Run GOST under a dedicated `gost` system user with `systemctl enable --now gost`.
+- If the service logs `open /etc/gost/gost.yml: permission denied`, use `chown root:gost /etc/gost /etc/gost/gost.yml`, `chmod 750 /etc/gost`, and `chmod 640 /etc/gost/gost.yml`.
+- Rotate the proxy password after it has been pasted into a shell, chat, ticket, or temporary note.
+
+Verify the egress VPS:
+
+```bash
+systemctl is-enabled gost
+systemctl is-active gost
+ss -lntp | grep ':1080'
+ufw status verbose
+curl -sS --connect-timeout 5 --max-time 20 \
+  -x "socks5h://newapi:<password>@127.0.0.1:1080" \
+  https://ifconfig.me
+```
+
+Verify from the origin:
+
+```bash
+curl -4 -sS --max-time 10 https://ifconfig.me
+curl -sS --connect-timeout 5 --max-time 20 \
+  -x "socks5h://newapi:<password>@38.125.120.23:1080" \
+  https://ifconfig.me
+
+grep -nE 'proxy-url:' /opt/lihan_ai_deploy/shared/data/cpa/config.yaml \
+  | sed -E 's#(socks5h?://)[^@]+@#\1<redacted>@#g'
+
+docker inspect -f '{{.Name}} restart={{.HostConfig.RestartPolicy.Name}} state={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
+  relay-cpa relay-new-api relay-postgres relay-redis relay-cloudflared 2>/dev/null
+```
+
+After changing CPA proxy settings, restart only CPA:
+
+```bash
+cd /opt/lihan_ai_deploy/current
+docker restart relay-cpa
+docker logs --tail=80 relay-cpa
+```
+
 ## Management UI
 
 The management UI is disabled from the public internet. When you need it, start the localhost-only UI override:

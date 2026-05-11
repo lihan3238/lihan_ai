@@ -98,6 +98,14 @@ for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317
   assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
 done
 
+for keyword in "CPA Upstream Egress Proxy" "proxy-url" "socks5://newapi" "Proxy Address: empty" "systemctl is-enabled gost" "permission denied" "docker restart relay-cpa"; do
+  assert_contains "docs/cpa-runbook.md" "$keyword"
+done
+
+for keyword in "CPA 上游出站代理" "proxy-url" "socks5://newapi" "Proxy Address：留空" "systemctl is-enabled gost" "permission denied" "docker restart relay-cpa"; do
+  assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
+done
+
 for keyword in "Firewall Baseline" "Troubleshooting" "URL-safe" "Caddy"; do
   assert_contains "docs/production-deployment-runbook.md" "$keyword"
 done

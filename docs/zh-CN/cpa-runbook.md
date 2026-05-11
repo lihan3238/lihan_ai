@@ -110,6 +110,70 @@ http://cli-proxy-api:8317
 
 不要让 New API 用公网 origin 域名访问 CPA。那会离开 Docker 内网，绕到 Caddy 或公网网络，排障也会更麻烦。
 
+## CPA 上游出站代理
+
+当 New API 把 CPA 作为上游适配层时，真正连接模型供应商的是 CPA：
+
+```text
+client -> New API -> cli-proxy-api -> upstream provider
+```
+
+这种拓扑下，住宅或 ISP 出站代理要配置在 CPA，不要配置在 New API 渠道里。New API 渠道保持：
+
+- Base URL：`http://cli-proxy-api:8317`
+- Proxy Address：留空
+
+如果所有 CPA 上游流量都需要从同一个出口离开，在 `/opt/lihan_ai_deploy/shared/data/cpa/config.yaml` 设置顶层代理：
+
+```yaml
+proxy-url: "socks5://newapi:<password>@38.125.120.23:1080/"
+```
+
+如果只想让某个 provider 或 credential 走代理，顶层保持 `proxy-url: ""`，只在对应条目上设置 `proxy-url`。CPA 也支持在条目上写 `proxy-url: "direct"` 或 `proxy-url: "none"`，显式绕过全局代理和环境代理。
+
+小型 GOST SOCKS5 出站 VPS 要保持私有：
+
+- GOST 可以监听 `0.0.0.0:1080`，但防火墙只允许 origin 公网 IP 访问 `1080/tcp`。
+- 启用默认拒绝入站防火墙前，必须先显式放行 SSH。
+- GOST 使用独立 `gost` 系统用户运行，并执行 `systemctl enable --now gost`。
+- 如果日志出现 `open /etc/gost/gost.yml: permission denied`，执行 `chown root:gost /etc/gost /etc/gost/gost.yml`、`chmod 750 /etc/gost`、`chmod 640 /etc/gost/gost.yml`。
+- 代理密码一旦贴进 shell、聊天、工单或临时笔记，调通后立即轮换。
+
+验证出站 VPS：
+
+```bash
+systemctl is-enabled gost
+systemctl is-active gost
+ss -lntp | grep ':1080'
+ufw status verbose
+curl -sS --connect-timeout 5 --max-time 20 \
+  -x "socks5h://newapi:<password>@127.0.0.1:1080" \
+  https://ifconfig.me
+```
+
+从 origin 验证：
+
+```bash
+curl -4 -sS --max-time 10 https://ifconfig.me
+curl -sS --connect-timeout 5 --max-time 20 \
+  -x "socks5h://newapi:<password>@38.125.120.23:1080" \
+  https://ifconfig.me
+
+grep -nE 'proxy-url:' /opt/lihan_ai_deploy/shared/data/cpa/config.yaml \
+  | sed -E 's#(socks5h?://)[^@]+@#\1<redacted>@#g'
+
+docker inspect -f '{{.Name}} restart={{.HostConfig.RestartPolicy.Name}} state={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
+  relay-cpa relay-new-api relay-postgres relay-redis relay-cloudflared 2>/dev/null
+```
+
+修改 CPA 代理设置后，只重启 CPA：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+docker restart relay-cpa
+docker logs --tail=80 relay-cpa
+```
+
 ## 管理 UI
 
 管理 UI 不公开到互联网。需要临时使用时，启动只绑定本机的 UI override：
