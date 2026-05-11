@@ -72,12 +72,12 @@ for keyword in "ORIGIN_UPSTREAM" "docker-compose.edge.yml" ".env.edge"; do
   assert_contains "docs/zh-CN/edge-proxy-runbook.md" "$keyword"
 done
 
-for keyword in "api.lihan3238.com" "origin.lihan3238.top" "Cloudflare Tunnel" "cloudflared" "--scale caddy=0" "config.yml is file" "tunnel.json is file"; do
+for keyword in "api.lihan3238.com" "origin.lihan3238.top" "Cloudflare Tunnel" "cloudflared" "--scale caddy=0" "config.yml is file" "tunnel.json is file" "chmod 644" "cannot be hand-written"; do
   assert_contains "docs/cloudflare-saas-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cloudflare-saas-runbook.md" "$keyword"
 done
 
-for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai/data/cpa" "docker compose -p lihan_ai" "docker-compose.cloudflare-tunnel.yml" "--scale caddy=0"; do
+for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai/data/cpa" "docker compose -p lihan_ai" "docker-compose.cloudflare-tunnel.yml" "ops/cpa-ui.sh" "--no-deps"; do
   assert_contains "docs/cpa-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
 done

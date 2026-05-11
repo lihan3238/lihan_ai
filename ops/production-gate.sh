@@ -36,6 +36,7 @@ run bash -n ops/ai-dev-check.sh
 run bash -n ops/validate-ops-profile.sh
 run bash -n ops/check-production-runtime.sh
 run bash -n ops/sync-cpa-upstream-assets.sh
+run bash -n ops/cpa-ui.sh
 run bash -n ops/bootstrap-server.sh
 run bash -n ops/deploy-prod.sh
 run bash -n ops/deploy-release.sh
@@ -56,6 +57,7 @@ run bash tests/prod-deploy-migration.test.sh
 run bash tests/prod-deploy-hardening.test.sh
 run bash tests/release-deploy.test.sh
 run bash tests/cpa-compose.test.sh
+run bash tests/cpa-ui-script.test.sh
 run bash tests/docs-i18n.test.sh
 run bash tests/git-branching-policy.test.sh
 run bash tests/e2e-api-billing.test.sh

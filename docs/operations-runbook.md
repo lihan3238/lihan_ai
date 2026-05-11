@@ -148,7 +148,7 @@ To publish the status page, set `STATUS_DOMAIN` on the server and merge the exam
 
 CPA is optional and must stay behind New API. Use `docker-compose.cpa.yml` to place it on the same Docker network as New API, and use `docker-compose.cpa.ui.yml` only when you need the management UI through an SSH tunnel. Do not expose `8317` publicly. Follow `docs/cpa-runbook.md`.
 
-When production is running with Cloudflare Tunnel, CPA UI commands must include the active `docker-compose.cloudflare-tunnel.yml` overlay and fixed project name `-p lihan_ai`; otherwise `--remove-orphans` can remove `relay-cloudflared`. Use the copy-paste commands in `docs/cpa-runbook.md`.
+When production is running with Cloudflare Tunnel, use `ops/cpa-ui.sh open|close|ps` for the temporary CPA management UI. The helper keeps the active Tunnel overlay and uses `--no-deps` so a local CPA UI session does not recreate `new-api`, `cloudflared`, or `caddy`.
 
 ## Live E2E
 

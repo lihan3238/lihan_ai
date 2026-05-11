@@ -97,9 +97,11 @@ The final catch-all ingress is intentional. Cloudflare for SaaS may preserve `Ho
 Lock permissions:
 
 ```bash
-chmod 600 /opt/lihan_ai_deploy/shared/cloudflared/tunnel.json
-chmod 600 /opt/lihan_ai_deploy/shared/cloudflared/config.yml
+chmod 644 /opt/lihan_ai_deploy/shared/cloudflared/tunnel.json
+chmod 644 /opt/lihan_ai_deploy/shared/cloudflared/config.yml
 ```
+
+The running `cloudflare/cloudflared` container is non-root, so the bind-mounted `config.yml` and `tunnel.json` must be readable by that container user. Keep the source `<tunnel-uuid>.json` and `cert.pem` out of git; they can be stored more strictly when they are not used as the runtime bind mount.
 
 Validate that both bind-mount sources are regular files before starting the stack. If either path is missing, Docker can create a directory at that path and `cloudflared` will restart with `read /etc/cloudflared/config.yml: is a directory`.
 
@@ -114,8 +116,10 @@ If `config.yml` was accidentally created as a directory, remove only that bad di
 sudo find /opt/lihan_ai_deploy/shared/cloudflared -maxdepth 3 -ls
 sudo rm -rf /opt/lihan_ai_deploy/shared/cloudflared/config.yml
 sudoedit /opt/lihan_ai_deploy/shared/cloudflared/config.yml
-chmod 600 /opt/lihan_ai_deploy/shared/cloudflared/config.yml
+chmod 644 /opt/lihan_ai_deploy/shared/cloudflared/config.yml
 ```
+
+If `tunnel.json` is missing, recreate or recover the Cloudflare-generated tunnel credentials. The file contains Cloudflare Tunnel credentials and cannot be hand-written.
 
 ## Production Env
 
