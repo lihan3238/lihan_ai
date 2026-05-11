@@ -17,6 +17,7 @@ English documentation remains the engineering source of truth. Chinese documents
 | `docs/cpa-runbook.md` | `docs/zh-CN/cpa-runbook.md` |
 | `docs/backup-strategy.md` | `docs/zh-CN/backup-strategy.md` |
 | `docs/operations-runbook.md` | `docs/zh-CN/operations-runbook.md` |
+| `docs/ops-quick-reference.md` | `docs/zh-CN/ops-quick-reference.md` |
 | `docs/server-buying-guide.md` | `docs/zh-CN/server-buying-guide.md` |
 
 ## Maintenance Rules
