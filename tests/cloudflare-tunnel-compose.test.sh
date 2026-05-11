@@ -136,6 +136,37 @@ exit 1
 DOCKER
 chmod +x "$fake_bin/docker"
 
+preflight_config_dir="$tmp_dir/config.yml"
+preflight_credentials_file="$tmp_dir/tunnel.json"
+preflight_env_file="$tmp_dir/.env.preflight"
+mkdir -p "$preflight_config_dir"
+printf '{"TunnelID":"example"}\n' > "$preflight_credentials_file"
+
+cat > "$preflight_env_file" <<EOF
+DEPLOY_ENV=production
+DOMAIN=api.example.test
+ACME_EMAIL=ops@example.test
+POSTGRES_USER=newapi
+POSTGRES_DB=newapi
+POSTGRES_PASSWORD=redacted
+REDIS_PASSWORD=redacted
+SESSION_SECRET=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+CLOUDFLARED_CONFIG_PATH=$preflight_config_dir
+CLOUDFLARED_CREDENTIALS_PATH=$preflight_credentials_file
+EOF
+
+set +e
+preflight_output="$(cd "$ROOT_DIR" && PATH="$fake_bin:$PATH" FAKE_DOCKER_LOG="$docker_log" DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 ENV_FILE="$preflight_env_file" bash ops/preflight.sh 2>&1)"
+preflight_status="$?"
+set -e
+[ "$preflight_status" -ne 0 ] || fail "preflight should fail when CLOUDFLARED_CONFIG_PATH is a directory"
+printf '%s' "$preflight_output" | grep -q "must be a file, not a directory" || fail "preflight should explain directory-valued config path: $preflight_output"
+
+rm -rf "$preflight_config_dir"
+printf 'tunnel: example\ncredentials-file: /etc/cloudflared/tunnel.json\n' > "$preflight_config_dir"
+preflight_ok_output="$(cd "$ROOT_DIR" && PATH="$fake_bin:$PATH" FAKE_DOCKER_LOG="$docker_log" DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 ENV_FILE="$preflight_env_file" bash ops/preflight.sh)"
+printf '%s' "$preflight_ok_output" | grep -q "preflight passed" || fail "preflight should pass when tunnel paths are files: $preflight_ok_output"
+
 cat > "$fake_bin/curl" <<'CURL'
 #!/usr/bin/env sh
 count_file="$FAKE_CURL_COUNT"

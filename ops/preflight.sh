@@ -5,8 +5,13 @@ ENV_FILE="${ENV_FILE:-.env}"
 missing=0
 
 require_file() {
-  if [ ! -f "$1" ]; then
-    echo "missing required file: $1" >&2
+  path="$1"
+  label="${2:-required file}"
+  if [ -d "$path" ]; then
+    echo "$label must be a file, not a directory: $path" >&2
+    missing=1
+  elif [ ! -f "$path" ]; then
+    echo "missing $label: $path" >&2
     missing=1
   fi
 }
@@ -38,9 +43,18 @@ env_value() {
   ' "$ENV_FILE"
 }
 
+config_value() {
+  key="$1"
+  value="$(eval "printf '%s' \"\${$key:-}\"")"
+  if [ -z "$value" ]; then
+    value="$(env_value "$key")"
+  fi
+  printf '%s' "$value"
+}
+
 require_env_value() {
   key="$1"
-  value="$(env_value "$key")"
+  value="$(config_value "$key")"
   if [ -z "$value" ]; then
     echo "$ENV_FILE is missing required value: $key" >&2
     exit 1
@@ -49,7 +63,7 @@ require_env_value() {
 
 require_url_safe_secret() {
   key="$1"
-  value="$(env_value "$key")"
+  value="$(config_value "$key")"
   if [ -z "$value" ]; then
     echo "$ENV_FILE is missing required value: $key" >&2
     exit 1
@@ -61,7 +75,7 @@ require_url_safe_secret() {
   fi
 }
 
-session_secret="$(env_value SESSION_SECRET)"
+session_secret="$(config_value SESSION_SECRET)"
 if [ -z "$session_secret" ]; then
   echo "$ENV_FILE is missing required value: SESSION_SECRET" >&2
   exit 1
@@ -76,13 +90,13 @@ require_url_safe_secret POSTGRES_PASSWORD
 require_env_value POSTGRES_DB
 require_url_safe_secret REDIS_PASSWORD
 
-deploy_env="$(env_value DEPLOY_ENV)"
+deploy_env="$(config_value DEPLOY_ENV)"
 compose_files="-f docker-compose.yml"
 if [ "$deploy_env" = "production" ]; then
   require_env_value DOMAIN
   require_env_value ACME_EMAIL
-  domain="$(env_value DOMAIN)"
-  fallback_origin="$(env_value CLOUDFLARE_SAAS_FALLBACK_ORIGIN)"
+  domain="$(config_value DOMAIN)"
+  fallback_origin="$(config_value CLOUDFLARE_SAAS_FALLBACK_ORIGIN)"
   if [ -n "$fallback_origin" ] && [ "$domain" = "$fallback_origin" ]; then
     echo "DOMAIN must be the public custom hostname, not CLOUDFLARE_SAAS_FALLBACK_ORIGIN" >&2
     echo "For Cloudflare for SaaS, use DOMAIN=api.lihan3238.com and CLOUDFLARE_SAAS_FALLBACK_ORIGIN=origin.lihan3238.top" >&2
@@ -91,15 +105,21 @@ if [ "$deploy_env" = "production" ]; then
   require_file "docker-compose.prod.yml"
   compose_files="$compose_files -f docker-compose.prod.yml"
 
-  deploy_include_tunnel="$(env_value DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL)"
+  deploy_include_tunnel="$(config_value DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL)"
   if [ "$deploy_include_tunnel" = "1" ]; then
     require_file "docker-compose.cloudflare-tunnel.yml"
     require_env_value CLOUDFLARED_CONFIG_PATH
     require_env_value CLOUDFLARED_CREDENTIALS_PATH
-    require_file "$(env_value CLOUDFLARED_CONFIG_PATH)"
-    require_file "$(env_value CLOUDFLARED_CREDENTIALS_PATH)"
+    cloudflared_config_path="$(config_value CLOUDFLARED_CONFIG_PATH)"
+    cloudflared_credentials_path="$(config_value CLOUDFLARED_CREDENTIALS_PATH)"
+    require_file "$cloudflared_config_path" "CLOUDFLARED_CONFIG_PATH"
+    require_file "$cloudflared_credentials_path" "CLOUDFLARED_CREDENTIALS_PATH"
     compose_files="$compose_files -f docker-compose.cloudflare-tunnel.yml"
   fi
+fi
+
+if [ "$missing" -ne 0 ]; then
+  exit 1
 fi
 
 if ! command -v docker >/dev/null 2>&1; then

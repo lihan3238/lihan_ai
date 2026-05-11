@@ -101,6 +101,22 @@ chmod 600 /opt/lihan_ai_deploy/shared/cloudflared/tunnel.json
 chmod 600 /opt/lihan_ai_deploy/shared/cloudflared/config.yml
 ```
 
+Validate that both bind-mount sources are regular files before starting the stack. If either path is missing, Docker can create a directory at that path and `cloudflared` will restart with `read /etc/cloudflared/config.yml: is a directory`.
+
+```bash
+test -f /opt/lihan_ai_deploy/shared/cloudflared/config.yml && echo "config.yml is file"
+test -f /opt/lihan_ai_deploy/shared/cloudflared/tunnel.json && echo "tunnel.json is file"
+```
+
+If `config.yml` was accidentally created as a directory, remove only that bad directory and recreate the file from the tunnel UUID and credentials JSON:
+
+```bash
+sudo find /opt/lihan_ai_deploy/shared/cloudflared -maxdepth 3 -ls
+sudo rm -rf /opt/lihan_ai_deploy/shared/cloudflared/config.yml
+sudoedit /opt/lihan_ai_deploy/shared/cloudflared/config.yml
+chmod 600 /opt/lihan_ai_deploy/shared/cloudflared/config.yml
+```
+
 ## Production Env
 
 Edit the shared env:

@@ -63,6 +63,13 @@ CLOUDFLARED_CONFIG_PATH=/opt/lihan_ai_deploy/shared/cloudflared/config.yml
 CLOUDFLARED_CREDENTIALS_PATH=/opt/lihan_ai_deploy/shared/cloudflared/tunnel.json
 ```
 
+Both paths must already exist as regular files before `prepare` or `promote`:
+
+```bash
+test -f /opt/lihan_ai_deploy/shared/cloudflared/config.yml && echo "config.yml is file"
+test -f /opt/lihan_ai_deploy/shared/cloudflared/tunnel.json && echo "tunnel.json is file"
+```
+
 Tunnel promotion appends `docker-compose.cloudflare-tunnel.yml` and runs Caddy at scale `0`, so the origin no longer publishes public `80/443`.
 
 ## Development To Production Flow
