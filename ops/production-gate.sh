@@ -35,6 +35,7 @@ run bash -n ops/drill-restore-stack.sh
 run bash -n ops/ai-dev-check.sh
 run bash -n ops/validate-ops-profile.sh
 run bash -n ops/check-production-runtime.sh
+run bash -n ops/production-monitor.sh
 run bash -n ops/sync-cpa-upstream-assets.sh
 run bash -n ops/cpa-ui.sh
 run bash -n ops/bootstrap-server.sh
@@ -53,6 +54,7 @@ run bash tests/browser-e2e-scaffold.test.sh
 run bash tests/github-actions-ci.test.sh
 run bash tests/cloudflare-saas-domain.test.sh
 run bash tests/cloudflare-tunnel-compose.test.sh
+run bash tests/production-monitor.test.sh
 run bash tests/prod-deploy-migration.test.sh
 run bash tests/prod-deploy-hardening.test.sh
 run bash tests/release-deploy.test.sh

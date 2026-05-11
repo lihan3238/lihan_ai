@@ -134,6 +134,29 @@ ops/cpa-ui.sh close
 ops/cpa-ui.sh ps
 ```
 
+### Production Cron monitoring
+
+Production cron should call the wrapper script instead of calling backup/runtime scripts directly. The wrapper writes `logs/production-monitor-<mode>.log`, updates `logs/production-monitor-<mode>.status`, and sends optional coarse alerts when `MONITOR_ALERT_WEBHOOK_URL` is set in `.env.production`.
+
+Manual checks on the production server:
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+ENV_FILE=.env.production bash ops/production-monitor.sh backup
+ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+```
+
+Suggested crontab entries:
+
+```cron
+*/5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
+35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+```
+
+The repository does not install cron automatically; copy the entries deliberately on the origin server.
+
 ## Other Useful Commands
 
 ```bash

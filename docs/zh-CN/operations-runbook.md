@@ -112,6 +112,29 @@ export https_proxy=http://10.88.0.6:10808
 ENV_FILE=.env.production bash ops/check-production-runtime.sh
 ```
 
+## 生产 Cron 监控
+
+定时生产检查统一使用 `ops/production-monitor.sh`。它只编排现有 runtime、本地备份和离线备份脚本，不改变当前 Docker 拓扑。日志写入 `logs/production-monitor-<mode>.log`；最近一次结果写入 `logs/production-monitor-<mode>.status`。例如 runtime 检查会追加到 `logs/production-monitor-runtime.log`。
+
+在 origin 上手动检查：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+ENV_FILE=.env.production bash ops/production-monitor.sh backup
+ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+```
+
+建议 crontab：
+
+```cron
+*/5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
+35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+```
+
+只有需要 webhook 告警时，才在 `.env.production` 设置 `MONITOR_ALERT_WEBHOOK_URL`。`MONITOR_ALERT_REPEAT_SECONDS` 默认是 `3600`，同一个 mode 连续失败不会每次 cron 都刷屏。仓库不会自动安装 cron。
+
 ## 事故响应
 
 遇到计费、支付或供应商故障时，先禁用受影响渠道或支付路径，导出相关日志，再核对用户余额。不要删除失败订单或用量日志；用管理员备注标记。

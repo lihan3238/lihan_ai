@@ -61,7 +61,15 @@ for keyword in "Common Production Commands" "Initial production deployment" "Upd
   assert_contains "README.md" "$keyword"
 done
 
+for keyword in "Production Cron monitoring" "ops/production-monitor.sh runtime" "ops/production-monitor.sh backup" "ops/production-monitor.sh offsite" "MONITOR_ALERT_WEBHOOK_URL"; do
+  assert_contains "README.md" "$keyword"
+done
+
 for keyword in "生产常用命令" "初始部署" "更新最新版本到生产环境" "打开和关闭 CPA UI" "ops/deploy-release.sh bootstrap" "ops/deploy-release.sh prepare" "ops/deploy-release.sh smoke" "ops/deploy-release.sh promote" "DEPLOY_INCLUDE_*" "ops/cpa-ui.sh open" "ops/cpa-ui.sh close" "ssh -L 8317"; do
+  assert_contains "README.zh-CN.md" "$keyword"
+done
+
+for keyword in "ops/production-monitor.sh runtime" "ops/production-monitor.sh backup" "ops/production-monitor.sh offsite" "MONITOR_ALERT_WEBHOOK_URL"; do
   assert_contains "README.zh-CN.md" "$keyword"
 done
 
@@ -101,6 +109,13 @@ done
 for keyword in "drill-restore-stack.sh" "ENV_FILE=.env.production" "check-production-runtime.sh"; do
   assert_contains "docs/backup-strategy.md" "$keyword"
   assert_contains "docs/zh-CN/backup-strategy.md" "$keyword"
+done
+
+for keyword in "ops/production-monitor.sh runtime" "ops/production-monitor.sh backup" "ops/production-monitor.sh offsite" "MONITOR_ALERT_WEBHOOK_URL" "production-monitor-runtime.log"; do
+  assert_contains "docs/backup-strategy.md" "$keyword"
+  assert_contains "docs/zh-CN/backup-strategy.md" "$keyword"
+  assert_contains "docs/operations-runbook.md" "$keyword"
+  assert_contains "docs/zh-CN/operations-runbook.md" "$keyword"
 done
 
 for keyword in "/opt/lihan_ai_deploy" "ops/deploy-release.sh" "docker compose -p" "DEPLOY_INCLUDE_CPA" "rollback" "PM2" "SMOKE_BACKUP_PATH" "candidate" "lihan_ai_runtime" "docker inspect relay-cpa" "disaster-recovery-runbook.md"; do

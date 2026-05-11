@@ -115,31 +115,19 @@ ENV_FILE=.env.production bash ops/offsite-backup.sh
 
 ## Suggested Cron
 
-Run this on the VPS from the repository directory:
+Use `ops/production-monitor.sh` for scheduled production work. It writes `logs/production-monitor-<mode>.log`, updates `logs/production-monitor-<mode>.status`, and can send optional coarse webhook alerts when `MONITOR_ALERT_WEBHOOK_URL` is set in `.env.production`. For example, runtime checks append to `logs/production-monitor-runtime.log`.
+
+Release deployment cron entries:
 
 ```cron
-15 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/backup-postgres.sh >> logs/backup.log 2>&1
+*/5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
+35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
 ```
 
-With release deployment, use `current` and write logs to shared storage:
+The `backup` mode creates a PostgreSQL dump and immediately verifies it with `ops/verify-postgres-backup.sh`. The `offsite` mode runs `ops/offsite-backup.sh`, so missing `RESTIC_REPOSITORY` or `RESTIC_PASSWORD` is a real failure. The repository does not install cron automatically; copy the entries deliberately on the origin server.
 
-```cron
-15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/backup-postgres.sh >> /opt/lihan_ai_deploy/shared/logs/backup.log 2>&1
-```
-
-Then run `ops/offsite-backup.sh` or sync `backups/postgres/` and `.env.production` to an off-server location using your preferred encrypted backup tool. Do not commit either to git.
-
-For restic-based off-server backup:
-
-```cron
-20 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/offsite-backup.sh >> logs/offsite-backup.log 2>&1
-```
-
-Release deployment equivalent:
-
-```cron
-20 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/offsite-backup.sh >> /opt/lihan_ai_deploy/shared/logs/offsite-backup.log 2>&1
-```
+Do not commit `backups/postgres/`, `.env.production`, restic credentials, or monitor webhook secrets to git.
 
 ## Recovery Order
 
