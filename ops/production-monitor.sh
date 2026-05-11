@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="${ENV_FILE:-.env.production}"
 
 usage() {
-  echo "usage: ENV_FILE=.env.production $0 runtime|backup|offsite" >&2
+  echo "usage: ENV_FILE=.env.production $0 runtime|backup|offsite|audit|restore-drill" >&2
 }
 
 if [ "$#" -ne 1 ]; then
@@ -15,7 +15,7 @@ fi
 
 mode="$1"
 case "$mode" in
-  runtime|backup|offsite) ;;
+  runtime|backup|offsite|audit|restore-drill) ;;
   *)
     usage
     exit 2
@@ -48,6 +48,11 @@ MONITOR_PROJECT_NAME="${MONITOR_PROJECT_NAME:-${COMPOSE_PROJECT_NAME:-${DEPLOY_C
 MONITOR_ALERT_WEBHOOK_URL="${MONITOR_ALERT_WEBHOOK_URL:-}"
 MONITOR_ALERT_REPEAT_SECONDS="${MONITOR_ALERT_REPEAT_SECONDS:-3600}"
 MONITOR_ALERT_TIMEOUT_SECONDS="${MONITOR_ALERT_TIMEOUT_SECONDS:-10}"
+MONITOR_PUSH_RUNTIME_URL="${MONITOR_PUSH_RUNTIME_URL:-}"
+MONITOR_PUSH_BACKUP_URL="${MONITOR_PUSH_BACKUP_URL:-}"
+MONITOR_PUSH_OFFSITE_URL="${MONITOR_PUSH_OFFSITE_URL:-}"
+MONITOR_PUSH_AUDIT_URL="${MONITOR_PUSH_AUDIT_URL:-}"
+MONITOR_PUSH_RESTORE_DRILL_URL="${MONITOR_PUSH_RESTORE_DRILL_URL:-}"
 
 case "$MONITOR_ALERT_REPEAT_SECONDS" in
   ''|*[!0-9]*) MONITOR_ALERT_REPEAT_SECONDS=3600 ;;
@@ -166,6 +171,78 @@ maybe_alert() {
   fi
 }
 
+push_url_for_mode() {
+  case "$mode" in
+    runtime) printf '%s' "$MONITOR_PUSH_RUNTIME_URL" ;;
+    backup) printf '%s' "$MONITOR_PUSH_BACKUP_URL" ;;
+    offsite) printf '%s' "$MONITOR_PUSH_OFFSITE_URL" ;;
+    audit) printf '%s' "$MONITOR_PUSH_AUDIT_URL" ;;
+    restore-drill) printf '%s' "$MONITOR_PUSH_RESTORE_DRILL_URL" ;;
+  esac
+}
+
+send_push() {
+  result="$1"
+  duration_seconds="$2"
+  push_url="$(push_url_for_mode)"
+
+  [ -n "$push_url" ] || return 0
+  if ! command -v curl >/dev/null 2>&1; then
+    printf '%s push skipped: curl is not installed\n' "$(utc_now)" >> "$log_file"
+    return 0
+  fi
+
+  if [ "$result" = "PASS" ]; then
+    push_status="up"
+  else
+    push_status="down"
+  fi
+
+  case "$push_url" in
+    *\?*) separator="&" ;;
+    *) separator="?" ;;
+  esac
+
+  if curl -fsS --max-time "$MONITOR_ALERT_TIMEOUT_SECONDS" \
+    "${push_url}${separator}status=${push_status}&msg=${mode}-${result}&ping=${duration_seconds}" >/dev/null 2>&1; then
+    printf '%s push sent: %s %s\n' "$(utc_now)" "$mode" "$push_status" >> "$log_file"
+  else
+    printf '%s push failed: %s heartbeat did not complete\n' "$(utc_now)" "$mode" >> "$log_file"
+  fi
+}
+
+latest_backup() {
+  backup_dir="${BACKUP_DIR:-backups/postgres}"
+  case "$backup_dir" in
+    /*) ;;
+    *) backup_dir="$ROOT_DIR/$backup_dir" ;;
+  esac
+
+  find "$backup_dir" -type f -name '*.dump' 2>/dev/null | sort | tail -n 1
+}
+
+run_audit() {
+  audit_status=0
+  OPS_HEALTH_CURRENT_MODE=audit ENV_FILE="$ENV_FILE" bash ops/ops-health-report.sh collect || audit_status="$?"
+  OPS_HEALTH_CURRENT_MODE=audit ENV_FILE="$ENV_FILE" bash ops/ops-health-report.sh render || {
+    render_status="$?"
+    if [ "$audit_status" -eq 0 ]; then
+      audit_status="$render_status"
+    fi
+  }
+  return "$audit_status"
+}
+
+run_restore_drill() {
+  backup_path="$(latest_backup)"
+  if [ -z "$backup_path" ]; then
+    echo "no restore drill backup found under ${BACKUP_DIR:-backups/postgres}" >&2
+    return 1
+  fi
+  printf 'restore drill backup: %s\n' "$backup_path"
+  ENV_FILE="$ENV_FILE" bash ops/drill-restore-stack.sh "$backup_path"
+}
+
 run_mode() {
   case "$mode" in
     runtime)
@@ -179,12 +256,19 @@ run_mode() {
     offsite)
       ENV_FILE="$ENV_FILE" bash ops/offsite-backup.sh
       ;;
+    audit)
+      run_audit
+      ;;
+    restore-drill)
+      run_restore_drill
+      ;;
   esac
 }
 
 cd "$ROOT_DIR"
 previous_status="$(read_status "$status_file" || true)"
 started_at="$(utc_now)"
+started_epoch="$(epoch_now)"
 exit_code=0
 
 {
@@ -210,6 +294,14 @@ fi
 } >> "$log_file" 2>&1
 
 write_status "$result" "$exit_code" "$finished_at"
+if [ "$mode" = "audit" ] || [ "$mode" = "restore-drill" ]; then
+  ENV_FILE="$ENV_FILE" bash ops/ops-health-report.sh render >/dev/null 2>&1 || true
+fi
+duration_seconds=$(( $(epoch_now) - started_epoch ))
+if [ "$duration_seconds" -lt 0 ]; then
+  duration_seconds=0
+fi
+send_push "$result" "$duration_seconds"
 maybe_alert "$result" "${previous_status:-}" "$exit_code" "$finished_at" "$(epoch_now)"
 
 if [ "$exit_code" -ne 0 ]; then

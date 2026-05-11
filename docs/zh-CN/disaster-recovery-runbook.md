@@ -25,14 +25,20 @@ ENV_FILE=.env.production bash ops/offsite-backup.sh
 在 origin 上使用 cron：
 
 ```cron
-20 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/offsite-backup.sh >> logs/offsite-backup.log 2>&1
+15 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/production-monitor.sh backup
+35 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+*/15 * * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/production-monitor.sh audit
 ```
 
 使用 release 部署时，改用：
 
 ```cron
-20 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/offsite-backup.sh >> /opt/lihan_ai_deploy/shared/logs/offsite-backup.log 2>&1
+15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
+35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+*/15 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh audit
 ```
+
+`ops/production-monitor.sh` 会把 backup/offsite 的最新状态写入 `logs/production-monitor-*.status`。`audit` 还会生成 `logs/ops-health/status.json` 和 `logs/ops-health/index.html`，灾备前可以直接看到最新 dump、restic snapshot 可见性、磁盘压力和恢复演练年龄。
 
 ## 恢复到新服务器
 
@@ -55,6 +61,14 @@ ENV_FILE=.env.production bash ops/backup-postgres.sh
 bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
 ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<backup>.dump
 ```
+
+建议把完整 stack 恢复演练纳入月度 cron：
+
+```cron
+20 4 1 * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
+```
+
+如果已经在 Uptime Kuma 中创建 Restore Drill Push monitor，把 `MONITOR_PUSH_RESTORE_DRILL_URL` 放进 `.env.production`。Ops Health 默认在恢复演练超过 35 天未更新时给出 WARN。
 
 恢复后运行：
 

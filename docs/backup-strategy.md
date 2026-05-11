@@ -121,11 +121,17 @@ Release deployment cron entries:
 
 ```cron
 */5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+*/15 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh audit
 15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
 35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+20 4 1 * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
 ```
 
-The `backup` mode creates a PostgreSQL dump and immediately verifies it with `ops/verify-postgres-backup.sh`. The `offsite` mode runs `ops/offsite-backup.sh`, so missing `RESTIC_REPOSITORY` or `RESTIC_PASSWORD` is a real failure. The repository does not install cron automatically; copy the entries deliberately on the origin server.
+The `backup` mode creates a PostgreSQL dump and immediately verifies it with `ops/verify-postgres-backup.sh`. The `offsite` mode runs `ops/offsite-backup.sh`, so missing `RESTIC_REPOSITORY` or `RESTIC_PASSWORD` is a real failure. The `audit` mode writes `logs/ops-health/status.json` plus `logs/ops-health/index.html`, including dump inventory, restic snapshot visibility, disk and inode pressure, container health, cron freshness, and restore-drill age. The `restore-drill` mode runs the latest dump through `ops/drill-restore-stack.sh` and records the result like the other monitor modes.
+
+If Uptime Kuma Push monitors are configured, set `MONITOR_PUSH_RUNTIME_URL`, `MONITOR_PUSH_BACKUP_URL`, `MONITOR_PUSH_OFFSITE_URL`, `MONITOR_PUSH_AUDIT_URL`, and `MONITOR_PUSH_RESTORE_DRILL_URL` in `.env.production`. These URLs are secrets; keep them out of git. The repository does not install cron automatically; copy the entries deliberately on the origin server.
+
+To view the detailed local report, run `ENV_FILE=.env.production bash ops/ops-dashboard.sh open` on the origin and connect through an SSH tunnel to `127.0.0.1:${OPS_DASHBOARD_PORT:-3021}`.
 
 Do not commit `backups/postgres/`, `.env.production`, restic credentials, or monitor webhook secrets to git.
 

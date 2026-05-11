@@ -138,7 +138,9 @@ ops/cpa-ui.sh ps
 
 ### 生产 Cron 监控
 
-生产 cron 统一调用 wrapper，不再直接散落调用 backup/runtime 脚本。它会写入 `logs/production-monitor-<mode>.log`，更新 `logs/production-monitor-<mode>.status`；如果 `.env.production` 设置了 `MONITOR_ALERT_WEBHOOK_URL`，失败和恢复时会发送粗粒度 webhook 告警。
+生产 cron 统一调用 wrapper，不再直接散落调用 backup/runtime 脚本。它会写入 `logs/production-monitor-<mode>.log`，更新 `logs/production-monitor-<mode>.status`；如果 `.env.production` 设置了 `MONITOR_ALERT_WEBHOOK_URL`，失败和恢复时会发送粗粒度 webhook 告警；如果设置了 `MONITOR_PUSH_*_URL`，也会向 Uptime Kuma Push monitor 发送心跳。
+
+创建对应的 Uptime Kuma Push monitors 后，在 `.env.production` 设置 `MONITOR_PUSH_RUNTIME_URL`、`MONITOR_PUSH_BACKUP_URL`、`MONITOR_PUSH_OFFSITE_URL`、`MONITOR_PUSH_AUDIT_URL`、`MONITOR_PUSH_RESTORE_DRILL_URL`。
 
 在生产服务器手动检查：
 
@@ -147,17 +149,23 @@ cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/production-monitor.sh runtime
 ENV_FILE=.env.production bash ops/production-monitor.sh backup
 ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+ENV_FILE=.env.production bash ops/production-monitor.sh audit
+ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
+ENV_FILE=.env.production bash ops/ops-health-report.sh render
+ENV_FILE=.env.production bash ops/ops-dashboard.sh open
 ```
 
 建议 crontab：
 
 ```cron
 */5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+*/15 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh audit
 15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
 35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+20 4 1 * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
 ```
 
-仓库不会自动安装 cron；在 origin 服务器上确认后手动复制这些条目。
+`audit` 会生成 `logs/ops-health/status.json` 和 `logs/ops-health/index.html`。`ops-dashboard.sh open` 只在 `127.0.0.1:${OPS_DASHBOARD_PORT:-3021}` 提供静态看板，需要查看时通过 SSH 隧道打开。仓库不会自动安装 cron；在 origin 服务器上确认后手动复制这些条目。
 
 ## 其他常用命令
 

@@ -36,6 +36,9 @@ run bash -n ops/ai-dev-check.sh
 run bash -n ops/validate-ops-profile.sh
 run bash -n ops/check-production-runtime.sh
 run bash -n ops/production-monitor.sh
+run bash -n ops/ops-health-report.sh
+run bash -n ops/kuma-ui.sh
+run bash -n ops/ops-dashboard.sh
 run bash -n ops/sync-cpa-upstream-assets.sh
 run bash -n ops/cpa-ui.sh
 run bash -n ops/bootstrap-server.sh
@@ -61,6 +64,9 @@ run bash tests/release-deploy.test.sh
 run bash tests/cpa-compose.test.sh
 run bash tests/cpa-ui-script.test.sh
 run bash tests/docs-i18n.test.sh
+run bash tests/ops-health-report.test.sh
+run bash tests/kuma-ui-script.test.sh
+run bash tests/ops-dashboard.test.sh
 run bash tests/git-branching-policy.test.sh
 run bash tests/e2e-api-billing.test.sh
 run bash tests/wrapper-infra.test.sh
@@ -79,8 +85,10 @@ run docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.y
 run docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local-build.yml config
 run docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.prod.yml config
 run docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml config
+run docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.kuma.ui.yml config
 run docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cloudflare-tunnel.yml config
 run docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml -f docker-compose.cloudflare-tunnel.yml config
+run docker compose --env-file .env.production.example -f docker-compose.ops-dashboard.yml config
 run docker compose --env-file .env.production.example -f docker-compose.edge.yml config
 
 backup="$(bash ops/backup-postgres.sh)"

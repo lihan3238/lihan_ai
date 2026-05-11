@@ -25,14 +25,20 @@ ENV_FILE=.env.production bash ops/offsite-backup.sh
 Use cron on the origin:
 
 ```cron
-20 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/offsite-backup.sh >> logs/offsite-backup.log 2>&1
+15 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/production-monitor.sh backup
+35 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+*/15 * * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/production-monitor.sh audit
 ```
 
 With release deployment, use:
 
 ```cron
-20 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/offsite-backup.sh >> /opt/lihan_ai_deploy/shared/logs/offsite-backup.log 2>&1
+15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
+35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+*/15 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh audit
 ```
+
+The monitor wrapper records backup and offsite status under `logs/production-monitor-*.status`. The audit mode also renders `logs/ops-health/status.json` and `logs/ops-health/index.html`, so the latest dump, restic visibility, disk pressure, and restore-drill age are visible before a disaster.
 
 ## Restore To Fresh Server
 
@@ -55,3 +61,11 @@ ENV_FILE=.env.production bash ops/backup-postgres.sh
 bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
 ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<backup>.dump
 ```
+
+For scheduled release deployments, prefer the monitored wrapper:
+
+```cron
+20 4 1 * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
+```
+
+Configure `MONITOR_PUSH_RESTORE_DRILL_URL` only after creating a matching Uptime Kuma Push monitor. A restore drill older than 35 days is reported as WARN in the ops health dashboard.

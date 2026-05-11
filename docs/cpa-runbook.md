@@ -2,6 +2,8 @@
 
 CPA refers to CLIProxyAPI from `router-for-me/CLIProxyAPI`. In this repository it is an optional internal adapter behind New API.
 
+CPA is not the backup, host-health, or operations dashboard. Keep it focused on upstream adapter traffic and its own management UI. Use Uptime Kuma Push monitors plus the local Ops Dashboard for runtime, backup, offsite, audit, restore-drill, disk, container, and cron health.
+
 ## Upstream Assets
 
 Official upstream examples are vendored for review and upgrade comparison:

@@ -109,11 +109,17 @@ release 部署的 crontab：
 
 ```cron
 */5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+*/15 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh audit
 15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
 35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+20 4 1 * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
 ```
 
-`backup` mode 会创建 PostgreSQL dump，并立即用 `ops/verify-postgres-backup.sh` 校验。`offsite` mode 会运行 `ops/offsite-backup.sh`，所以缺少 `RESTIC_REPOSITORY` 或 `RESTIC_PASSWORD` 会按真实失败处理。仓库不会自动安装 cron；在 origin 服务器上确认后手动复制这些条目。
+`backup` mode 会创建 PostgreSQL dump，并立即用 `ops/verify-postgres-backup.sh` 校验。`offsite` mode 会运行 `ops/offsite-backup.sh`，所以缺少 `RESTIC_REPOSITORY` 或 `RESTIC_PASSWORD` 会按真实失败处理。`audit` mode 会写入 `logs/ops-health/status.json` 和 `logs/ops-health/index.html`，覆盖 dump 清单、restic snapshot 可见性、磁盘和 inode 压力、容器健康、cron 新鲜度、恢复演练年龄。`restore-drill` mode 会选取最新 dump 跑 `ops/drill-restore-stack.sh`，并像其他 monitor mode 一样记录结果。
+
+如果要复用 Uptime Kuma Push monitor，在 `.env.production` 设置 `MONITOR_PUSH_RUNTIME_URL`、`MONITOR_PUSH_BACKUP_URL`、`MONITOR_PUSH_OFFSITE_URL`、`MONITOR_PUSH_AUDIT_URL`、`MONITOR_PUSH_RESTORE_DRILL_URL`。这些 URL 是 secret，不要提交进 git。仓库不会自动安装 cron；在 origin 服务器上确认后手动复制这些条目。
+
+查看本地详细报告时，在 origin 运行 `ENV_FILE=.env.production bash ops/ops-dashboard.sh open`，再通过 SSH tunnel 访问 `127.0.0.1:${OPS_DASHBOARD_PORT:-3021}`。
 
 不要把 `backups/postgres/`、`.env.production`、restic 凭证或 monitor webhook secret 提交到 git。
 

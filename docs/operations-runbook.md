@@ -120,7 +120,7 @@ ENV_FILE=.env.production bash ops/check-production-runtime.sh
 
 ## Production Cron Monitoring
 
-Use `ops/production-monitor.sh` for scheduled production checks. It wraps the existing runtime, local backup, and offsite backup scripts without changing the active Docker topology. Logs go to `logs/production-monitor-<mode>.log`; the latest result is written to `logs/production-monitor-<mode>.status`. For example, runtime checks append to `logs/production-monitor-runtime.log`.
+Use `ops/production-monitor.sh` for scheduled production checks. It wraps the existing runtime, local backup, offsite backup, audit, and restore-drill scripts without changing the active Docker topology. Logs go to `logs/production-monitor-<mode>.log`; the latest result is written to `logs/production-monitor-<mode>.status`. For example, runtime checks append to `logs/production-monitor-runtime.log`.
 
 Manual checks on the origin:
 
@@ -129,17 +129,32 @@ cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/production-monitor.sh runtime
 ENV_FILE=.env.production bash ops/production-monitor.sh backup
 ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+ENV_FILE=.env.production bash ops/production-monitor.sh audit
+ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
+ENV_FILE=.env.production bash ops/ops-health-report.sh render
 ```
 
 Suggested crontab:
 
 ```cron
 */5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+*/15 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh audit
 15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
 35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+20 4 1 * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh restore-drill
 ```
 
-Set `MONITOR_ALERT_WEBHOOK_URL` in `.env.production` only if you want webhook alerts. `MONITOR_ALERT_REPEAT_SECONDS` defaults to `3600`, so repeated failures for the same mode do not spam every cron run. The repository does not install cron automatically.
+Set `MONITOR_ALERT_WEBHOOK_URL` in `.env.production` only if you want webhook alerts. `MONITOR_ALERT_REPEAT_SECONDS` defaults to `3600`, so repeated failures for the same mode do not spam every cron run. Set `MONITOR_PUSH_RUNTIME_URL`, `MONITOR_PUSH_BACKUP_URL`, `MONITOR_PUSH_OFFSITE_URL`, `MONITOR_PUSH_AUDIT_URL`, and `MONITOR_PUSH_RESTORE_DRILL_URL` only after creating matching Uptime Kuma Push monitors.
+
+`audit` writes `logs/ops-health/status.json` and renders `logs/ops-health/index.html`. To view the detailed dashboard, run:
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/ops-dashboard.sh open
+ssh -L 3021:127.0.0.1:3021 <deploy-user>@<origin-host>
+```
+
+Then open `http://127.0.0.1:3021`. Close it with `ENV_FILE=.env.production bash ops/ops-dashboard.sh close` when finished. The repository does not install cron automatically.
 
 ## Incident Response
 
@@ -163,7 +178,17 @@ During local setup and channel experiments, keep the profile in `mode: developme
 
 ## Public Status Page
 
-Use Uptime Kuma for the user-facing status page. Keep monitors and any low-quota test token inside the Kuma UI/volume, not in git. Follow `docs/kuma-status-runbook.md`.
+Use Uptime Kuma for the user-facing status page and internal Push monitor summary. Keep monitors, Push URLs, and any low-quota test token inside the Kuma UI/volume or `.env.production`, not in git. Follow `docs/kuma-status-runbook.md`.
+
+To manage Kuma itself without publishing the admin UI:
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/kuma-ui.sh open
+ssh -L 3011:127.0.0.1:3011 <deploy-user>@<origin-host>
+```
+
+Open `http://127.0.0.1:3011`, then close the loopback port with `ENV_FILE=.env.production bash ops/kuma-ui.sh close`.
 
 To publish the status page, set `STATUS_DOMAIN` on the server and merge the example status-domain block from `Caddyfile.status.example` into the active production Caddyfile. The active base `Caddyfile` does not expose Kuma by default.
 

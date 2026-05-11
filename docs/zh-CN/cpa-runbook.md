@@ -1,5 +1,7 @@
 # CPA Runbook
 
+CPA 不是备份、主机健康或运维看板。它只负责上游 adapter 流量和自身管理 UI；runtime、backup、offsite、audit、restore-drill、磁盘、容器和 cron 健康状态统一看 Uptime Kuma Push monitors 与本地 Ops Dashboard。
+
 CPA 指 `router-for-me/CLIProxyAPI`。在本仓库里，它是 New API 后面的可选内部适配层。
 
 ## 上游基准文件
