@@ -96,29 +96,45 @@ tail -n 160 logs/production-monitor-audit.log
 
 Ops Dashboard 只监听本机回环，通过 SSH 隧道看：
 
+在生产服务器上执行：
+
 ```bash
 cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/ops-dashboard.sh open
-ssh -L 3021:127.0.0.1:3021 lihan@srv998135.hstgr.cloud
 ```
 
-打开 `http://127.0.0.1:3021`，用完关闭服务端监听：
+在本地电脑/WSL 执行，不要在生产服务器上执行：
 
 ```bash
+ssh -N -L 13021:127.0.0.1:3021 lihan@srv998135.hstgr.cloud
+```
+
+打开 `http://127.0.0.1:13021`，用完关闭服务端监听：
+
+```bash
+cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/ops-dashboard.sh close
 ```
 
 Kuma admin UI 也只临时打开：
 
+在生产服务器上执行：
+
 ```bash
 cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/kuma-ui.sh open
-ssh -L 3011:127.0.0.1:3011 lihan@srv998135.hstgr.cloud
 ```
 
-打开 `http://127.0.0.1:3011`，用完关闭：
+在本地电脑/WSL 执行，不要在生产服务器上执行：
 
 ```bash
+ssh -N -L 13011:127.0.0.1:3011 lihan@srv998135.hstgr.cloud
+```
+
+打开 `http://127.0.0.1:13011`，用完关闭：
+
+```bash
+cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/kuma-ui.sh close
 ```
 
@@ -204,5 +220,6 @@ ENV_FILE=.env.production bash ops/production-monitor.sh audit
 - `audit=FAIL` 可能只是 `runtime` stale；先看 cron 是否装好、`cronie` 是否 active。
 - `offsite=FAIL` 且提示 `RESTIC_PASSWORD is not set`，优先查 `.env.production` 和导出方式，不要先怀疑 restic。
 - Arch Linux 用 `cronie`；`crontab` 命令存在不代表当前用户已经有 crontab。
+- `ssh -L` 隧道要在本地电脑执行。在生产服务器上执行会去绑定已经被 loopback-only 容器占用的端口，然后报 `Address already in use`。
 - `df -Pi` 的 `IUse%` 是 `-` 时，`inode_status=WARN` 是指标不可用，不是 inode 用满。
 - 本地 restic 现在可以接受，但它只能防同机上的应用或数据库误操作。真正 off-server backup 是后续加固项。

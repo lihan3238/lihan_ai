@@ -96,29 +96,45 @@ tail -n 160 logs/production-monitor-audit.log
 
 Ops Dashboard is private and served on loopback only:
 
+Run on the production server:
+
 ```bash
 cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/ops-dashboard.sh open
-ssh -L 3021:127.0.0.1:3021 lihan@srv998135.hstgr.cloud
 ```
 
-Open `http://127.0.0.1:3021`, then close the server-side listener:
+Run from your local machine or local WSL shell, not from the production server:
 
 ```bash
+ssh -N -L 13021:127.0.0.1:3021 lihan@srv998135.hstgr.cloud
+```
+
+Open `http://127.0.0.1:13021`, then close the server-side listener when finished:
+
+```bash
+cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/ops-dashboard.sh close
 ```
 
 Kuma admin UI is also private:
 
+Run on the production server:
+
 ```bash
 cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/kuma-ui.sh open
-ssh -L 3011:127.0.0.1:3011 lihan@srv998135.hstgr.cloud
 ```
 
-Open `http://127.0.0.1:3011`, then close it:
+Run from your local machine or local WSL shell, not from the production server:
 
 ```bash
+ssh -N -L 13011:127.0.0.1:3011 lihan@srv998135.hstgr.cloud
+```
+
+Open `http://127.0.0.1:13011`, then close it when finished:
+
+```bash
+cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/kuma-ui.sh close
 ```
 
@@ -204,5 +220,6 @@ ENV_FILE=.env.production bash ops/production-monitor.sh audit
 - `audit=FAIL` can be caused by stale `runtime` when cron is not installed or `cronie` is not running.
 - `offsite=FAIL` with `RESTIC_PASSWORD is not set` means the environment is incomplete; check `.env.production` and exports before blaming restic.
 - On Arch Linux, use `cronie`; `crontab` may exist even when no user crontab is installed.
+- Run `ssh -L` tunnels from the local machine. Running the tunnel on the production server tries to bind a port already owned by the loopback-only container and fails with `Address already in use`.
 - `inode_status=WARN` with `df -Pi` showing `IUse%` as `-` is an unavailable metric on this filesystem, not a full inode table.
 - Local restic is acceptable for now, but it only protects against application and database mistakes on the same server. True off-server backup remains the later hardening step.
