@@ -55,6 +55,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docs/phase1-new-api-validation-runbook.md`：一阶段 API/计费验证流程。
 - `docs/local-development-state.md`：本地初始化和持久化状态规则。
 - `docs/backup-strategy.md`：数据库备份、校验和恢复规则。
+- `docs/zh-CN/ops-quick-reference.md`：日常生产命令速查表，覆盖监控、发布、备份和恢复。
 - `docs/server-buying-guide.md`：服务器规格和购买建议。
 - `docs/production-deployment-runbook.md`：生产 origin 部署流程。
 - `docs/release-deployment-runbook.md`：推荐的 `releases/current/shared` 生产部署流程。
@@ -78,6 +79,8 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `vendor/new-api`：上游 New API 源码 submodule。
 
 ## 生产常用命令
+
+README 只保留生产常用流程的摘要；完整的每日命令单看 `docs/zh-CN/ops-quick-reference.md`。
 
 ### 初始部署
 

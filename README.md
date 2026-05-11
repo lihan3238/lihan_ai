@@ -53,6 +53,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `docs/phase1-new-api-validation-runbook.md`: Phase 1 GPT-first configuration and validation checklist.
 - `docs/local-development-state.md`: local initialization and persistent state rules.
 - `docs/backup-strategy.md`: database backup, verification, and restore rules.
+- `docs/ops-quick-reference.md`: daily production command sheet for monitoring, deploys, backups, and recovery.
 - `docs/server-buying-guide.md`: VPS sizing and purchase checklist.
 - `docs/production-deployment-runbook.md`: production origin bootstrap and SSH deploy flow.
 - `docs/release-deployment-runbook.md`: preferred `releases/current/shared` production deploy flow.
@@ -76,6 +77,8 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `vendor/new-api`: upstream New API source as a git submodule for audit and future customization.
 
 ## Common Production Commands
+
+README contains the short version of the common production workflow. For the complete daily command sheet, use `docs/ops-quick-reference.md`.
 
 ### Initial production deployment
 
