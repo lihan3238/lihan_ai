@@ -77,7 +77,66 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `scripts/verify-repo.ps1`：本地仓库结构校验。
 - `vendor/new-api`：上游 New API 源码 submodule。
 
-## 常用命令
+## 生产常用命令
+
+### 初始部署
+
+在源站服务器已经具备 Docker、SSH 访问，并准备好 `/opt/lihan_ai_deploy/shared/.env.production` 后，从本地仓库执行：
+
+```bash
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh bootstrap
+DEPLOY_HOST=<deploy-user>@<origin-host> DEPLOY_REF=main bash ops/deploy-release.sh prepare
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh smoke
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
+```
+
+`bootstrap` 会准备 release 目录模型。`prepare` 会在远端记录 `candidate`，所以正常 `smoke` 和 `promote` 不需要再手动填写 `RELEASE_ID`。
+
+### 更新最新版本到生产环境
+
+PR 合并到 `main` 后，先同步本地仓库，再发布最新生产 release：
+
+```bash
+git fetch origin
+git switch main
+git pull --ff-only origin main
+
+DEPLOY_HOST=<deploy-user>@<origin-host> DEPLOY_REF=main bash ops/deploy-release.sh prepare
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh smoke
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
+```
+
+只有明确要操作某个旧 release 时，才额外设置 `RELEASE_ID=<release-id>`。
+
+### 打开和关闭 CPA UI
+
+CPA UI 只通过 SSH 隧道临时访问，不开放公网。
+
+在生产服务器上：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ops/cpa-ui.sh open
+ops/cpa-ui.sh ps
+```
+
+在本机建立 SSH 隧道：
+
+```bash
+ssh -L 8317:127.0.0.1:8317 <deploy-user>@<origin-host>
+```
+
+打开 `http://127.0.0.1:8317/management.html`。用完后，在服务器关闭 UI 端口：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ops/cpa-ui.sh close
+ops/cpa-ui.sh ps
+```
+
+## 其他常用命令
 
 ```bash
 docker compose ps
@@ -92,9 +151,6 @@ bash ops/validate-ops-profile.sh config/ops-profiles/glm-standard.example.json
 bash ops/channel-health-advisor.sh config/ops-profiles/glm-standard-health.example.json
 bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
 bash ops/bootstrap-server.sh
-DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
-DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh smoke
-DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh promote
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-prod.sh
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ENV_FILE=.env.production bash ops/offsite-backup.sh

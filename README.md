@@ -75,7 +75,66 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - `scripts/verify-repo.ps1`: local repository verification.
 - `vendor/new-api`: upstream New API source as a git submodule for audit and future customization.
 
-## Useful Commands
+## Common Production Commands
+
+### Initial production deployment
+
+Run this once from your local repository after the origin server has Docker, SSH access, and the production env ready under `/opt/lihan_ai_deploy/shared/.env.production`:
+
+```bash
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh bootstrap
+DEPLOY_HOST=<deploy-user>@<origin-host> DEPLOY_REF=main bash ops/deploy-release.sh prepare
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh smoke
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
+```
+
+`bootstrap` prepares the release directory model. `prepare` records a remote `candidate`, so normal `smoke` and `promote` do not need `RELEASE_ID`.
+
+### Update production to latest main
+
+After a PR is merged to `main`, sync your local checkout and deploy the latest production release:
+
+```bash
+git fetch origin
+git switch main
+git pull --ff-only origin main
+
+DEPLOY_HOST=<deploy-user>@<origin-host> DEPLOY_REF=main bash ops/deploy-release.sh prepare
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh smoke
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
+```
+
+Use `RELEASE_ID=<release-id>` only when deliberately operating on an older prepared release.
+
+### Open and close CPA UI
+
+CPA UI stays private and should be reached through an SSH tunnel only.
+
+On the production server:
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ops/cpa-ui.sh open
+ops/cpa-ui.sh ps
+```
+
+From your local machine:
+
+```bash
+ssh -L 8317:127.0.0.1:8317 <deploy-user>@<origin-host>
+```
+
+Open `http://127.0.0.1:8317/management.html`. When finished, close the UI port on the server:
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ops/cpa-ui.sh close
+ops/cpa-ui.sh ps
+```
+
+## Other Useful Commands
 
 ```bash
 docker compose ps
@@ -90,9 +149,6 @@ bash ops/validate-ops-profile.sh config/ops-profiles/glm-standard.example.json
 bash ops/channel-health-advisor.sh config/ops-profiles/glm-standard-health.example.json
 bash ops/drill-restore-postgres.sh backups/postgres/<backup>.dump
 bash ops/bootstrap-server.sh
-DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh prepare
-DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh smoke
-DEPLOY_HOST=root@x.x.x.x bash ops/deploy-release.sh promote
 DEPLOY_HOST=root@x.x.x.x bash ops/deploy-prod.sh
 DEPLOY_HOST=root@x.x.x.x bash ops/verify-remote-prod.sh
 ENV_FILE=.env.production bash ops/offsite-backup.sh
