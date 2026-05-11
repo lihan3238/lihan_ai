@@ -118,6 +118,29 @@ After deployment, DNS changes, Caddy changes, or Cloudflare Tunnel changes, run:
 ENV_FILE=.env.production bash ops/check-production-runtime.sh
 ```
 
+## Production Cron Monitoring
+
+Use `ops/production-monitor.sh` for scheduled production checks. It wraps the existing runtime, local backup, and offsite backup scripts without changing the active Docker topology. Logs go to `logs/production-monitor-<mode>.log`; the latest result is written to `logs/production-monitor-<mode>.status`. For example, runtime checks append to `logs/production-monitor-runtime.log`.
+
+Manual checks on the origin:
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+ENV_FILE=.env.production bash ops/production-monitor.sh backup
+ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+```
+
+Suggested crontab:
+
+```cron
+*/5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
+35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+```
+
+Set `MONITOR_ALERT_WEBHOOK_URL` in `.env.production` only if you want webhook alerts. `MONITOR_ALERT_REPEAT_SECONDS` defaults to `3600`, so repeated failures for the same mode do not spam every cron run. The repository does not install cron automatically.
+
 ## Incident Response
 
 For suspected billing, payment, or provider failure incidents: disable the affected channel or payment path first, export the relevant logs, then reconcile user balances. Do not delete failed orders or usage logs; mark them with an administrative note.

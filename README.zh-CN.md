@@ -136,6 +136,29 @@ ops/cpa-ui.sh close
 ops/cpa-ui.sh ps
 ```
 
+### 生产 Cron 监控
+
+生产 cron 统一调用 wrapper，不再直接散落调用 backup/runtime 脚本。它会写入 `logs/production-monitor-<mode>.log`，更新 `logs/production-monitor-<mode>.status`；如果 `.env.production` 设置了 `MONITOR_ALERT_WEBHOOK_URL`，失败和恢复时会发送粗粒度 webhook 告警。
+
+在生产服务器手动检查：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+ENV_FILE=.env.production bash ops/production-monitor.sh backup
+ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+```
+
+建议 crontab：
+
+```cron
+*/5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
+35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
+```
+
+仓库不会自动安装 cron；在 origin 服务器上确认后手动复制这些条目。
+
 ## 其他常用命令
 
 ```bash

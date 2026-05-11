@@ -103,25 +103,19 @@ wrapper 会创建 PostgreSQL dump、导出脱敏配置快照、可选导出 GPG 
 
 ## 建议 Cron
 
-在 VPS 仓库目录中设置：
+定时生产任务统一使用 `ops/production-monitor.sh`。它会写入 `logs/production-monitor-<mode>.log`，更新 `logs/production-monitor-<mode>.status`；如果 `.env.production` 设置了 `MONITOR_ALERT_WEBHOOK_URL`，失败和恢复时会发送粗粒度 webhook 告警。例如 runtime 检查会追加到 `logs/production-monitor-runtime.log`。
+
+release 部署的 crontab：
 
 ```cron
-15 3 * * * cd /opt/lihan_ai && ENV_FILE=.env.production bash ops/backup-postgres.sh >> logs/backup.log 2>&1
+*/5 * * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh runtime
+15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh backup
+35 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/production-monitor.sh offsite
 ```
 
-使用 release 部署时，从 `current` 运行并把日志写入 shared：
+`backup` mode 会创建 PostgreSQL dump，并立即用 `ops/verify-postgres-backup.sh` 校验。`offsite` mode 会运行 `ops/offsite-backup.sh`，所以缺少 `RESTIC_REPOSITORY` 或 `RESTIC_PASSWORD` 会按真实失败处理。仓库不会自动安装 cron；在 origin 服务器上确认后手动复制这些条目。
 
-```cron
-15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/backup-postgres.sh >> /opt/lihan_ai_deploy/shared/logs/backup.log 2>&1
-```
-
-然后运行 `ops/offsite-backup.sh`，或用你选择的加密备份工具同步 `backups/postgres/` 和 `.env.production` 到离线位置。不要把它们提交到 git。
-
-restic 离线备份也应改到 release 路径：
-
-```cron
-20 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/offsite-backup.sh >> /opt/lihan_ai_deploy/shared/logs/offsite-backup.log 2>&1
-```
+不要把 `backups/postgres/`、`.env.production`、restic 凭证或 monitor webhook secret 提交到 git。
 
 ## 恢复顺序
 
