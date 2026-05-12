@@ -6,22 +6,22 @@ CPA is not the backup, host-health, or operations dashboard. Keep it focused on 
 
 ## Upstream Assets
 
-Official upstream examples are vendored for review and upgrade comparison:
+The upstream project is tracked as a submodule for review and upgrade comparison:
 
-- `vendor/cli-proxy-api/docker-compose.upstream.yml`
+- `vendor/cli-proxy-api/docker-compose.yml`
 - `vendor/cli-proxy-api/config.example.yaml`
 
-Refresh them with:
+Update the pinned submodule with:
 
 ```bash
 bash ops/sync-cpa-upstream-assets.sh
-git diff vendor/cli-proxy-api
+git diff --submodule vendor/cli-proxy-api
 bash tests/cpa-compose.test.sh
 ```
 
 Do not run the upstream compose file directly in production. It publishes several host ports by default. Use the repository CPA overlay instead.
 
-If the official example changes, review the diff and update `docker-compose.cpa.yml` only when the repository overlay needs a matching runtime change. Do not copy upstream public port publishing into production.
+If the official example changes, review the submodule diff and update `docker-compose.cpa.yml` only when the repository overlay needs a matching runtime change. Do not copy upstream public port publishing into production.
 
 The repository overlay exists for two reasons:
 

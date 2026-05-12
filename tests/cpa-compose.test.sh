@@ -26,7 +26,7 @@ assert_not_contains() {
   fi
 }
 
-assert_file "vendor/cli-proxy-api/docker-compose.upstream.yml"
+assert_file "vendor/cli-proxy-api/docker-compose.yml"
 assert_file "vendor/cli-proxy-api/config.example.yaml"
 assert_file "docker-compose.cpa.yml"
 assert_file "docker-compose.cpa.ui.yml"
@@ -35,8 +35,10 @@ assert_file "ops/sync-cpa-upstream-assets.sh"
 assert_file "docs/cpa-runbook.md"
 assert_file "docs/zh-CN/cpa-runbook.md"
 
-assert_contains "vendor/cli-proxy-api/docker-compose.upstream.yml" "eceasy/cli-proxy-api"
-assert_contains "vendor/cli-proxy-api/docker-compose.upstream.yml" "\"8317:8317\""
+assert_contains ".gitmodules" "router-for-me/CLIProxyAPI"
+assert_contains ".gitmodules" "path = vendor/cli-proxy-api"
+assert_contains "vendor/cli-proxy-api/docker-compose.yml" "eceasy/cli-proxy-api"
+assert_contains "vendor/cli-proxy-api/docker-compose.yml" "\"8317:8317\""
 assert_contains "vendor/cli-proxy-api/config.example.yaml" "remote-management:"
 assert_contains "vendor/cli-proxy-api/config.example.yaml" "secret-key:"
 assert_contains "vendor/cli-proxy-api/config.example.yaml" "panel-github-repository:"
@@ -76,8 +78,8 @@ assert_contains "docs/zh-CN/cpa-runbook.md" "--no-deps"
 assert_not_contains "docs/zh-CN/cpa-runbook.md" "scale_args=\"--scale caddy=0\""
 assert_contains "docs/zh-CN/cpa-runbook.md" "--force-recreate"
 
-assert_contains "ops/sync-cpa-upstream-assets.sh" "raw.githubusercontent.com/router-for-me/CLIProxyAPI/main/docker-compose.yml"
-assert_contains "ops/sync-cpa-upstream-assets.sh" "raw.githubusercontent.com/router-for-me/CLIProxyAPI/main/config.example.yaml"
+assert_contains "ops/sync-cpa-upstream-assets.sh" "submodule update --init --remote vendor/cli-proxy-api"
+assert_contains "ops/sync-cpa-upstream-assets.sh" "git diff --submodule vendor/cli-proxy-api"
 
 if command -v docker >/dev/null 2>&1; then
   cd "$ROOT_DIR"
