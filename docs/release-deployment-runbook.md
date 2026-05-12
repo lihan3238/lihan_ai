@@ -110,10 +110,13 @@ Tunnel mode appends `docker-compose.cloudflare-tunnel.yml` and scales Caddy to z
 
 1. Develop locally on a short-lived branch such as `codex/<topic>`.
 2. Open a PR and merge to `main` after checks pass.
-3. Run `prepare` for `DEPLOY_REF=main`.
-4. Run `smoke`; pass `SMOKE_BACKUP_PATH` when you want a known dump.
-5. Run `promote` only after smoke passes.
-6. Verify runtime, backup, New API admin, test token, CPA routing if enabled, and tunnel routing if enabled.
+3. Let GitHub Actions run post-merge validation on its own runner. It must not SSH to production or run release commands.
+4. From a trusted local/operator shell, run `prepare` for `DEPLOY_REF=main`.
+5. Run `smoke`; pass `SMOKE_BACKUP_PATH` when you want a known dump.
+6. Run `promote` only after smoke passes.
+7. Verify runtime, backup, New API admin, test token, CPA routing if enabled, and tunnel routing if enabled.
+
+GitHub Actions is intentionally not a production deploy actor. Do not add production SSH keys or deploy secrets to repository Actions secrets; keep server access on the operator machine.
 
 The production host should not be the development workspace. It may keep a legacy `/opt/lihan_ai` clone during migration, but production should run from `/opt/lihan_ai_deploy/current`.
 
