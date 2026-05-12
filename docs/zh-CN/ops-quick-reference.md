@@ -140,10 +140,11 @@ NEW_API_ADMIN_PASSWORD=<password> \
 bash ops/check-new-api-admin-frontend.sh
 ```
 
-如果官方镜像仍未通过这个后台 E2E，临时在 `/opt/lihan_ai_deploy/shared/.env.production`
-保留 `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1`，让部署从当前 pin 住的 `vendor/new-api` 修复版构建。
-小生产机使用 `DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull` 拉取预构建补丁镜像，不在服务器上编译前端。
-`LOCAL_NEW_API_IMAGE` 使用非官方补丁 tag；runtime check 会拒绝实际容器仍为 `calciumion/new-api:latest` 的发布。
+New API `v1.0.0-rc.5` 已包含后台 dropdown 修复。本机 E2E 通过后，生产保持
+`calciumion/new-api:latest` 和 `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0`。
+如果官方 latest 未通过后台 E2E，才把 `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1` 作为临时
+rollback 路径，并配合 `DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull` 和非官方 `LOCAL_NEW_API_IMAGE`；
+runtime check 会拒绝 patched-mode 下实际容器仍为 `calciumion/new-api:latest` 的发布。
 
 ## 主机压力检查
 

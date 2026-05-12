@@ -56,7 +56,16 @@ manual activation 流程：
 
 ## 前端补丁策略
 
-生产默认继续使用 `calciumion/new-api:latest`。在上游官方镜像还没带修复时，使用当前 pin 住的本地构建路径：
+生产默认使用官方镜像：
+
+```env
+NEW_API_IMAGE=calciumion/new-api:latest
+DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0
+```
+
+上游 PR #4787 已合入 New API `v1.0.0-rc.5`，`calciumion/new-api:latest`
+现在包含 dropdown `onSelect` 修复。生产 promote 前先拉取官方镜像，并在本机恢复栈上跑同一套 E2E。
+如果官方 latest 仍未通过后台 E2E，才把临时补丁镜像作为 rollback 路径：
 
 ```env
 DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1
@@ -64,17 +73,20 @@ DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull
 LOCAL_NEW_API_IMAGE=ghcr.io/lihan3238/new-api:f80e8ea6-dropdown
 ```
 
-当前新前端有一个后台运营阻塞点：Users 页面行菜单里的 `Manage Bindings` 和 `Manage Subscriptions` 依赖 `DropdownMenuItem onSelect`，如果没有兼容处理，按钮会失效。临时本地修复是来自 `lihan3238/new-api` 的 submodule commit `f80e8ea6`；它包含 `5741c359` dropdown `onSelect` 修复和 Docker build context 清理。上游 issue #4692 和 PR #4787 在官方镜像发布前，不能视为已经修复。
+历史阻塞点在新前端：Users 页面行菜单里的 `Manage Bindings` 和 `Manage Subscriptions`
+依赖 `DropdownMenuItem onSelect`，如果没有兼容处理，按钮会失效。临时本地修复是来自
+`lihan3238/new-api` 的 submodule commit `f80e8ea6`；它包含 `5741c359` dropdown
+`onSelect` 修复和 Docker build context 清理。保留上游 issue #4692 和 PR #4787 作为
+release notes 背景，方便追溯 rollback 决策。
 
-临时自定义镜像规则：
+临时 rollback 镜像规则：
 
+- 正常生产路径保持 `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0`。
 - 只有 admin E2E 证明官方镜像仍失效时，才设置 `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1` 使用临时镜像。
 - 生产优先使用 `DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull`：在本地工作站或 CI 构建并推送补丁镜像，生产只拉取。只有内存足够的机器才用 `build` 在服务器上编译 New API 前端。
 - `LOCAL_NEW_API_IMAGE` 使用非官方补丁 tag，例如 `ghcr.io/lihan3238/new-api:f80e8ea6-dropdown`；不要改成 `calciumion/new-api:latest`。现在 runtime check 会检查实际 `relay-new-api` 镜像；如果开了本地构建但仍在跑官方镜像，会直接失败。
 - 临时镜像只能包含 dropdown `onSelect` 修复。
 - 不把套餐、品牌、支付、计费逻辑混进这个前端补丁。
-- 等 #4787 合并并进入官方镜像后，用同一套 E2E 验证官方镜像，通过后把 `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0`，回退到 `calciumion/new-api:latest`。
-- 同时把 `.gitmodules` 和 `vendor/new-api` 切回包含该修复的官方 `QuantumNous/new-api` 上游 commit。
 
 ## Admin 前端 E2E
 

@@ -39,6 +39,32 @@ Remove-Item Env:NEW_API_BASE_URL
 npm run e2e:web:new-api
 ```
 
+For the standard local completion gate, run the wrapper instead of typing credentials manually:
+
+```bash
+bash ops/local-new-api-e2e.sh
+```
+
+The wrapper only accepts `localhost` / `127.0.0.1` targets. It resets a local test admin account
+(`codex_e2e_admin` / `CodexLocal123!`) in the restored local PostgreSQL container, then runs the
+browser smoke and admin user-management E2E paths. It defaults to `ENV_FILE=.env.local-restore`
+and refuses production env files. Do not use it against production.
+
+## Restored Stack Acceptance
+
+Use this when validating a backup restore or an upstream New API image change locally:
+
+```bash
+docker pull calciumion/new-api:latest
+docker compose --env-file .env.local-restore -f docker-compose.yml -f docker-compose.dev.yml up -d postgres redis
+ENV_FILE=.env.local-restore bash ops/restore-postgres.sh backups/postgres/<dump>.dump
+docker compose --env-file .env.local-restore -f docker-compose.yml -f docker-compose.dev.yml up -d new-api
+bash ops/local-new-api-e2e.sh
+```
+
+Keep `.env.local-restore` on `NEW_API_IMAGE=calciumion/new-api:latest` and
+`DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0` for the official-image acceptance path.
+
 Admin user-management E2E for package operations:
 
 ```bash

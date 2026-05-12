@@ -172,10 +172,11 @@ bash ops/channel-health-advisor.sh config/ops-profiles/glm-default-health.exampl
 Use [docs/new-api-small-circle-launch-runbook.md](docs/new-api-small-circle-launch-runbook.md) when configuring the
 friend-only package launch. The first stage is configuration-first: station quota wording, New API subscription plans,
 manual activation, fair use, and official-image-first frontend policy.
-While the official image lacks the admin dropdown fix, production can temporarily set
-`DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1` to build from the pinned `lihan3238/new-api` submodule.
-On small production hosts, set `DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull` and use a prebuilt patch image rather than compiling the frontend on the server.
-Keep `LOCAL_NEW_API_IMAGE` on a non-official patch tag; runtime checks fail if the deploy still runs `calciumion/new-api:latest`.
+Upstream New API `v1.0.0-rc.5` includes the admin dropdown fix, so production should run
+`calciumion/new-api:latest` with `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0` after local E2E passes.
+Keep the pinned `lihan3238/new-api` patch image documented only as a rollback path: if official
+latest fails the admin E2E, temporarily set `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1`,
+`DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull`, and a non-official `LOCAL_NEW_API_IMAGE`.
 
 Before selling packages, verify the new admin frontend actions used for manual activation:
 

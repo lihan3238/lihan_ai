@@ -1,0 +1,108 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "Production release command"
+        required: true
+        default: prepare-smoke
+        type: choice
+        options:
+          - prepare-smoke
+          - status
+          - promote
+          - recover
+          - rollback
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+jobs:
+  prepare-smoke:
+    name: Prepare and smoke release
+    if: github.event_name == 'push' || github.event.inputs.command == 'prepare-smoke'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure production SSH
+        run: |
+          set -eu
+          test -n "${{ secrets.PROD_DEPLOY_HOST }}"
+          test -n "${{ secrets.PROD_DEPLOY_SSH_KEY }}"
+          test -n "${{ secrets.PROD_DEPLOY_KNOWN_HOSTS }}"
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.PROD_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.PROD_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 700 ~/.ssh
+          chmod 600 ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Prepare release
+        run: DEPLOY_HOST="${{ secrets.PROD_DEPLOY_HOST }}" DEPLOY_REF=main bash ops/deploy-release.sh prepare
+
+      - name: Smoke release
+        run: DEPLOY_HOST="${{ secrets.PROD_DEPLOY_HOST }}" bash ops/deploy-release.sh smoke
+
+  production-command:
+    name: Manual production command
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.command != 'prepare-smoke'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure production SSH
+        run: |
+          set -eu
+          test -n "${{ secrets.PROD_DEPLOY_HOST }}"
+          test -n "${{ secrets.PROD_DEPLOY_SSH_KEY }}"
+          test -n "${{ secrets.PROD_DEPLOY_KNOWN_HOSTS }}"
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.PROD_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.PROD_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 700 ~/.ssh
+          chmod 600 ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Run selected command
+        env:
+          COMMAND: ${{ github.event.inputs.command }}
+          DEPLOY_HOST: ${{ secrets.PROD_DEPLOY_HOST }}
+        run: |
+          set -eu
+          case "$COMMAND" in
+            status)
+              bash ops/deploy-release.sh status
+              ;;
+            promote)
+              bash ops/deploy-release.sh promote
+              ;;
+            recover)
+              bash ops/deploy-release.sh recover
+              ;;
+            rollback)
+              bash ops/deploy-release.sh rollback
+              ;;
+            *)
+              echo "unsupported command: $COMMAND" >&2
+              exit 2
+              ;;
+          esac
