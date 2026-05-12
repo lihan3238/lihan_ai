@@ -6,22 +6,22 @@ CPA 指 `router-for-me/CLIProxyAPI`。在本仓库里，它是 New API 后面的
 
 ## 上游基准文件
 
-官方示例文件保存在仓库中，便于审计和升级对比：
+上游项目作为 submodule 保存在仓库中，便于审计和升级对比：
 
-- `vendor/cli-proxy-api/docker-compose.upstream.yml`
+- `vendor/cli-proxy-api/docker-compose.yml`
 - `vendor/cli-proxy-api/config.example.yaml`
 
-刷新命令：
+更新 pinned submodule：
 
 ```bash
 bash ops/sync-cpa-upstream-assets.sh
-git diff vendor/cli-proxy-api
+git diff --submodule vendor/cli-proxy-api
 bash tests/cpa-compose.test.sh
 ```
 
 不要在生产环境直接运行官方 compose。官方示例默认发布多个宿主机端口。生产应使用本仓库的 CPA overlay。
 
-如果官方示例发生变化，先审查 diff；只有仓库 overlay 需要跟随运行时变化时，才更新 `docker-compose.cpa.yml`。不要把官方示例里的公网端口发布直接复制到生产配置。
+如果官方示例发生变化，先审查 submodule diff；只有仓库 overlay 需要跟随运行时变化时，才更新 `docker-compose.cpa.yml`。不要把官方示例里的公网端口发布直接复制到生产配置。
 
 仓库 overlay 的目的有两个：
 

@@ -1,250 +1,182 @@
 # Lihan AI Relay
 
-English: [README.md](README.md)
+[English README](README.md) | [用户快速接入](docs/zh-CN/user-quickstart.md) | [维护者发布手册](docs/zh-CN/maintainer-release-runbook.md) | [贡献说明](CONTRIBUTING.md)
 
-本仓库是上游 New API 的轻量生产 wrapper。运行时继续使用官方 `calciumion/new-api:latest` 镜像；本地代码负责部署、备份、恢复、迁移、验收和运维文档。
+Lihan AI Relay 是一个围绕 [New API](https://github.com/QuantumNous/new-api) 的轻量生产运维 wrapper。它不改造上游产品本体，而是把本仓库聚焦在部署、备份、恢复、发布门禁、本机 E2E 和运维文档上。
 
-## 边界
+默认运行时使用官方 `calciumion/new-api:latest` 镜像。仓库里的 `vendor/new-api` 和 `vendor/cli-proxy-api` submodule 只作为验证、升级审查、紧急补丁和回滚路径保留。
 
-- 上游源码以 submodule 保存在 `vendor/new-api`。
-- 生产部署保持 Docker Compose。
-- 直连源站模式由 Caddy 接公网流量；Cloudflare Tunnel 模式由 `cloudflared` 接入。
-- CPA / CLIProxyAPI 是可选内部服务，只给 Docker 内网使用。
-- 当前运维面已经下线旧的监控、看板和远端备份链路。
-- 在确认 New API 原生能力不足前，不急于做本地业务二开。
+## 项目定位
+
+这个仓库面向小范围、可信任、需要稳定运维路径的 New API 生产部署。
+
+适合：
+
+- 用 Docker Compose 自托管 New API。
+- 由维护者手动控制生产发布。
+- 本地 PostgreSQL 备份、校验、恢复演练和回滚。
+- 熟人内测、小范围 AI API relay 运营。
+- 不接触生产 secrets 的轻量 CI 检查。
+
+不适合：
+
+- 大规模公开 SaaS 自动化获客。
+- fork New API 做一套新产品前端。
+- GitHub Actions 全自动控制生产服务器。
+- 承诺无限量、最低价、官方 USD 余额或强 SLA。
+
+## 包含什么
+
+- New API、PostgreSQL、Redis、Caddy、可选 Cloudflare Tunnel、可选内部 CPA / CLIProxyAPI 的 Docker Compose 拓扑。
+- `ops/relayctl.sh` 薄封装入口：状态检查、维护、发布检查、部署、恢复、回滚、本机 E2E。
+- 远端发布流程：`prepare -> smoke -> promote -> status`。
+- 带校验和恢复演练的备份/恢复脚本。
+- 覆盖核心 New API smoke 路径和后台用户管理 dropdown 路径的本机 Playwright E2E。
+- 不需要 secrets 的 GitHub Actions PR 检查和合并后验证。
+- 用户文档、维护者文档、社区贡献规则和安全说明。
+
+## 架构
+
+```mermaid
+flowchart LR
+  user["用户 / API 客户端"] --> edge["Caddy 或 Cloudflare Tunnel"]
+  edge --> newapi["New API"]
+  newapi --> postgres["PostgreSQL"]
+  newapi --> redis["Redis"]
+  newapi -. 可选内部链路 .-> cpa["CPA / CLIProxyAPI"]
+
+  maintainer["维护者本机"] --> release["ops/deploy-release.sh"]
+  release --> server["生产服务器"]
+  server --> newapi
+
+  ci["GitHub Actions"] --> checks["只做仓库检查"]
+  checks -. 不 SSH、不读生产 secrets .-> ci
+```
+
+生产 promote 故意保持人工执行。GitHub Actions 只验证仓库，不 SSH 到服务器，也不需要生产 secrets。
 
 ## 快速开始
 
-1. 使用 WSL Ubuntu 24.04 或 Linux VPS shell。
-2. 安装 Docker 和 Docker Compose。
-3. 初始化 submodule：
+使用 WSL Ubuntu 24.04、Linux 或 Linux VPS shell。
 
 ```bash
+git clone https://github.com/lihan3238/lihan_ai.git
+cd lihan_ai
 git submodule update --init --recursive
-```
 
-4. 复制 `.env.production.example` 为 `.env.production`。
-5. 替换所有 `CHANGE_ME`，并把 `DOMAIN` 设置为生产公网域名。
-6. 运行预检：
+cp .env.production.example .env.production
+# 替换所有 CHANGE_ME，并设置 DOMAIN。
 
-```bash
 ENV_FILE=.env.production bash ops/preflight.sh
-```
-
-7. 启动基础生产栈：
-
-```bash
 docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-8. 打开 `https://$DOMAIN`，创建第一个 New API 管理员账号，然后在上游后台完成配置。
+然后打开 `https://$DOMAIN`，创建第一个 New API 管理员账号，并在 New API 后台完成供应商、模型、分组、额度和计费配置。
 
-## 仓库结构
-
-- `docker-compose.yml`：New API、PostgreSQL、Redis 和 Caddy。
-- `docker-compose.prod.yml`：生产日志和端口覆盖。
-- `docker-compose.cpa.yml`：可选 CPA 内部服务。
-- `docker-compose.cpa.ui.yml`：只用于 SSH 隧道的短时 CPA 管理 UI 覆盖。
-- `docker-compose.cloudflare-tunnel.yml`：可选 Cloudflare Tunnel 路径，运行 `cloudflared` 并跳过源站公网 `80/443`。
-- `.env.example`：本地开发变量样板。
-- `.env.production.example`：生产 env 样板。
-- `ops/`：预检、部署、备份、恢复、迁移、CPA 和 env 对齐脚本。
-- `tests/`：wrapper 的 shell 测试。
-- `docs/`：英文 runbook；`docs/zh-CN/` 是同步中文文档。
-- `config/ops-profiles/`：只读 New API 配置验收 profile。
-- `vendor/new-api`：上游 New API 源码。
-
-## 生产常用命令
-
-日常运维优先用薄封装入口：
+本地恢复栈和浏览器 E2E 使用：
 
 ```bash
+bash ops/relayctl.sh local-e2e
+```
+
+## 日常运维
+
+在生产服务器执行：
+
+```bash
+cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/relayctl.sh status
 ENV_FILE=.env.production bash ops/relayctl.sh maintain
-bash ops/relayctl.sh release-check
 ```
 
-这个入口只调用现有脚本，不改变生产安全边界：GitHub Actions 只验证仓库，生产 promote 仍然人工执行。维护者流程见 [docs/zh-CN/maintainer-release-runbook.md](docs/zh-CN/maintainer-release-runbook.md)。
+`maintain` 会执行已校验的 PostgreSQL 备份、存储清理和运行时健康检查。
 
-给内测用户先发 [docs/zh-CN/user-quickstart.md](docs/zh-CN/user-quickstart.md)，需要细节时再发 [docs/zh-CN/user-guide.md](docs/zh-CN/user-guide.md)。社区 PR 规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+## 发布流程
 
-### 初始生产部署
-
-源站已有 Docker、SSH 访问，并准备好 `/opt/lihan_ai_deploy/shared/.env.production` 后，从本地仓库执行：
-
-```bash
-DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh bootstrap
-DEPLOY_HOST=<deploy-user>@<origin-host> DEPLOY_REF=main bash ops/deploy-release.sh prepare
-DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh smoke
-DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
-DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh status
-DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
-```
-
-`prepare` 会在远端记录 `candidate`，所以正常 `smoke` 和 `promote` 不需要手动填 `RELEASE_ID`。Release 命令默认从远端 `.env.production` 读取 CPA 和 Cloudflare Tunnel 拓扑；只有临时覆盖时才传 `DEPLOY_INCLUDE_*`。
-
-`prepare` 在预检前会执行：
-
-```bash
-bash ops/sync-env-template.sh /opt/lihan_ai_deploy/shared/.env.production .env.production.example
-```
-
-这个同步只把 release 样板里新增而生产 env 缺失的键追加进去；它会先创建 `.bak.<UTC>` 备份，不覆盖已有值，不删除废弃键，只报告废弃键。
-
-### 更新最新 main 到生产
+`main` 准备好后，从维护者本机执行：
 
 ```bash
 git fetch origin
 git switch main
 git pull --ff-only origin main
 
-DEPLOY_HOST=<deploy-user>@<origin-host> DEPLOY_REF=main bash ops/deploy-release.sh prepare
-DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh smoke
-DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
-DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
+bash ops/relayctl.sh release-check
+
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/relayctl.sh deploy-prepare
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/relayctl.sh deploy-smoke
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/relayctl.sh deploy-promote
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/relayctl.sh deploy-status
 ```
 
-只有明确操作某个旧 release 时，才使用 `RELEASE_ID=<release-id>`。
-如果 promote 过程中 SSH 断开，先运行 `ops/deploy-release.sh status`；如果没有 worker 在运行且 `promote.state` 已陈旧，再运行 `ops/deploy-release.sh recover`。
-
-### 打开和关闭 CPA UI
-
-CPA UI 只通过 SSH 隧道临时访问。
-
-生产服务器上：
+如果 promote 过程中 SSH 中断：
 
 ```bash
-cd /opt/lihan_ai_deploy/current
-ops/cpa-ui.sh open
-ops/cpa-ui.sh ps
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/relayctl.sh deploy-status
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/relayctl.sh recover
 ```
 
-本地机器上：
+回滚保持显式执行：
 
 ```bash
-ssh -L 8317:127.0.0.1:8317 <deploy-user>@<origin-host>
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/relayctl.sh rollback <release-id>
 ```
 
-打开 `http://127.0.0.1:8317/management.html`。用完后关闭：
+## 文档
+
+- [用户快速接入](docs/zh-CN/user-quickstart.md)：给内测用户的最短接入路径。
+- [用户详细指南](docs/zh-CN/user-guide.md)：更完整的客户端和 API 使用说明。
+- [维护者发布手册](docs/zh-CN/maintainer-release-runbook.md)：稳定生产发布路径。
+- [浏览器 E2E 手册](docs/browser-e2e-runbook.md)：本机和生产浏览器验证。
+- [熟人内测配置手册](docs/zh-CN/new-api-small-circle-launch-runbook.md)：New API 后台配置。
+- [熟人内测宣发运营](docs/zh-CN/new-api-small-circle-promo-ops.md)：站内文案、群运营和支持模板。
+- [English docs](docs/)：英文 runbook。
+
+## 仓库结构
+
+```text
+.
+|-- docker-compose*.yml       # 运行拓扑和可选覆盖
+|-- ops/                      # 部署、备份、恢复、验证、E2E 封装
+|-- tests/                    # 运维行为 shell 测试
+|-- e2e/                      # New API 核心路径 Playwright 检查
+|-- docs/                     # 用户和维护者文档
+|-- config/ops-profiles/      # 只读 New API 配置验收 profile
+|-- vendor/new-api/           # 固定版本的上游 New API submodule
+|-- vendor/cli-proxy-api/     # 固定版本的上游 CLIProxyAPI submodule
+```
+
+运行时数据、日志、备份、快照、本地 env 文件和私有 AI 工作笔记都会被 Git 忽略。
+
+## 验证
+
+GitHub Actions PR CI 位于 `.github/workflows/ci.yml`，只运行不需要生产 secrets 的仓库检查。
+
+快速本地检查：
 
 ```bash
-cd /opt/lihan_ai_deploy/current
-ops/cpa-ui.sh close
-ops/cpa-ui.sh ps
+bash ops/pre-commit.sh
 ```
 
-### 本地备份 Cron
-
-仓库当前只保留一个定时生产任务：创建 PostgreSQL dump 并立即校验。
+完整仓库门禁：
 
 ```bash
-cd /opt/lihan_ai_deploy/current
-ENV_FILE=.env.production bash ops/backup-cron.sh
-```
-
-建议 crontab：
-
-```cron
-15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/backup-cron.sh
-```
-
-备份默认写入 `backups/postgres/`。手动下载：
-
-```bash
-scp <deploy-user>@<origin-host>:/opt/lihan_ai_deploy/shared/backups/postgres/<dump>.dump .
-scp <deploy-user>@<origin-host>:/opt/lihan_ai_deploy/shared/backups/postgres/<dump>.dump.sha256 .
-```
-
-恢复和演练仍然人工执行：
-
-```bash
-ENV_FILE=.env.production bash ops/verify-postgres-backup.sh backups/postgres/<dump>.dump
-ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<dump>.dump
-ENV_FILE=.env.production bash ops/restore-postgres.sh backups/postgres/<dump>.dump
-```
-
-## New API 分组
-
-生产只保留两个 New API 分组：
-
-- `default`：普通朋友/用户默认组。
-- `vip`：人工授予的高优先级或优惠组。
-
-仓库不再把 `standard` 当作当前分组。生产数据库不会由代码自动迁移；请在 New API 后台手动把旧 `standard` 用户、token、渠道能力、价格和模型权限迁到 `default`，`vip` 只保留给明确授予的人。
-
-只读验收：
-
-```bash
-bash ops/validate-ops-profile.sh config/ops-profiles/glm-default.example.json
-bash ops/channel-health-advisor.sh config/ops-profiles/glm-default-health.example.json
-```
-
-## Small Circle Launch
-
-配置朋友小范围套餐时看 [docs/zh-CN/new-api-small-circle-launch-runbook.md](docs/zh-CN/new-api-small-circle-launch-runbook.md)。
-第一阶段只做后台配置：station quota / 站内额度文案、New API 订阅计划、manual activation、fair use，以及官方镜像优先的前端策略。
-熟人内测宣发、微信群/QQ群运营、朋友圈/QQ 空间文案、开通私聊模板和故障反馈模板见 [docs/zh-CN/new-api-small-circle-promo-ops.md](docs/zh-CN/new-api-small-circle-promo-ops.md)。
-上游 New API `v1.0.0-rc.5` 已包含后台 dropdown 修复；本机 E2E 通过后，生产默认运行
-`calciumion/new-api:latest`，并保持 `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0`。
-pin 住的 `lihan3238/new-api` 补丁镜像只作为 rollback 路径保留：如果官方 latest 未通过
-后台 E2E，才临时设置 `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1`、
-`DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull` 和非官方 `LOCAL_NEW_API_IMAGE`。
-
-开始售卖套餐前，先验证手动开通依赖的新前端后台按钮：
-
-```bash
-NEW_API_BASE_URL=https://api.lihan3238.com \
-NEW_API_ADMIN_USERNAME=<admin> \
-NEW_API_ADMIN_PASSWORD=<password> \
-bash ops/check-new-api-admin-frontend.sh
-```
-
-## 常用命令
-
-```bash
-docker compose ps
-docker compose logs -f new-api
-ENV_FILE=.env.production bash ops/check-production-runtime.sh
-ENV_FILE=.env.production bash ops/backup-postgres.sh
-ENV_FILE=.env.production bash ops/backup-cron.sh
-ENV_FILE=.env.production bash ops/prune-runtime-storage.sh all
-bash ops/phase1-smoke-test.sh
-bash ops/relay-diagnostics.sh
-NEW_API_TEST_TOKEN=... NEW_API_TEST_MODEL=glm-5.1 bash ops/e2e-api-billing.sh
-bash ops/export-config-snapshot.sh
-SOURCE_SSH=root@old TARGET_SSH=root@new bash ops/migration-preflight.sh
-CONFIRM_FINAL_CUTOVER=yes SOURCE_SSH=root@old TARGET_SSH=root@new bash ops/migrate-prod.sh
-bash ops/sync-cpa-upstream-assets.sh
-```
-
-## 本地开发
-
-```bash
-cp .env.example .env
-# 先替换 CHANGE_ME
-docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml up -d new-api
-```
-
-打开 `http://localhost:$NEW_API_DEV_PORT`。本地默认端口是 `3100`；容器内 New API 仍监听 `3000`。不要运行 `docker compose down -v`，除非明确要删除本地数据库状态。
-
-浏览器 E2E 见 `docs/browser-e2e-runbook.md`。重新跑本地浏览器或 API 流程前，先执行：
-
-```bash
-bash ops/check-local-ports.sh
-```
-
-## CI 和验证
-
-`.github/workflows/ci.yml` 是 GitHub Actions PR CI。它运行不需要 secrets 的 PR 检查：shell 语法、shell 测试、Compose 渲染、文档检查和 `scripts/verify-repo.ps1 -SkipDocker`。
-
-本地验证：
-
-```bash
-bash -n ops/*.sh tests/*.test.sh
-for test in tests/*.test.sh; do bash "$test"; done
 bash ops/dev-gate.sh
-powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts\verify-repo.ps1 -SkipDocker
-git diff --check
 ```
 
-新功能可以把私有过程笔记放在已忽略的 `docs/ai-dev/<YYYY-MM-DD>-<topic>/`；需要本地校验笔记时运行 `bash ops/dev-gate.sh docs/ai-dev/<YYYY-MM-DD>-<topic>`。`E2E Coverage Matrix` 要保留在过程笔记或 PR/runbook handoff 里；耐久决策、E2E 证据、用户说明和剩余风险要写到 PR 描述或正式 runbook。跳过的 E2E 必须写 `Reason:` 和 `Rerun:`。
+正式发布门禁：
+
+```bash
+bash ops/release-readiness.sh
+```
+
+正式发布门禁默认包含本机 New API E2E。只有在 PR 或发布交接里写明原因时，才使用 `SKIP_LOCAL_E2E=1`。
+
+做功能开发时，跳过的浏览器或 API 路径要写进 `E2E Coverage Matrix`，并补充 `Reason:` 和 `Rerun:`。
+
+生产备份细节见 runbook；定时任务入口是 `ops/backup-cron.sh`。
+
+## 社区
+
+欢迎小而聚焦的 PR。提交前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)，不要提交生产细节、secrets、私有备份、本地运行数据或 Playwright 生成产物。
+
+安全问题请按 [SECURITY.md](SECURITY.md) 反馈。

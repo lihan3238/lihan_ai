@@ -69,7 +69,7 @@ done
 
 assert_not_file "docs/kuma-status-runbook.md"
 
-for keyword in ".github/workflows/ci.yml" "GitHub Actions PR CI" "ops/deploy-release.sh prepare" "ops/deploy-release.sh smoke" "ops/deploy-release.sh promote" "ops/cpa-ui.sh open" "ops/cpa-ui.sh close" "ssh -L 8317" "ops/backup-cron.sh" "ops/dev-gate.sh" "ops/relayctl.sh" "E2E Coverage Matrix" "sync-env-template.sh" "default" "vip"; do
+for keyword in ".github/workflows/ci.yml" "GitHub Actions PR CI" "ops/backup-cron.sh" "ops/dev-gate.sh" "ops/relayctl.sh" "E2E Coverage Matrix" "vendor/cli-proxy-api" "new-api-small-circle-launch-runbook.md"; do
   assert_contains "README.md" "$keyword"
   assert_contains "README.zh-CN.md" "$keyword"
 done
