@@ -20,6 +20,20 @@ Pull requests targeting `main` and pushes to `main` run the root GitHub Actions 
 
 Default CI must not connect to production, read `.env.production`, require `NEW_API_TEST_TOKEN`, run `ops/production-gate.sh`, or perform backup/restore operations against a live database. Keep live billing E2E, production backups, restore drills, and release promotion checks in the local production gate and release deployment flow.
 
+## Layered E2E Policy
+
+E2E coverage is required as a matrix, not as a blanket GitHub Actions secret dependency. Every feature plan must include `E2E Coverage Matrix`, and every handoff must include `E2E Results`. Each affected path must either list a command that ran and the observed result, or a skipped entry with `Reason:` and `Rerun:`.
+
+Use these default paths:
+
+- Browser/UI: `NEW_API_BASE_URL=http://localhost:3100 npm run e2e:web:new-api`
+- API/billing: `NEW_API_TEST_TOKEN=... NEW_API_TEST_MODEL=glm-5.1 bash ops/e2e-api-billing.sh`
+- Deploy/ops: `COMPOSE_PROJECT_NAME=lihan_ai ENV_FILE=.env.production bash ops/check-production-runtime.sh`
+- Backup/migration: `ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<dump>.dump`
+- Config/env: `ENV_FILE=.env.production bash ops/preflight.sh` and `bash ops/sync-env-template.sh <target-env> .env.production.example`
+
+PR CI only verifies that the repository and feature docs are structurally complete. Live E2E remains local/operator-run because it needs secrets, a running stack, or production-like state.
+
 ## Spec Kit And Superpowers
 
 Spec Kit provides the upstream specification workflow and Codex skills:
@@ -110,11 +124,12 @@ export AI_DEV_FEATURE_DIR="docs/ai-dev/<YYYY-MM-DD>-<topic>"
 bash ops/production-gate.sh
 ```
 
-`AI_DEV_FEATURE_DIR` is optional for emergency diagnostics, but required for planned feature or workflow changes. It makes the production gate verify that the current feature documents still satisfy the Research -> Spec -> Plan -> Tasks approval contract.
+`AI_DEV_FEATURE_DIR` is optional for emergency diagnostics, but required for planned feature or workflow changes. It makes the production gate verify that the current feature documents still satisfy the Research -> Spec -> Plan -> Tasks approval contract, including E2E and documentation completion.
 
 For lighter local edits, at least run:
 
 ```bash
+bash ops/dev-gate.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
 bash ops/ai-dev-check.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
 bash tests/e2e-api-billing.test.sh
 bash tests/wrapper-infra.test.sh
@@ -122,3 +137,19 @@ bash ops/preflight.sh
 ```
 
 The GitHub Actions PR CI is an additional merge-time backstop, not a replacement for local verification. Operations, billing, deployment, backup, migration, and security changes still need the relevant local commands and a clear handoff of skipped live checks.
+
+## Completion Handoff
+
+After implementing a feature, update `handoff.md` before asking for review. The handoff must explain how to use and test the feature in enough detail for the user to reproduce the acceptance path: commands, UI pages, expected output, and what failures mean.
+
+Run the local no-secret completion gate before finalizing routine work:
+
+```bash
+bash ops/dev-gate.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
+```
+
+For operations, billing, deployment, backup, migration, or security changes, run the production gate or document why the live portion was skipped:
+
+```bash
+AI_DEV_FEATURE_DIR=docs/ai-dev/<YYYY-MM-DD>-<topic> bash ops/production-gate.sh
+```

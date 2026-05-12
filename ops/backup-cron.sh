@@ -28,6 +28,8 @@ esac
 mkdir -p "$BACKUP_CRON_LOG_DIR"
 log_file="$BACKUP_CRON_LOG_DIR/backup-cron.log"
 
+BACKUP_CRON_LOG_DIR="$BACKUP_CRON_LOG_DIR" ENV_FILE="$ENV_FILE_PATH" bash "$ROOT_DIR/ops/prune-runtime-storage.sh" logs >/dev/null
+
 utc_now() {
   date -u +%Y-%m-%dT%H:%M:%SZ
 }
@@ -40,6 +42,7 @@ cd "$ROOT_DIR"
   backup_path="$(ENV_FILE="$ENV_FILE_PATH" bash ops/backup-postgres.sh)"
   printf 'backup created: %s\n' "$backup_path"
   ENV_FILE="$ENV_FILE_PATH" bash ops/verify-postgres-backup.sh "$backup_path"
+  ENV_FILE="$ENV_FILE_PATH" bash ops/prune-runtime-storage.sh all
   printf '=== backup-cron END %s ===\n' "$(utc_now)"
 } >> "$log_file" 2>&1
 

@@ -11,6 +11,11 @@
   candidate -> releases/<prepared-release-id>
   current -> releases/<release-id>
   previous -> releases/<previous-release-id>
+  state/
+    promote.state
+    promote.log
+    promote.pid
+    last_healthy -> releases/<last-healthy-release-id>
   shared/
     .env.production
     data/cpa/
@@ -28,6 +33,8 @@
 - Compose 固定使用 `docker compose -p "$DEPLOY_COMPOSE_PROJECT"`。
 - 运行时文件放在 `shared/`，不放在 release checkout 里。
 - Promote 会重启 Docker Compose stack；这不是零停机部署。
+- `promote` 会在远端作为受管 worker 执行。本地 SSH 断开时，worker 会继续在服务器上完成发布或回滚。
+- `state/promote.state` 记录当前发布阶段；`state/last_healthy` 指向最后一次完整通过 runtime check 的 release。
 - PM2 和 Paru 已考虑过，但生产控制面仍保持 shell、Git 和 Docker。
 
 ## Prepare 时的 Env 对齐
@@ -114,6 +121,20 @@ DEPLOY_HOST=<deploy-user>@<origin-host> DEPLOY_REF=main bash ops/deploy-release.
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh smoke
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
 ```
+
+随时查看发布状态：
+
+```bash
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh status
+```
+
+如果 promote 过程中 SSH 断开，先运行 `status`。如果没有 worker 在运行，但 `promote.state` 残留，再运行：
+
+```bash
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh recover
+```
+
+`recover` 会在当前 release 健康时接受当前版本；如果当前不健康，则回滚到 `previous`，再不行就回退到 `last_healthy`。这只回滚代码和 Compose，不恢复数据库内容。
 
 只有明确需要操作某个旧 prepared release 时才传：
 

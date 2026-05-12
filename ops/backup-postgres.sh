@@ -45,5 +45,6 @@ fi
 chmod 600 "$target" "$checksum" 2>/dev/null || true
 find "$BACKUP_DIR" -type f -name "*.dump" -mtime +"${BACKUP_RETENTION_DAYS:-14}" -delete
 find "$BACKUP_DIR" -type f -name "*.dump.sha256" -mtime +"${BACKUP_RETENTION_DAYS:-14}" -delete
+BACKUP_DIR="$BACKUP_DIR" ENV_FILE="$ENV_FILE" bash "$ROOT_DIR/ops/prune-runtime-storage.sh" backups >/dev/null
 
 echo "$target"

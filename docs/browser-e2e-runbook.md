@@ -66,6 +66,8 @@ After a feature touching operations, billing, channels, or user-visible behavior
 5. Run the related wrapper command from the terminal.
 6. Confirm user groups still use only `default` and `vip` for current production guidance.
 
+Record the result in the feature `E2E Coverage Matrix` and `handoff.md`. If browser E2E is skipped, include both `Reason:` and `Rerun:` so the check can be reproduced later.
+
 ## Secrets
 
 Do not commit Playwright auth state, screenshots, traces, or reports. `.auth/`, `test-results/`, and `playwright-report/` are ignored.

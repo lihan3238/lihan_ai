@@ -91,6 +91,37 @@ cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<dump>.dump
 ```
 
+## Runtime Storage Limits
+
+Docker service logs use `json-file` rotation with `max-size=20m` and `max-file=5` in production overlays, including CPA. Production New API disables duplicate host file logs with `--log-dir=`; use Docker logs for troubleshooting:
+
+```bash
+docker compose -p lihan_ai --env-file .env.production \
+  -f docker-compose.yml \
+  -f docker-compose.prod.yml \
+  logs --tail=200 new-api
+```
+
+Local backup dumps, backup cron logs, and config snapshots are pruned by:
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/prune-runtime-storage.sh all
+```
+
+The defaults are `BACKUP_KEEP=30`, `BACKUP_MAX_TOTAL_MB=2048`, `BACKUP_CRON_LOG_MAX_MB=10`, `BACKUP_CRON_LOG_KEEP=5`, `CONFIG_SNAPSHOT_KEEP=30`, and `CONFIG_SNAPSHOT_MAX_TOTAL_MB=256`.
+
+## Deploy Status And Recovery
+
+Release promotion is a remote managed worker. The local SSH command may disconnect, but the worker records progress in `promote.state` and continues on the server.
+
+```bash
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh status
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh recover
+```
+
+Use `status` before retrying a promote. Use `recover` only when `status` shows a stale `promote.state` and no running worker. Recovery accepts a healthy current release or rolls back to `previous` / `last_healthy`. It does not restore database contents.
+
 ## New API Groups
 
 Keep only:

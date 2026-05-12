@@ -7,7 +7,10 @@ Approved for implementation: no
 - [ ] Run the new test and confirm it fails for the expected reason.
 - [ ] Implement the smallest change that satisfies the test.
 - [ ] Run the test and confirm it passes.
-- [ ] Update documentation.
+- [ ] Update the E2E Coverage Matrix in `plan.md`.
+- [ ] Update all affected README/runbook/template docs.
+- [ ] Update `handoff.md` with detailed usage and test instructions.
+- [ ] Run `bash ops/dev-gate.sh docs/ai-dev/<YYYY-MM-DD-topic>`.
 - [ ] Run repository verification.
 - [ ] Commit a coherent change.
 

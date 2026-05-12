@@ -22,8 +22,11 @@ cd "$ROOT_DIR"
 
 run git diff --check
 run bash -n ops/preflight.sh
+run bash -n ops/dev-gate.sh
+run bash -n ops/feature-completion-check.sh
 run bash -n ops/backup-postgres.sh
 run bash -n ops/backup-cron.sh
+run bash -n ops/prune-runtime-storage.sh
 run bash -n ops/verify-postgres-backup.sh
 run bash -n ops/restore-postgres.sh
 run bash -n ops/relay-diagnostics.sh
@@ -46,6 +49,7 @@ run bash -n ops/verify-remote-prod.sh
 run bash -n ops/migration-preflight.sh
 run bash -n ops/migrate-prod.sh
 run bash tests/backup-cron.test.sh
+run bash tests/storage-retention.test.sh
 run bash tests/env-template-sync.test.sh
 run bash tests/ai-dev-check.test.sh
 run bash tests/spec-kit-init.test.sh
@@ -67,7 +71,7 @@ run bash tests/e2e-api-billing.test.sh
 run bash tests/wrapper-infra.test.sh
 run bash tests/ops-profile.test.sh
 if [ -n "${AI_DEV_FEATURE_DIR:-}" ]; then
-  run bash ops/ai-dev-check.sh "$AI_DEV_FEATURE_DIR"
+  run bash ops/feature-completion-check.sh "$AI_DEV_FEATURE_DIR"
 fi
 if [ -n "${OPS_PROFILE_FILE:-}" ]; then
   run bash ops/validate-ops-profile.sh "$OPS_PROFILE_FILE"

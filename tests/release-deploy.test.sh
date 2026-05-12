@@ -47,6 +47,8 @@ assert_contains ".env.production.example" "DEPLOY_COMPOSE_PROJECT=lihan_ai"
 assert_contains ".env.production.example" "DEPLOY_INCLUDE_CPA=0"
 assert_contains ".env.production.example" "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0"
 assert_contains ".env.production.example" "RELEASE_KEEP=5"
+assert_contains ".env.production.example" "BACKUP_KEEP=30"
+assert_contains ".env.production.example" "BACKUP_MAX_TOTAL_MB=2048"
 assert_contains "ops/deploy-release.sh" "git worktree add --detach"
 assert_contains "ops/deploy-release.sh" "docker compose -p"
 assert_contains "ops/deploy-release.sh" "COMPOSE_PROJECT_NAME"
@@ -60,6 +62,13 @@ assert_contains "ops/deploy-release.sh" "old_target"
 assert_contains "ops/deploy-release.sh" "candidate_link"
 assert_contains "ops/deploy-release.sh" "candidate_target"
 assert_contains "ops/deploy-release.sh" "set_candidate_to"
+assert_contains "ops/deploy-release.sh" "state_dir"
+assert_contains "ops/deploy-release.sh" "promote.state"
+assert_contains "ops/deploy-release.sh" "last_healthy"
+assert_contains "ops/deploy-release.sh" "nohup"
+assert_contains "ops/deploy-release.sh" "cmd_status"
+assert_contains "ops/deploy-release.sh" "cmd_recover"
+assert_contains "ops/deploy-release.sh" "cleanup_old_releases"
 
 tmp_dir="$(mktemp -d)"
 fake_bin="$tmp_dir/bin"
@@ -122,10 +131,14 @@ printf '%s' "$smoke_candidate_output" | grep -q "prepared candidate release" || 
 
 promote_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example RELEASE_ID=20260510T000000Z-deadbee "$ROOT_DIR/ops/deploy-release.sh" promote)"
 printf '%s' "$promote_output" | grep -q "DRY RUN release promote" || fail "promote dry-run missing title: $promote_output"
+printf '%s' "$promote_output" | grep -q "start remote promote worker" || fail "promote dry-run missing remote worker: $promote_output"
+printf '%s' "$promote_output" | grep -q "promote.state" || fail "promote dry-run missing state file: $promote_output"
 printf '%s' "$promote_output" | grep -q "backup-postgres.sh" || fail "promote dry-run missing backup: $promote_output"
 printf '%s' "$promote_output" | grep -q "current -> releases/20260510T000000Z-deadbee" || fail "promote dry-run missing current switch: $promote_output"
 printf '%s' "$promote_output" | grep -q "up -d --remove-orphans" || fail "promote dry-run missing compose up: $promote_output"
 printf '%s' "$promote_output" | grep -q "check-production-runtime.sh" || fail "promote dry-run missing runtime check: $promote_output"
+printf '%s' "$promote_output" | grep -q "last_healthy" || fail "promote dry-run missing last_healthy update: $promote_output"
+printf '%s' "$promote_output" | grep -q "cleanup old releases" || fail "promote dry-run missing release cleanup: $promote_output"
 
 promote_tunnel_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example RELEASE_ID=20260510T000000Z-deadbee DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 "$ROOT_DIR/ops/deploy-release.sh" promote)"
 assert_text_contains "$promote_tunnel_output" "--scale caddy=0" "tunnel promote dry-run"
@@ -154,7 +167,7 @@ rollback_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@exam
 printf '%s' "$rollback_output" | grep -q "DRY RUN release rollback" || fail "rollback dry-run missing title: $rollback_output"
 printf '%s' "$rollback_output" | grep -q "current -> previous" || fail "rollback dry-run missing previous switch: $rollback_output"
 
-for command in bootstrap list current cleanup; do
+for command in bootstrap list current status recover cleanup; do
   output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example "$ROOT_DIR/ops/deploy-release.sh" "$command")"
   printf '%s' "$output" | grep -q "DRY RUN release $command" || fail "$command dry-run missing title: $output"
 done

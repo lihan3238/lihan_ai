@@ -3,7 +3,7 @@ set -eu
 
 usage() {
   cat >&2 <<'USAGE'
-usage: ops/deploy-release.sh <bootstrap|prepare|smoke|promote|rollback|list|current|cleanup> [release-id]
+usage: ops/deploy-release.sh <bootstrap|prepare|smoke|promote|rollback|list|current|status|recover|cleanup> [release-id]
 USAGE
 }
 
@@ -16,7 +16,7 @@ command="$1"
 release_arg="${2:-}"
 
 case "$command" in
-  bootstrap|prepare|smoke|promote|rollback|list|current|cleanup) ;;
+  bootstrap|prepare|smoke|promote|rollback|list|current|status|recover|cleanup) ;;
   *)
     usage
     exit 2
@@ -192,6 +192,7 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
       echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT ENV_FILE=$DEPLOY_ENV_FILE bash ops/drill-restore-stack.sh <backup.dump>"
       ;;
     promote)
+      echo "start remote promote worker with nohup and track $DEPLOY_ROOT/state/promote.state"
       echo "cd $DEPLOY_ROOT/current and run backup-postgres.sh when production postgres is running"
       if [ -n "$RELEASE_ID" ]; then
         echo "current -> releases/$RELEASE_ID"
@@ -202,6 +203,8 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
       echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_preview) pull"
       echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_up_preview)"
       echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT ENV_FILE=$DEPLOY_ENV_FILE bash ops/check-production-runtime.sh"
+      echo "last_healthy -> release after successful runtime check"
+      echo "cleanup old releases after successful promote"
       ;;
     rollback)
       echo "current -> previous"
@@ -213,6 +216,12 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
       ;;
     current)
       echo "readlink -f $DEPLOY_ROOT/current"
+      ;;
+    status)
+      echo "show current, previous, candidate, last_healthy, and promote.state"
+      ;;
+    recover)
+      echo "recover stale promote.state by accepting healthy current or rolling back to previous/last_healthy"
       ;;
     cleanup)
       echo "remove old git worktrees, keep RELEASE_KEEP=$RELEASE_KEEP plus current/previous/candidate"
@@ -231,9 +240,14 @@ release_arg="${2:-}"
 repo_dir="$DEPLOY_ROOT/repo.git"
 releases_dir="$DEPLOY_ROOT/releases"
 shared_dir="$DEPLOY_ROOT/shared"
+state_dir="$DEPLOY_ROOT/state"
 current_link="$DEPLOY_ROOT/current"
 previous_link="$DEPLOY_ROOT/previous"
 candidate_link="$DEPLOY_ROOT/candidate"
+last_healthy_link="$state_dir/last_healthy"
+promote_state="$state_dir/promote.state"
+promote_log="$state_dir/promote.log"
+promote_pid_file="$state_dir/promote.pid"
 revisions_log="$DEPLOY_ROOT/revisions.log"
 
 log() {
@@ -329,7 +343,7 @@ release_id_from_input() {
 }
 
 ensure_dirs() {
-  mkdir -p "$DEPLOY_ROOT" "$releases_dir" "$shared_dir/data/cpa" "$shared_dir/cloudflared" "$shared_dir/logs" "$shared_dir/backups/postgres" "$shared_dir/snapshots"
+  mkdir -p "$DEPLOY_ROOT" "$releases_dir" "$shared_dir/data/cpa" "$shared_dir/cloudflared" "$shared_dir/logs" "$shared_dir/backups/postgres" "$shared_dir/snapshots" "$state_dir"
 }
 
 ensure_repo() {
@@ -403,6 +417,10 @@ previous_target() {
   readlink -f "$previous_link" 2>/dev/null || true
 }
 
+last_healthy_target() {
+  readlink -f "$last_healthy_link" 2>/dev/null || true
+}
+
 release_id_for_path() {
   path="${1:-}"
   if [ -z "$path" ]; then
@@ -422,6 +440,44 @@ verify_new_api() {
     sleep 3
   done
   [ "$ready" -eq 1 ]
+}
+
+state_value() {
+  file="$1"
+  key="$2"
+  [ -f "$file" ] || return 0
+  awk -F= -v key="$key" '$1 == key { print substr($0, index($0, "=") + 1); exit }' "$file"
+}
+
+promote_pid_is_running() {
+  pid="$(state_value "$promote_state" pid)"
+  case "$pid" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  kill -0 "$pid" 2>/dev/null
+}
+
+write_promote_state() {
+  status="$1"
+  phase="$2"
+  release_id="$3"
+  previous_path="${4:-}"
+  pid="${5:-}"
+  started_at="${promote_started_at:-}"
+  if [ -z "$started_at" ]; then
+    started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  fi
+  tmp="$state_dir/.promote.state.tmp"
+  mkdir -p "$state_dir"
+  {
+    printf 'status=%s\n' "$status"
+    printf 'phase=%s\n' "$phase"
+    printf 'release_id=%s\n' "$release_id"
+    printf 'previous_path=%s\n' "$previous_path"
+    printf 'started_at=%s\n' "$started_at"
+    printf 'pid=%s\n' "$pid"
+  } > "$tmp"
+  mv -f "$tmp" "$promote_state"
 }
 
 switch_current_to() {
@@ -446,6 +502,13 @@ clear_candidate_if() {
   fi
 }
 
+set_last_healthy_to() {
+  target="$1"
+  [ -n "$target" ] && [ -d "$target" ] || return 0
+  mkdir -p "$state_dir"
+  ln -sfn "$target" "$last_healthy_link"
+}
+
 write_revision() {
   action="$1"
   release_id="$2"
@@ -460,6 +523,18 @@ find_latest_backup() {
     return
   fi
   find "$shared_dir/backups/postgres" -type f -name '*.dump' 2>/dev/null | sort | tail -n 1
+}
+
+rollback_to_target() {
+  target="$1"
+  [ -n "$target" ] && [ -d "$target" ] || return 1
+  switch_current_to "$target"
+  resolve_deploy_config "$target"
+  (
+    cd "$current_link"
+    compose_up
+    verify_new_api
+  )
 }
 
 cmd_bootstrap() {
@@ -518,7 +593,8 @@ cmd_smoke() {
   )
 }
 
-cmd_promote() {
+promote_worker() {
+  promote_started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   release_id="$(release_id_from_input)"
   release_path="$(release_path_for "$release_id")"
   [ -d "$release_path" ] || fail "release does not exist: $release_id"
@@ -527,6 +603,13 @@ cmd_promote() {
 
   old_target="$(current_target)"
   old_id="none"
+  worker_pid=""
+  for _ in $(seq 1 10); do
+    worker_pid="$(cat "$promote_pid_file" 2>/dev/null || true)"
+    [ -n "$worker_pid" ] && break
+    sleep 1
+  done
+  write_promote_state "running" "backup" "$release_id" "$old_target" "$worker_pid"
   if [ -n "$old_target" ] && [ -d "$old_target" ]; then
     old_id="$(release_id_for_path "$old_target")"
     ln -sfn "$old_target" "$previous_link"
@@ -542,13 +625,16 @@ cmd_promote() {
     fi
   fi
 
+  write_promote_state "running" "switch-current" "$release_id" "$old_target" "$worker_pid"
   switch_current_to "$release_path"
 
+  write_promote_state "running" "compose-up" "$release_id" "$old_target" "$worker_pid"
   set +e
   (
     cd "$current_link"
     compose pull
     compose_up
+    write_promote_state "running" "runtime-check" "$release_id" "$old_target" "$worker_pid"
     verify_new_api
     COMPOSE_PROJECT_NAME="$DEPLOY_COMPOSE_PROJECT" ENV_FILE="$DEPLOY_ENV_FILE" bash ops/check-production-runtime.sh
   )
@@ -557,21 +643,61 @@ cmd_promote() {
 
   if [ "$promote_status" -ne 0 ]; then
     echo "release promote failed; attempting rollback to previous release" >&2
-    if [ -n "$old_target" ] && [ -d "$old_target" ]; then
-      switch_current_to "$old_target"
-      resolve_deploy_config "$old_target"
-      (
-        cd "$current_link"
-        compose_up
-      ) || true
+    write_promote_state "failed" "rollback" "$release_id" "$old_target" "$worker_pid"
+    rollback_target="$old_target"
+    if [ -z "$rollback_target" ] || [ ! -d "$rollback_target" ]; then
+      rollback_target="$(last_healthy_target)"
+    fi
+    if [ -n "$rollback_target" ] && [ -d "$rollback_target" ]; then
+      rollback_to_target "$rollback_target" || true
     fi
     exit "$promote_status"
   fi
 
   sha="$(cd "$release_path" && git rev-parse HEAD 2>/dev/null || printf unknown)"
+  set_last_healthy_to "$release_path"
   write_revision "promote" "$release_id" "$sha" "$old_id"
   clear_candidate_if "$release_path"
+  cleanup_old_releases
+  rm -f "$promote_state" "$promote_pid_file"
   log "release promoted: $release_id"
+}
+
+cmd_promote() {
+  ensure_dirs
+  release_id="$(release_id_from_input)"
+  if [ -f "$promote_state" ] && promote_pid_is_running; then
+    fail "promote already running; use deploy-release.sh status"
+  fi
+
+  rm -f "$promote_log"
+  (
+    trap '' HUP INT
+    # nohup-compatible worker: the child ignores terminal hangup/interrupt so SSH disconnects do not leave a half-promote.
+    promote_worker "$release_id"
+  ) > "$promote_log" 2>&1 &
+  worker_pid="$!"
+  printf '%s\n' "$worker_pid" > "$promote_pid_file"
+
+  last_phase=""
+  while kill -0 "$worker_pid" 2>/dev/null; do
+    phase="$(state_value "$promote_state" phase)"
+    if [ -n "$phase" ] && [ "$phase" != "$last_phase" ]; then
+      log "promote phase: $phase"
+      last_phase="$phase"
+    fi
+    sleep 3
+  done
+
+  set +e
+  wait "$worker_pid"
+  promote_status="$?"
+  set -e
+
+  if [ -f "$promote_log" ]; then
+    cat "$promote_log"
+  fi
+  exit "$promote_status"
 }
 
 cmd_rollback() {
@@ -617,12 +743,74 @@ cmd_current() {
   release_id_for_path "$cur"
 }
 
+cmd_status() {
+  ensure_dirs
+  cur="$(current_target)"
+  prev="$(previous_target)"
+  cand="$(candidate_target)"
+  healthy="$(last_healthy_target)"
+  printf 'current=%s\n' "$(release_id_for_path "$cur")"
+  printf 'previous=%s\n' "$(release_id_for_path "$prev")"
+  printf 'candidate=%s\n' "$(release_id_for_path "$cand")"
+  printf 'last_healthy=%s\n' "$(release_id_for_path "$healthy")"
+  if [ -f "$promote_state" ]; then
+    cat "$promote_state"
+    if promote_pid_is_running; then
+      printf 'worker=running\n'
+    else
+      printf 'worker=stale\n'
+    fi
+  else
+    printf 'promote_state=none\n'
+  fi
+}
+
+cmd_recover() {
+  ensure_dirs
+  if [ -f "$promote_state" ] && promote_pid_is_running; then
+    fail "promote worker is still running; use deploy-release.sh status"
+  fi
+
+  cur="$(current_target)"
+  if [ -n "$cur" ] && [ -d "$cur" ]; then
+    resolve_deploy_config "$cur"
+    set +e
+    (
+      cd "$cur"
+      verify_new_api
+      COMPOSE_PROJECT_NAME="$DEPLOY_COMPOSE_PROJECT" ENV_FILE="$DEPLOY_ENV_FILE" bash ops/check-production-runtime.sh
+    )
+    current_status="$?"
+    set -e
+    if [ "$current_status" -eq 0 ]; then
+      set_last_healthy_to "$cur"
+      rm -f "$promote_state" "$promote_pid_file"
+      log "current release is healthy; recovery accepted: $(release_id_for_path "$cur")"
+      return
+    fi
+  fi
+
+  rollback_target="$(state_value "$promote_state" previous_path)"
+  if [ -z "$rollback_target" ] || [ ! -d "$rollback_target" ]; then
+    rollback_target="$(previous_target)"
+  fi
+  if [ -z "$rollback_target" ] || [ ! -d "$rollback_target" ]; then
+    rollback_target="$(last_healthy_target)"
+  fi
+  [ -n "$rollback_target" ] && [ -d "$rollback_target" ] || fail "no previous or last_healthy release is available for recovery"
+
+  rollback_to_target "$rollback_target"
+  set_last_healthy_to "$rollback_target"
+  rm -f "$promote_state" "$promote_pid_file"
+  log "recovered by rolling back to: $(release_id_for_path "$rollback_target")"
+}
+
 remove_release_path() {
   path="$1"
   git --git-dir "$repo_dir" worktree remove --force "$path" 2>/dev/null || rm -rf "$path"
 }
 
-cmd_cleanup() {
+cleanup_old_releases() {
   ensure_repo
   case "$RELEASE_KEEP" in
     ''|*[!0-9]*) fail "RELEASE_KEEP must be a non-negative integer" ;;
@@ -630,6 +818,7 @@ cmd_cleanup() {
   cur="$(current_target)"
   prev="$(previous_target)"
   cand="$(candidate_target)"
+  healthy="$(last_healthy_target)"
   kept=0
   if [ ! -d "$releases_dir" ]; then
     return
@@ -637,7 +826,7 @@ cmd_cleanup() {
   release_list="$(mktemp)"
   find "$releases_dir" -mindepth 1 -maxdepth 1 -type d | sort -r > "$release_list"
   while IFS= read -r path; do
-    if [ "$path" = "$cur" ] || [ "$path" = "$prev" ] || [ "$path" = "$cand" ]; then
+    if [ "$path" = "$cur" ] || [ "$path" = "$prev" ] || [ "$path" = "$cand" ] || [ "$path" = "$healthy" ]; then
       continue
     fi
     kept=$((kept + 1))
@@ -650,6 +839,10 @@ cmd_cleanup() {
   git --git-dir "$repo_dir" worktree prune
 }
 
+cmd_cleanup() {
+  cleanup_old_releases
+}
+
 case "$command" in
   bootstrap) cmd_bootstrap ;;
   prepare) cmd_prepare ;;
@@ -658,6 +851,8 @@ case "$command" in
   rollback) cmd_rollback ;;
   list) cmd_list ;;
   current) cmd_current ;;
+  status) cmd_status ;;
+  recover) cmd_recover ;;
   cleanup) cmd_cleanup ;;
 esac
 REMOTE

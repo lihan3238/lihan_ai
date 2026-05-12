@@ -22,10 +22,18 @@ git pull --ff-only origin main
 DEPLOY_HOST=<deploy-user>@<origin-host> DEPLOY_REF=main bash ops/deploy-release.sh prepare
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh smoke
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh status
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
 ```
 
 `prepare` syncs missing production env keys with `ops/sync-env-template.sh`, writes a backup, and records the remote `candidate`. Leave `RELEASE_ID` empty unless you are intentionally testing an older candidate.
+
+If SSH disconnects during promote, check and recover:
+
+```bash
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh status
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh recover
+```
 
 ## Backup
 
@@ -33,7 +41,10 @@ DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
 cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/backup-cron.sh
 tail -n 120 logs/backup-cron.log
+ENV_FILE=.env.production bash ops/prune-runtime-storage.sh all
 ```
+
+Default local retention caps: `BACKUP_KEEP=30`, `BACKUP_MAX_TOTAL_MB=2048`, `BACKUP_CRON_LOG_MAX_MB=10`, `BACKUP_CRON_LOG_KEEP=5`, `CONFIG_SNAPSHOT_KEEP=30`, `CONFIG_SNAPSHOT_MAX_TOTAL_MB=256`.
 
 Crontab:
 

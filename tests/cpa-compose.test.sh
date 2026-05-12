@@ -44,6 +44,9 @@ assert_contains "vendor/cli-proxy-api/config.example.yaml" "panel-github-reposit
 assert_contains "docker-compose.cpa.yml" "container_name: relay-cpa"
 assert_contains "docker-compose.cpa.yml" "relay-internal"
 assert_contains "docker-compose.cpa.yml" "/opt/lihan_ai/data/cpa/config.yaml"
+assert_contains "docker-compose.cpa.yml" "driver: json-file"
+assert_contains "docker-compose.cpa.yml" "max-size: \"20m\""
+assert_contains "docker-compose.cpa.yml" "max-file: \"5\""
 assert_not_contains "docker-compose.cpa.yml" "8317:8317"
 assert_not_contains "docker-compose.cpa.yml" "0.0.0.0:8317"
 
@@ -82,6 +85,8 @@ if command -v docker >/dev/null 2>&1; then
   docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml -f docker-compose.cpa.ui.yml config >/dev/null
 
   ui_config="$(docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml -f docker-compose.cpa.ui.yml config)"
+  printf '%s\n' "$ui_config" | grep -q 'max-size: 20m' || fail "CPA UI compose should preserve CPA Docker log max-size"
+  printf '%s\n' "$ui_config" | grep -q 'max-file: "5"' || fail "CPA UI compose should preserve CPA Docker log max-file"
   printf '%s\n' "$ui_config" | awk '
     /target: \/CLIProxyAPI\/config.yaml/ { in_config = 1; next }
     in_config && /read_only: true/ { exit 42 }

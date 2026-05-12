@@ -6,6 +6,7 @@ x-logging: &default-logging
 
 services:
   new-api:
+    command: --log-dir=
     logging: *default-logging
 
   postgres:
