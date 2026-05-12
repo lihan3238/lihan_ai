@@ -25,13 +25,14 @@ Default CI must not connect to production, read `.env.production`, require `NEW_
 The default pipeline is:
 
 ```text
-Pre-commit -> PR CI -> main CD prepare/smoke -> manual production promote
+Pre-commit -> PR CI -> main runner validation -> manual production prepare/smoke/promote
 ```
 
 - Pre-commit uses `pre-commit run --all-files`, backed by `bash ops/pre-commit.sh`. It stays lightweight and never runs Docker or browser E2E.
 - PR CI is no-secret and never runs Playwright E2E.
-- Pushes to `main` run CD prepare and smoke over SSH using `PROD_DEPLOY_*` GitHub secrets.
-- Production `promote`, `recover`, and `rollback` remain manual `workflow_dispatch` or local operator commands.
+- Pushes to `main` run GitHub-hosted post-merge validation only: `bash ops/dev-gate.sh` plus a disposable Docker Compose smoke on the runner.
+- GitHub Actions must not read production deploy secrets, SSH to production, or run `ops/deploy-release.sh`.
+- Production `prepare`, `smoke`, `promote`, `recover`, and `rollback` remain local/operator commands run from a trusted machine.
 
 ## Layered E2E Policy
 

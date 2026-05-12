@@ -1,34 +1,21 @@
-name: CD
+name: Post-merge validation
 
 on:
   push:
     branches:
       - main
   workflow_dispatch:
-    inputs:
-      command:
-        description: "Production release command"
-        required: true
-        default: prepare-smoke
-        type: choice
-        options:
-          - prepare-smoke
-          - status
-          - promote
-          - recover
-          - rollback
 
 permissions:
   contents: read
 
 concurrency:
-  group: cd-production
-  cancel-in-progress: false
+  group: post-merge-validation-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  prepare-smoke:
-    name: Prepare and smoke release
-    if: github.event_name == 'push' || github.event.inputs.command == 'prepare-smoke'
+  runner-validation:
+    name: post-merge validation
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -38,71 +25,33 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Configure production SSH
+      - name: Tool versions
+        run: |
+          bash --version | head -n 1
+          docker --version
+          docker compose version
+          pwsh -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
+
+      - name: Repository gate
+        run: bash ops/dev-gate.sh
+
+      - name: Runner compose smoke
         run: |
           set -eu
-          test -n "${{ secrets.PROD_DEPLOY_HOST }}"
-          test -n "${{ secrets.PROD_DEPLOY_SSH_KEY }}"
-          test -n "${{ secrets.PROD_DEPLOY_KNOWN_HOSTS }}"
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.PROD_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
-          printf '%s\n' "${{ secrets.PROD_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-          chmod 700 ~/.ssh
-          chmod 600 ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/known_hosts
+          compose_project="lihan-ai-ci-${GITHUB_RUN_ID}"
+          docker compose -p "$compose_project" --env-file .env.example -f docker-compose.yml -f docker-compose.dev.yml up -d postgres redis new-api
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3100/api/status | grep -Eq '"success"[[:space:]]*:[[:space:]]*true'; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -p "$compose_project" --env-file .env.example -f docker-compose.yml -f docker-compose.dev.yml ps
+          docker compose -p "$compose_project" --env-file .env.example -f docker-compose.yml -f docker-compose.dev.yml logs --tail=80 new-api
+          exit 1
 
-      - name: Prepare release
-        run: DEPLOY_HOST="${{ secrets.PROD_DEPLOY_HOST }}" DEPLOY_REF=main bash ops/deploy-release.sh prepare
-
-      - name: Smoke release
-        run: DEPLOY_HOST="${{ secrets.PROD_DEPLOY_HOST }}" bash ops/deploy-release.sh smoke
-
-  production-command:
-    name: Manual production command
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.command != 'prepare-smoke'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Configure production SSH
+      - name: Cleanup runner compose smoke
+        if: always()
         run: |
-          set -eu
-          test -n "${{ secrets.PROD_DEPLOY_HOST }}"
-          test -n "${{ secrets.PROD_DEPLOY_SSH_KEY }}"
-          test -n "${{ secrets.PROD_DEPLOY_KNOWN_HOSTS }}"
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.PROD_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
-          printf '%s\n' "${{ secrets.PROD_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-          chmod 700 ~/.ssh
-          chmod 600 ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/known_hosts
-
-      - name: Run selected command
-        env:
-          COMMAND: ${{ github.event.inputs.command }}
-          DEPLOY_HOST: ${{ secrets.PROD_DEPLOY_HOST }}
-        run: |
-          set -eu
-          case "$COMMAND" in
-            status)
-              bash ops/deploy-release.sh status
-              ;;
-            promote)
-              bash ops/deploy-release.sh promote
-              ;;
-            recover)
-              bash ops/deploy-release.sh recover
-              ;;
-            rollback)
-              bash ops/deploy-release.sh rollback
-              ;;
-            *)
-              echo "unsupported command: $COMMAND" >&2
-              exit 2
-              ;;
-          esac
+          compose_project="lihan-ai-ci-${GITHUB_RUN_ID}"
+          docker compose -p "$compose_project" --env-file .env.example -f docker-compose.yml -f docker-compose.dev.yml down -v --remove-orphans

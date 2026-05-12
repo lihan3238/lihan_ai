@@ -49,6 +49,17 @@ exit 93
 POWERSHELL
 chmod +x "$fake_bin/powershell"
 
+cat > "$fake_bin/pwsh" <<'PWSH'
+#!/usr/bin/env sh
+printf 'pwsh %s\n' "$*" >> "$DEV_GATE_TEST_LOG"
+case "$*" in
+  *"verify-repo.ps1 -SkipDocker"*) exit 0 ;;
+esac
+echo "unexpected pwsh args: $*" >&2
+exit 93
+PWSH
+chmod +x "$fake_bin/pwsh"
+
 cat > "$fake_bin/docker" <<'DOCKER'
 #!/usr/bin/env sh
 printf 'docker %s\n' "$*" >> "$DEV_GATE_TEST_LOG"
@@ -88,9 +99,11 @@ if grep -Eq 'NEW_API_TEST_TOKEN|CONFIG_SNAPSHOT_GPG_RECIPIENT|^bash ops/producti
 fi
 
 : > "$log_file"
+rm -f "$fake_bin/powershell"
 PATH="$fake_bin:$PATH" DEV_GATE_TEST_LOG="$log_file" "$SCRIPT"
 if grep -q "^bash ops/feature-completion-check.sh" "$log_file"; then
   fail "dev gate should only run feature completion check when feature dir is provided"
 fi
+grep -q "pwsh .*verify-repo.ps1 -SkipDocker" "$log_file" || fail "dev gate did not fall back to pwsh"
 
 echo "dev gate tests passed"
