@@ -1,6 +1,6 @@
 # New API Full Feature Research
 
-Research target: pinned upstream submodule `vendor/new-api` at `948780e3fae46c78ea2bedf02667831a215ced80`, runtime image `calciumion/new-api:latest` reporting `v1.0.0-rc.4`.
+Research target: upstream New API plus the temporary pinned submodule `vendor/new-api` at `5741c3597d259b4f1da08b0e7441a1be55cc2e77` from `lihan3238/new-api` for the admin dropdown `onSelect` fix. The default runtime image remains `calciumion/new-api:latest` unless `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1` is explicitly enabled.
 
 This is a development-readiness inventory, not a formal security audit. Before changing a feature, inspect the listed source paths and run the original behavior first.
 

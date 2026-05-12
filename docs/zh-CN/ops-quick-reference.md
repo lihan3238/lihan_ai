@@ -129,6 +129,20 @@ bash ops/validate-ops-profile.sh config/ops-profiles/glm-default.example.json
 bash ops/channel-health-advisor.sh config/ops-profiles/glm-default-health.example.json
 ```
 
+## Small Circle Launch
+
+修改套餐文案或订阅计划前，先看 `docs/zh-CN/new-api-small-circle-launch-runbook.md`。开始售卖前验证后台手动开通按钮：
+
+```bash
+NEW_API_BASE_URL=https://api.lihan3238.com \
+NEW_API_ADMIN_USERNAME=<admin> \
+NEW_API_ADMIN_PASSWORD=<password> \
+bash ops/check-new-api-admin-frontend.sh
+```
+
+如果官方镜像仍未通过这个后台 E2E，临时在 `/opt/lihan_ai_deploy/shared/.env.production`
+保留 `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1`，让部署从当前 pin 住的 `vendor/new-api` 修复版构建。
+
 ## 主机压力检查
 
 ```bash

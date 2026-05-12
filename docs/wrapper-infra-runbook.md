@@ -49,6 +49,17 @@ Rollback to the official image by starting without `docker-compose.local-build.y
 docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml up -d new-api
 ```
 
+For production releases, local builds are disabled by default. Temporarily enable them only for a pinned upstream
+frontend fix:
+
+```env
+DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1
+LOCAL_NEW_API_IMAGE=lihan-ai/new-api:local
+```
+
+The release worker then builds `new-api` from the checked-out `vendor/new-api` in the prepared release before starting
+the stack. Return `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD` to `0` once the official image passes the same E2E check.
+
 ## Configuration Snapshots
 
 Create a redacted configuration snapshot:

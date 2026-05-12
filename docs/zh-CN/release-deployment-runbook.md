@@ -55,8 +55,19 @@ DEPLOY_REF=main
 DEPLOY_COMPOSE_PROJECT=lihan_ai
 DEPLOY_INCLUDE_CPA=0
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0
+DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0
 RELEASE_KEEP=5
 ```
+
+临时 New API 前端补丁构建必须显式开启：
+
+```env
+DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1
+LOCAL_NEW_API_IMAGE=lihan-ai/new-api:local
+```
+
+开启后会追加 `docker-compose.local-build.yml`，从当前 release pin 住的 `vendor/new-api` 构建 `new-api`，其它服务仍使用拉取的镜像。等官方 `calciumion/new-api:latest` 发布等价前端修复，并通过后台 E2E 后，把它改回 `0`。
+临时补丁期间，`.gitmodules` 会把 `vendor/new-api` 指向 `lihan3238/new-api`，这样 CI 和生产 release worker 都能拉到 pin 住的修复 commit。
 
 CPA 运行时文件应放在 shared：
 

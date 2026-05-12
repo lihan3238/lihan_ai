@@ -167,6 +167,22 @@ bash ops/validate-ops-profile.sh config/ops-profiles/glm-default.example.json
 bash ops/channel-health-advisor.sh config/ops-profiles/glm-default-health.example.json
 ```
 
+## Small Circle Launch
+
+配置朋友小范围套餐时看 [docs/zh-CN/new-api-small-circle-launch-runbook.md](docs/zh-CN/new-api-small-circle-launch-runbook.md)。
+第一阶段只做后台配置：station quota / 站内额度文案、New API 订阅计划、manual activation、fair use，以及官方镜像优先的前端策略。
+官方镜像还没带后台 dropdown 修复时，生产可临时设置 `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1`，
+从 pin 住的 `lihan3238/new-api` submodule 构建。
+
+开始售卖套餐前，先验证手动开通依赖的新前端后台按钮：
+
+```bash
+NEW_API_BASE_URL=https://api.lihan3238.com \
+NEW_API_ADMIN_USERNAME=<admin> \
+NEW_API_ADMIN_PASSWORD=<password> \
+bash ops/check-new-api-admin-frontend.sh
+```
+
 ## 常用命令
 
 ```bash

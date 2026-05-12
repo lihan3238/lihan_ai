@@ -142,6 +142,13 @@ if [ "$deploy_env" = "production" ]; then
   require_file "docker-compose.prod.yml"
   compose_files="$compose_files -f docker-compose.prod.yml"
 
+  deploy_include_local_new_api_build="$(config_value DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD)"
+  if [ "$deploy_include_local_new_api_build" = "1" ]; then
+    require_file "docker-compose.local-build.yml"
+    require_file "vendor/new-api/Dockerfile" "vendor/new-api/Dockerfile"
+    compose_files="$compose_files -f docker-compose.local-build.yml"
+  fi
+
   deploy_include_cpa="$(config_value DEPLOY_INCLUDE_CPA)"
   if [ "$deploy_include_cpa" = "1" ]; then
     require_file "docker-compose.cpa.yml"

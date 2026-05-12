@@ -129,6 +129,21 @@ bash ops/validate-ops-profile.sh config/ops-profiles/glm-default.example.json
 bash ops/channel-health-advisor.sh config/ops-profiles/glm-default-health.example.json
 ```
 
+## Small Circle Launch
+
+Read `docs/new-api-small-circle-launch-runbook.md` before changing package copy or subscription plans. Verify admin
+manual activation buttons before selling packages:
+
+```bash
+NEW_API_BASE_URL=https://api.lihan3238.com \
+NEW_API_ADMIN_USERNAME=<admin> \
+NEW_API_ADMIN_PASSWORD=<password> \
+bash ops/check-new-api-admin-frontend.sh
+```
+
+If the official image still fails the admin E2E, temporarily keep `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1`
+in `/opt/lihan_ai_deploy/shared/.env.production` so deploys build from the pinned `vendor/new-api` fix.
+
 ## Host Pressure Checks
 
 ```bash
