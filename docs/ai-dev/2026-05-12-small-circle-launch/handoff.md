@@ -4,7 +4,7 @@
 
 - Read `docs/new-api-small-circle-launch-runbook.md`.
 - Configure station quota, packages, `default` / `vip`, and manual activation in New API.
-- While upstream official image lacks the dropdown fix, keep `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1` in production env so release deploys build from the pinned `lihan3238/new-api` commit `f80e8ea6`.
+- Upstream New API `v1.0.0-rc.5` includes the dropdown fix, so keep production on `calciumion/new-api:latest` with `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0` after local E2E passes. Use the pinned `lihan3238/new-api` commit `f80e8ea6` only as a rollback path if official latest fails the same admin E2E.
 - Verify admin frontend actions:
 
 ```bash
@@ -28,5 +28,5 @@ bash ops/check-new-api-admin-frontend.sh
 
 ## Residual Risk
 
-- Official New API image may still lack the dropdown `onSelect` fix until upstream PR #4787 lands in a published image; use the local build toggle only during that window.
+- Keep the local-build toggle documented as a rollback path, but default operational guidance now points at official New API `v1.0.0-rc.5`.
 - Subscription reset behavior must be validated in the live New API admin console before selling packages.

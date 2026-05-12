@@ -135,7 +135,7 @@ for keyword in "NEW_API_BASE_URL" "npm run e2e:web:new-api" "ops/check-local-por
   assert_contains "docs/browser-e2e-runbook.md" "$keyword"
 done
 
-for keyword in "Small Circle Launch" "station quota" "not official USD" "ops/check-new-api-admin-frontend.sh" "#4787" "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1" "lihan3238/new-api"; do
+for keyword in "Small Circle Launch" "station quota" "not official USD" "ops/check-new-api-admin-frontend.sh" "#4787" "v1.0.0-rc.5" "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0" "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1" "rollback" "lihan3238/new-api"; do
   assert_contains "docs/new-api-small-circle-launch-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/new-api-small-circle-launch-runbook.md" "$keyword"
 done

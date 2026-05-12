@@ -16,9 +16,22 @@ This repository uses a simple GitHub Flow style policy: `main = production`. Pro
 
 ## GitHub Actions PR CI
 
-Pull requests targeting `main` and pushes to `main` run the root GitHub Actions CI workflow. This is a fast, no-secret gate for repository hygiene: shell syntax, shell tests, Compose config rendering, whitespace checks, and `scripts/verify-repo.ps1 -SkipDocker`.
+Pull requests targeting `main` run the root GitHub Actions CI workflow. This is a fast, no-secret gate for repository hygiene: shell syntax, shell tests, Compose config rendering, whitespace checks, and `scripts/verify-repo.ps1 -SkipDocker`.
 
 Default CI must not connect to production, read `.env.production`, require `NEW_API_TEST_TOKEN`, run `ops/production-gate.sh`, or perform backup/restore operations against a live database. Keep live billing E2E, production backups, restore drills, and release promotion checks in the local production gate and release deployment flow.
+
+## Phased Delivery Pipeline
+
+The default pipeline is:
+
+```text
+Pre-commit -> PR CI -> main CD prepare/smoke -> manual production promote
+```
+
+- Pre-commit uses `pre-commit run --all-files`, backed by `bash ops/pre-commit.sh`. It stays lightweight and never runs Docker or browser E2E.
+- PR CI is no-secret and never runs Playwright E2E.
+- Pushes to `main` run CD prepare and smoke over SSH using `PROD_DEPLOY_*` GitHub secrets.
+- Production `promote`, `recover`, and `rollback` remain manual `workflow_dispatch` or local operator commands.
 
 ## Layered E2E Policy
 
@@ -26,7 +39,7 @@ E2E coverage is required as a matrix, not as a blanket GitHub Actions secret dep
 
 Use these default paths:
 
-- Browser/UI: `NEW_API_BASE_URL=http://localhost:3100 npm run e2e:web:new-api`
+- Browser/UI: `bash ops/local-new-api-e2e.sh` for local restored stacks, or `NEW_API_BASE_URL=http://localhost:3100 npm run e2e:web:new-api` for a smoke-only check
 - API/billing: `NEW_API_TEST_TOKEN=... NEW_API_TEST_MODEL=glm-5.1 bash ops/e2e-api-billing.sh`
 - Deploy/ops: `COMPOSE_PROJECT_NAME=lihan_ai ENV_FILE=.env.production bash ops/check-production-runtime.sh`
 - Backup/migration: `ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<dump>.dump`

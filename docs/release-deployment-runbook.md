@@ -59,7 +59,9 @@ DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0
 RELEASE_KEEP=5
 ```
 
-Temporary patched New API frontend builds are opt-in:
+Official New API `v1.0.0-rc.5` includes the admin dropdown fix, so production should normally
+stay on `calciumion/new-api:latest` with `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0`. Temporary
+patched New API frontend builds remain opt-in rollback tooling:
 
 ```env
 DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1
@@ -75,8 +77,8 @@ DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull
 LOCAL_NEW_API_IMAGE=ghcr.io/lihan3238/new-api:f80e8ea6-dropdown
 ```
 
-`LOCAL_NEW_API_IMAGE` must stay different from `NEW_API_IMAGE`; never use `calciumion/new-api:latest` as the local patch tag. Promotion forces container recreation in this mode, and `ops/check-production-runtime.sh` fails if `relay-new-api` is still running the official image. Set it back to `0` after the official `calciumion/new-api:latest` image ships the equivalent frontend fix and passes the admin E2E.
-During the temporary patch window, `.gitmodules` points `vendor/new-api` at `lihan3238/new-api` so the pinned fix commit is fetchable by CI and the production release worker.
+`LOCAL_NEW_API_IMAGE` must stay different from `NEW_API_IMAGE`; never use `calciumion/new-api:latest` as the local patch tag. Promotion forces container recreation in this mode, and `ops/check-production-runtime.sh` fails if `relay-new-api` is still running the official image. Use this only if official latest fails the local admin E2E and record it as a rollback path.
+The fallback patch window uses `.gitmodules` pointing `vendor/new-api` at `lihan3238/new-api` so the pinned fix commit is fetchable by CI and the production release worker.
 
 CPA runtime files should be shared:
 

@@ -49,7 +49,9 @@ Rollback to the official image by starting without `docker-compose.local-build.y
 docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml up -d new-api
 ```
 
-For production releases, local builds are disabled by default. Temporarily enable them only for a pinned upstream
+For production releases, local builds are disabled by default. Official New API `v1.0.0-rc.5`
+includes the admin dropdown fix, so keep production on `calciumion/new-api:latest` after local
+E2E passes. Temporarily enable local builds only as a rollback path for a pinned upstream
 frontend fix:
 
 ```env
@@ -58,7 +60,7 @@ LOCAL_NEW_API_IMAGE=lihan-ai/new-api:local
 ```
 
 The release worker then builds `new-api` from the checked-out `vendor/new-api` in the prepared release before starting
-the stack. Return `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD` to `0` once the official image passes the same E2E check.
+the stack. Return `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD` to `0` as soon as the official image passes the same E2E check.
 
 ## Configuration Snapshots
 

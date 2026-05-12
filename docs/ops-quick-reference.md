@@ -141,10 +141,12 @@ NEW_API_ADMIN_PASSWORD=<password> \
 bash ops/check-new-api-admin-frontend.sh
 ```
 
-If the official image still fails the admin E2E, temporarily keep `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1`
-in `/opt/lihan_ai_deploy/shared/.env.production` so deploys build from the pinned `vendor/new-api` fix.
-Small production hosts should use `DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull` with a prebuilt patch image, not server-side frontend build.
-Keep `LOCAL_NEW_API_IMAGE` on a non-official patch tag; runtime check rejects a deploy if the running container is still `calciumion/new-api:latest`.
+New API `v1.0.0-rc.5` includes the admin dropdown fix. Keep production on
+`calciumion/new-api:latest` with `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0` after local E2E passes.
+If official latest fails the admin E2E, use `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1` only as a
+temporary rollback path with `DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull` and a non-official
+`LOCAL_NEW_API_IMAGE`; runtime check rejects a patched-mode deploy if the running container is
+still `calciumion/new-api:latest`.
 
 ## Host Pressure Checks
 
