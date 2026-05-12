@@ -5,7 +5,7 @@ This project uses Superpowers for agent discipline, repo-native AI development g
 ## Current Decision
 
 - Superpowers remains the execution discipline layer: brainstorming, TDD, debugging, verification, and branch finishing.
-- Repo-native `docs/templates/ai-dev/`, `ops/ai-dev-check.sh`, and `ops/production-gate.sh` remain the authoritative project gates.
+- Repo-native `docs/templates/ai-dev/`, `ops/ai-dev-check.sh`, and `ops/production-gate.sh` remain the authoritative local project gates.
 - GitHub Spec Kit is installed for Codex via `.agents/skills/speckit-*` and shared workflow assets in `.specify/`.
 
 ## Installed Assets
@@ -118,13 +118,13 @@ Keep our project-specific rules:
 - Stop for destructive database, production, payment, secret, and core `vendor/new-api` changes.
 - Use `ops/production-gate.sh` for operations/billing-sensitive changes.
 
-Before implementation, still create or update a feature directory under `docs/ai-dev/<YYYY-MM-DD>-<topic>/` and run:
+Before implementation, you may create or update local ignored working notes under `docs/ai-dev/<YYYY-MM-DD>-<topic>/` and run:
 
 ```bash
 bash ops/ai-dev-check.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
 ```
 
-The `tasks.md` approval line and production gate remain mandatory for planned changes.
+The `tasks.md` approval line remains the local guard for those notes. Durable decisions, verification evidence, and residual risk should be copied into the PR, final response, or maintained runbook rather than committed under `docs/ai-dev/`.
 
 ## Verification
 

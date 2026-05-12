@@ -46,7 +46,7 @@ Use these default paths:
 - Backup/migration: `ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<dump>.dump`
 - Config/env: `ENV_FILE=.env.production bash ops/preflight.sh` and `bash ops/sync-env-template.sh <target-env> .env.production.example`
 
-PR CI only verifies that the repository and feature docs are structurally complete. Live E2E remains local/operator-run because it needs secrets, a running stack, or production-like state.
+PR CI only verifies repository structure, shell tests, Compose rendering, and repo policy. Live E2E and feature-specific working notes remain local/operator-run because they may need secrets, a running stack, production-like state, or private context.
 
 ## Spec Kit And Superpowers
 
@@ -77,9 +77,9 @@ Each design must record:
 
 Research is mandatory for payment, backup, restore, upgrade, configuration migration, health checks, cache billing, and production deployment work.
 
-## Feature Document Set
+## Local Feature Working Notes
 
-Each new feature or operations change gets a directory:
+For planned work, keep optional working notes in a local ignored directory:
 
 ```text
 docs/ai-dev/<YYYY-MM-DD>-<topic>/
@@ -92,7 +92,9 @@ docs/ai-dev/<YYYY-MM-DD>-<topic>/
 
 Use the templates in `docs/templates/ai-dev/`.
 
-Before implementation, run:
+These notes are not tracked by git. Copy only durable public decisions, verification results, residual risk, and user-facing instructions into PR descriptions or maintained runbooks.
+
+Before implementation, you can check the local notes with:
 
 ```bash
 bash ops/ai-dev-check.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
@@ -138,13 +140,13 @@ export AI_DEV_FEATURE_DIR="docs/ai-dev/<YYYY-MM-DD>-<topic>"
 bash ops/production-gate.sh
 ```
 
-`AI_DEV_FEATURE_DIR` is optional for emergency diagnostics, but required for planned feature or workflow changes. It makes the production gate verify that the current feature documents still satisfy the Research -> Spec -> Plan -> Tasks approval contract, including E2E and documentation completion.
+`AI_DEV_FEATURE_DIR` is optional and points to local ignored notes when you want the production gate to verify the Research -> Spec -> Plan -> Tasks approval contract, including E2E and documentation completion.
 
 For lighter local edits, at least run:
 
 ```bash
-bash ops/dev-gate.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
-bash ops/ai-dev-check.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
+bash ops/dev-gate.sh
+bash ops/dev-gate.sh docs/ai-dev/<YYYY-MM-DD>-<topic> # optional local notes check
 bash tests/e2e-api-billing.test.sh
 bash tests/wrapper-infra.test.sh
 bash ops/preflight.sh
@@ -154,12 +156,12 @@ The GitHub Actions PR CI is an additional merge-time backstop, not a replacement
 
 ## Completion Handoff
 
-After implementing a feature, update `handoff.md` before asking for review. The handoff must explain how to use and test the feature in enough detail for the user to reproduce the acceptance path: commands, UI pages, expected output, and what failures mean.
+After implementing a feature, put the handoff in the PR description, final response, maintained runbook, or local `docs/ai-dev/.../handoff.md` when one exists. The handoff must explain how to use and test the feature in enough detail for the user to reproduce the acceptance path: commands, UI pages, expected output, and what failures mean.
 
 Run the local no-secret completion gate before finalizing routine work:
 
 ```bash
-bash ops/dev-gate.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
+bash ops/dev-gate.sh
 ```
 
 For operations, billing, deployment, backup, migration, or security changes, run the production gate or document why the live portion was skipped:

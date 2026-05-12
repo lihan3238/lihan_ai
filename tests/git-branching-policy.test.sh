@@ -20,11 +20,6 @@ assert_contains() {
 
 assert_file "docs/git-branching-runbook.md"
 assert_file "docs/zh-CN/git-branching-runbook.md"
-assert_file "docs/ai-dev/2026-05-10-git-branching-policy/research.md"
-assert_file "docs/ai-dev/2026-05-10-git-branching-policy/spec.md"
-assert_file "docs/ai-dev/2026-05-10-git-branching-policy/plan.md"
-assert_file "docs/ai-dev/2026-05-10-git-branching-policy/tasks.md"
-assert_file "docs/ai-dev/2026-05-10-git-branching-policy/handoff.md"
 
 assert_contains "docs/git-branching-runbook.md" "main = production"
 assert_contains "docs/git-branching-runbook.md" "codex/<topic>"

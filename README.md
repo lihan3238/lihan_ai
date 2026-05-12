@@ -56,6 +56,18 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 
 ## Common Production Commands
 
+For day-to-day operations, use the thin command wrapper:
+
+```bash
+ENV_FILE=.env.production bash ops/relayctl.sh status
+ENV_FILE=.env.production bash ops/relayctl.sh maintain
+bash ops/relayctl.sh release-check
+```
+
+The wrapper only calls existing scripts. It does not change the production safety model: GitHub Actions validates the repository, while production promotion stays manual. See [docs/maintainer-release-runbook.md](docs/maintainer-release-runbook.md).
+
+For invited users, share [docs/user-quickstart.md](docs/user-quickstart.md) first and [docs/user-guide.md](docs/user-guide.md) when they need detail. Community contribution rules live in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ### Initial Production Deployment
 
 Run from your local repository after the origin server has Docker, SSH access, and `/opt/lihan_ai_deploy/shared/.env.production`:
@@ -172,6 +184,8 @@ bash ops/channel-health-advisor.sh config/ops-profiles/glm-default-health.exampl
 Use [docs/new-api-small-circle-launch-runbook.md](docs/new-api-small-circle-launch-runbook.md) when configuring the
 friend-only package launch. The first stage is configuration-first: station quota wording, New API subscription plans,
 manual activation, fair use, and official-image-first frontend policy.
+Use [docs/new-api-small-circle-promo-ops.md](docs/new-api-small-circle-promo-ops.md) for paste-ready New API site copy,
+WeChat/QQ group operations, WeChat Moments, QQ Zone, activation messages, and support templates.
 Upstream New API `v1.0.0-rc.5` includes the admin dropdown fix, so production should run
 `calciumion/new-api:latest` with `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0` after local E2E passes.
 Keep the pinned `lihan3238/new-api` patch image documented only as a rollback path: if official
@@ -230,9 +244,9 @@ Local verification:
 ```bash
 bash -n ops/*.sh tests/*.test.sh
 for test in tests/*.test.sh; do bash "$test"; done
-bash ops/dev-gate.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
+bash ops/dev-gate.sh
 powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts\verify-repo.ps1 -SkipDocker
 git diff --check
 ```
 
-For new features, update the feature `plan.md` with `E2E Coverage Matrix`, `Documentation Impact`, and `Usage/Test Guide`; update `handoff.md` with `How To Use And Test`, `E2E Results`, and `Documentation Updated`. Skipped E2E entries must include `Reason:` and `Rerun:`.
+For new features, keep optional private working notes under ignored `docs/ai-dev/<YYYY-MM-DD>-<topic>/` and run `bash ops/dev-gate.sh docs/ai-dev/<YYYY-MM-DD>-<topic>` when you want the local feature-note checks. Keep the `E2E Coverage Matrix` in those notes or the PR/runbook handoff, then copy durable decisions, E2E evidence, user-facing instructions, and residual risk into PR descriptions or maintained runbooks. Skipped E2E entries must include `Reason:` and `Rerun:`.

@@ -18,8 +18,12 @@ English documentation remains the engineering source of truth. Chinese documents
 | `docs/backup-strategy.md` | `docs/zh-CN/backup-strategy.md` |
 | `docs/operations-runbook.md` | `docs/zh-CN/operations-runbook.md` |
 | `docs/ops-quick-reference.md` | `docs/zh-CN/ops-quick-reference.md` |
+| `docs/maintainer-release-runbook.md` | `docs/zh-CN/maintainer-release-runbook.md` |
+| `docs/user-quickstart.md` | `docs/zh-CN/user-quickstart.md` |
+| `docs/user-guide.md` | `docs/zh-CN/user-guide.md` |
 | `docs/server-buying-guide.md` | `docs/zh-CN/server-buying-guide.md` |
 | `docs/new-api-small-circle-launch-runbook.md` | `docs/zh-CN/new-api-small-circle-launch-runbook.md` |
+| `docs/new-api-small-circle-promo-ops.md` | `docs/zh-CN/new-api-small-circle-promo-ops.md` |
 
 ## Maintenance Rules
 

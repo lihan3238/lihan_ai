@@ -7,6 +7,9 @@
 !.agents/
 !.agents/skills/
 !.agents/skills/**
+# Local AI development working notes can include private context,
+# obsolete experiments, and production-specific details.
+docs/ai-dev/
 data/
 logs/
 backups/
