@@ -67,6 +67,7 @@ jobs:
           docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.dev.yml config >/dev/null
           docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local-build.yml config >/dev/null
           docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml config >/dev/null
+          docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.local-build.yml config >/dev/null
           docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml config >/dev/null
           docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml -f docker-compose.cpa.ui.yml config >/dev/null
           docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cloudflare-tunnel.yml config >/dev/null

@@ -167,6 +167,23 @@ bash ops/validate-ops-profile.sh config/ops-profiles/glm-default.example.json
 bash ops/channel-health-advisor.sh config/ops-profiles/glm-default-health.example.json
 ```
 
+## Small Circle Launch
+
+Use [docs/new-api-small-circle-launch-runbook.md](docs/new-api-small-circle-launch-runbook.md) when configuring the
+friend-only package launch. The first stage is configuration-first: station quota wording, New API subscription plans,
+manual activation, fair use, and official-image-first frontend policy.
+While the official image lacks the admin dropdown fix, production can temporarily set
+`DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1` to build from the pinned `lihan3238/new-api` submodule.
+
+Before selling packages, verify the new admin frontend actions used for manual activation:
+
+```bash
+NEW_API_BASE_URL=https://api.lihan3238.com \
+NEW_API_ADMIN_USERNAME=<admin> \
+NEW_API_ADMIN_PASSWORD=<password> \
+bash ops/check-new-api-admin-frontend.sh
+```
+
 ## Useful Commands
 
 ```bash

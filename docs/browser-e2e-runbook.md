@@ -39,6 +39,18 @@ Remove-Item Env:NEW_API_BASE_URL
 npm run e2e:web:new-api
 ```
 
+Admin user-management E2E for package operations:
+
+```bash
+NEW_API_BASE_URL=https://api.lihan3238.com \
+NEW_API_ADMIN_USERNAME=<admin> \
+NEW_API_ADMIN_PASSWORD=<password> \
+npm run e2e:web:new-api-admin
+```
+
+This verifies the Users page row menu can open `Manage Bindings` and `Manage Subscriptions`, which are required for
+manual subscription activation in the small circle launch flow.
+
 Default:
 
 ```bash

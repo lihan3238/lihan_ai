@@ -46,6 +46,7 @@ assert_contains ".env.production.example" "DEPLOY_ROOT=/opt/lihan_ai_deploy"
 assert_contains ".env.production.example" "DEPLOY_COMPOSE_PROJECT=lihan_ai"
 assert_contains ".env.production.example" "DEPLOY_INCLUDE_CPA=0"
 assert_contains ".env.production.example" "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0"
+assert_contains ".env.production.example" "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0"
 assert_contains ".env.production.example" "RELEASE_KEEP=5"
 assert_contains ".env.production.example" "BACKUP_KEEP=30"
 assert_contains ".env.production.example" "BACKUP_MAX_TOTAL_MB=2048"
@@ -56,6 +57,7 @@ assert_contains "ops/deploy-release.sh" "ALLOW_NON_MAIN_PROD_DEPLOY"
 assert_contains "ops/deploy-release.sh" "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL"
 assert_contains "ops/deploy-release.sh" "DEPLOY_INCLUDE_CPA_EXPLICIT"
 assert_contains "ops/deploy-release.sh" "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT"
+assert_contains "ops/deploy-release.sh" "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_EXPLICIT"
 assert_contains "ops/deploy-release.sh" "resolve_deploy_config"
 assert_contains "ops/deploy-release.sh" "sync-env-template.sh"
 assert_contains "ops/deploy-release.sh" "old_target"
@@ -87,6 +89,7 @@ cat > "$remote_defaults_env" <<'ENV'
 DEPLOY_COMPOSE_PROJECT=lihan_ai_env
 DEPLOY_INCLUDE_CPA=1
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1
+DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1
 ENV
 
 set +e
@@ -111,6 +114,11 @@ assert_text_contains "$prepare_output" "candidate -> releases/<timestamp>-<sha>"
 assert_text_contains "$prepare_output" "docker compose -p lihan_ai" "prepare dry-run"
 assert_text_contains "$prepare_output" "sync-env-template.sh" "prepare dry-run"
 assert_text_contains "$prepare_output" "ops/preflight.sh" "prepare dry-run"
+
+prepare_local_build_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1 "$ROOT_DIR/ops/deploy-release.sh" prepare)"
+assert_text_contains "$prepare_local_build_output" "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1 (explicit env)" "local-build prepare dry-run"
+assert_text_contains "$prepare_local_build_output" "docker-compose.local-build.yml" "local-build prepare dry-run"
+assert_text_contains "$prepare_local_build_output" "build New API from pinned vendor/new-api" "local-build prepare dry-run"
 
 prepare_cpa_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example DEPLOY_INCLUDE_CPA=1 "$ROOT_DIR/ops/deploy-release.sh" prepare)"
 printf '%s' "$prepare_cpa_output" | grep -q "docker-compose.cpa.yml" || fail "CPA dry-run missing CPA compose file: $prepare_cpa_output"
@@ -140,6 +148,11 @@ printf '%s' "$promote_output" | grep -q "check-production-runtime.sh" || fail "p
 printf '%s' "$promote_output" | grep -q "last_healthy" || fail "promote dry-run missing last_healthy update: $promote_output"
 printf '%s' "$promote_output" | grep -q "cleanup old releases" || fail "promote dry-run missing release cleanup: $promote_output"
 
+promote_local_build_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example RELEASE_ID=20260510T000000Z-deadbee DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1 "$ROOT_DIR/ops/deploy-release.sh" promote)"
+assert_text_contains "$promote_local_build_output" "docker-compose.local-build.yml" "local-build promote dry-run"
+assert_text_contains "$promote_local_build_output" "build new-api" "local-build promote dry-run"
+assert_text_contains "$promote_local_build_output" "pull --ignore-buildable" "local-build promote dry-run"
+
 promote_tunnel_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example RELEASE_ID=20260510T000000Z-deadbee DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 "$ROOT_DIR/ops/deploy-release.sh" promote)"
 assert_text_contains "$promote_tunnel_output" "--scale caddy=0" "tunnel promote dry-run"
 assert_text_contains "$promote_tunnel_output" "docker-compose.cloudflare-tunnel.yml" "tunnel promote dry-run"
@@ -148,8 +161,10 @@ promote_remote_env_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST
 assert_text_contains "$promote_remote_env_output" "DEPLOY_COMPOSE_PROJECT=lihan_ai_env (remote env default)" "remote-env promote dry-run"
 assert_text_contains "$promote_remote_env_output" "DEPLOY_INCLUDE_CPA=1 (remote env default)" "remote-env promote dry-run"
 assert_text_contains "$promote_remote_env_output" "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 (remote env default)" "remote-env promote dry-run"
+assert_text_contains "$promote_remote_env_output" "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1 (remote env default)" "remote-env promote dry-run"
 assert_text_contains "$promote_remote_env_output" "docker-compose.cpa.yml" "remote-env promote dry-run"
 assert_text_contains "$promote_remote_env_output" "docker-compose.cloudflare-tunnel.yml" "remote-env promote dry-run"
+assert_text_contains "$promote_remote_env_output" "docker-compose.local-build.yml" "remote-env promote dry-run"
 assert_text_contains "$promote_remote_env_output" "--scale caddy=0" "remote-env promote dry-run"
 
 promote_explicit_caddy_output="$(PATH="$fake_bin:$PATH" DEPLOY_DRY_RUN=1 DEPLOY_HOST=root@example DEPLOY_ENV_FILE="$remote_defaults_env" RELEASE_ID=20260510T000000Z-deadbee DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0 "$ROOT_DIR/ops/deploy-release.sh" promote)"
@@ -185,8 +200,10 @@ PATH="$fake_bin:$PATH" FAKE_SSH_LOG="$ssh_log" DEPLOY_HOST=root@example "$ROOT_D
 ssh_command="$(cat "$ssh_log")"
 assert_text_contains "$ssh_command" "DEPLOY_INCLUDE_CPA=''" "ssh command for implicit CPA"
 assert_text_contains "$ssh_command" "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=''" "ssh command for implicit tunnel"
+assert_text_contains "$ssh_command" "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=''" "ssh command for implicit local build"
 assert_text_contains "$ssh_command" "DEPLOY_INCLUDE_CPA_EXPLICIT='0'" "ssh command for implicit CPA"
 assert_text_contains "$ssh_command" "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT='0'" "ssh command for implicit tunnel"
+assert_text_contains "$ssh_command" "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_EXPLICIT='0'" "ssh command for implicit local build"
 
 PATH="$fake_bin:$PATH" FAKE_SSH_LOG="$ssh_log" DEPLOY_HOST=root@example DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0 "$ROOT_DIR/ops/deploy-release.sh" list
 ssh_command="$(cat "$ssh_log")"

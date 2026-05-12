@@ -49,6 +49,11 @@ if [ "${DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL+x}" = "x" ] && [ -n "${DEPLOY_INCLUDE_C
   DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT=1
 fi
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL="${DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL:-}"
+DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_EXPLICIT=0
+if [ "${DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD+x}" = "x" ] && [ -n "${DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD:-}" ]; then
+  DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_EXPLICIT=1
+fi
+DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD="${DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD:-}"
 RELEASE_KEEP="${RELEASE_KEEP:-5}"
 RUN_REMOTE_BACKUP="${RUN_REMOTE_BACKUP:-1}"
 ALLOW_NON_MAIN_PROD_DEPLOY="${ALLOW_NON_MAIN_PROD_DEPLOY:-0}"
@@ -130,10 +135,25 @@ resolve_preview_config() {
       DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_SOURCE="built-in default"
     fi
   fi
+
+  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_EXPLICIT" = "1" ]; then
+    DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_SOURCE="explicit env"
+  else
+    value="$(env_value_from_file "$defaults_file" DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD)"
+    DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD="${value:-0}"
+    if [ -n "$value" ]; then
+      DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_SOURCE="remote env default"
+    else
+      DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_SOURCE="built-in default"
+    fi
+  fi
 }
 
 compose_preview() {
   printf 'docker compose -p %s --env-file %s -f docker-compose.yml -f docker-compose.prod.yml' "$DEPLOY_COMPOSE_PROJECT" "$DEPLOY_ENV_FILE"
+  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+    printf ' -f docker-compose.local-build.yml'
+  fi
   if [ "$DEPLOY_INCLUDE_CPA" = "1" ]; then
     printf ' -f docker-compose.cpa.yml'
   fi
@@ -159,6 +179,7 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
   echo "DEPLOY_COMPOSE_PROJECT=$DEPLOY_COMPOSE_PROJECT ($DEPLOY_COMPOSE_PROJECT_SOURCE)"
   echo "DEPLOY_INCLUDE_CPA=$DEPLOY_INCLUDE_CPA ($DEPLOY_INCLUDE_CPA_SOURCE)"
   echo "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL ($DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_SOURCE)"
+  echo "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD ($DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_SOURCE)"
   echo "repo: $DEPLOY_ROOT/repo.git"
   echo "releases: $DEPLOY_ROOT/releases"
   echo "shared: $DEPLOY_ROOT/shared"
@@ -177,6 +198,9 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
       echo "link $DEPLOY_ROOT/shared/$DEPLOY_ENV_FILE into release"
       echo "link shared data/logs/backups/snapshots into release"
       echo "bash ops/sync-env-template.sh $DEPLOY_ROOT/shared/$DEPLOY_ENV_FILE .env.production.example"
+      if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+        echo "include docker-compose.local-build.yml and build New API from pinned vendor/new-api"
+      fi
       echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT ENV_FILE=$DEPLOY_ENV_FILE bash ops/preflight.sh"
       echo "$(compose_preview) config"
       echo "candidate -> releases/<timestamp>-<sha>"
@@ -200,7 +224,12 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
         echo "current -> candidate"
         echo "clear candidate after successful promote"
       fi
-      echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_preview) pull"
+      if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+        echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_preview) build new-api"
+        echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_preview) pull --ignore-buildable"
+      else
+        echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_preview) pull"
+      fi
       echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_up_preview)"
       echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT ENV_FILE=$DEPLOY_ENV_FILE bash ops/check-production-runtime.sh"
       echo "last_healthy -> release after successful runtime check"
@@ -231,7 +260,7 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
 fi
 
 ssh "$DEPLOY_HOST" \
-  "DEPLOY_ROOT='$DEPLOY_ROOT' DEPLOY_ENV='$DEPLOY_ENV' DEPLOY_ENV_FILE='$DEPLOY_ENV_FILE' DEPLOY_REF='$DEPLOY_REF' DEPLOY_REPO='$DEPLOY_REPO' DEPLOY_COMPOSE_PROJECT='$DEPLOY_COMPOSE_PROJECT' DEPLOY_COMPOSE_PROJECT_EXPLICIT='$DEPLOY_COMPOSE_PROJECT_EXPLICIT' DEPLOY_INCLUDE_CPA='$DEPLOY_INCLUDE_CPA' DEPLOY_INCLUDE_CPA_EXPLICIT='$DEPLOY_INCLUDE_CPA_EXPLICIT' DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL='$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL' DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT='$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT' RELEASE_KEEP='$RELEASE_KEEP' RUN_REMOTE_BACKUP='$RUN_REMOTE_BACKUP' LEGACY_DEPLOY_PATH='$LEGACY_DEPLOY_PATH' RELEASE_ID='$RELEASE_ID' SMOKE_BACKUP_PATH='${SMOKE_BACKUP_PATH:-}' sh -s -- '$command' '$release_arg'" <<'REMOTE'
+  "DEPLOY_ROOT='$DEPLOY_ROOT' DEPLOY_ENV='$DEPLOY_ENV' DEPLOY_ENV_FILE='$DEPLOY_ENV_FILE' DEPLOY_REF='$DEPLOY_REF' DEPLOY_REPO='$DEPLOY_REPO' DEPLOY_COMPOSE_PROJECT='$DEPLOY_COMPOSE_PROJECT' DEPLOY_COMPOSE_PROJECT_EXPLICIT='$DEPLOY_COMPOSE_PROJECT_EXPLICIT' DEPLOY_INCLUDE_CPA='$DEPLOY_INCLUDE_CPA' DEPLOY_INCLUDE_CPA_EXPLICIT='$DEPLOY_INCLUDE_CPA_EXPLICIT' DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL='$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL' DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT='$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT' DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD='$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD' DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_EXPLICIT='$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_EXPLICIT' RELEASE_KEEP='$RELEASE_KEEP' RUN_REMOTE_BACKUP='$RUN_REMOTE_BACKUP' LEGACY_DEPLOY_PATH='$LEGACY_DEPLOY_PATH' RELEASE_ID='$RELEASE_ID' SMOKE_BACKUP_PATH='${SMOKE_BACKUP_PATH:-}' sh -s -- '$command' '$release_arg'" <<'REMOTE'
 set -eu
 
 command="$1"
@@ -311,6 +340,12 @@ resolve_deploy_config() {
     DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL="${value:-0}"
   fi
   DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL="${DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL:-0}"
+
+  if [ "${DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_EXPLICIT:-0}" != "1" ]; then
+    value="$(env_value_from_file "$defaults_file" DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD)"
+    DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD="${value:-0}"
+  fi
+  DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD="${DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD:-0}"
 }
 
 latest_release_id() {
@@ -370,20 +405,19 @@ copy_legacy_if_missing() {
 }
 
 compose() {
-  include_tunnel=0
+  compose_files="-f docker-compose.yml -f docker-compose.prod.yml"
+  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+    compose_files="$compose_files -f docker-compose.local-build.yml"
+  fi
+  if [ "$DEPLOY_INCLUDE_CPA" = "1" ]; then
+    compose_files="$compose_files -f docker-compose.cpa.yml"
+  fi
   if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ] && [ -f docker-compose.cloudflare-tunnel.yml ]; then
-    include_tunnel=1
+    compose_files="$compose_files -f docker-compose.cloudflare-tunnel.yml"
   fi
 
-  if [ "$DEPLOY_INCLUDE_CPA" = "1" ] && [ "$include_tunnel" = "1" ]; then
-    docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml -f docker-compose.cloudflare-tunnel.yml "$@"
-  elif [ "$DEPLOY_INCLUDE_CPA" = "1" ]; then
-    docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cpa.yml "$@"
-  elif [ "$include_tunnel" = "1" ]; then
-    docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cloudflare-tunnel.yml "$@"
-  else
-    docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" -f docker-compose.yml -f docker-compose.prod.yml "$@"
-  fi
+  # shellcheck disable=SC2086
+  docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" $compose_files "$@"
 }
 
 compose_up() {
@@ -391,6 +425,24 @@ compose_up() {
     compose up -d --remove-orphans --scale caddy=0
   else
     compose up -d --remove-orphans
+  fi
+}
+
+compose_pull_or_build() {
+  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+    compose build new-api
+    if compose pull --ignore-buildable; then
+      return
+    fi
+    compose pull postgres redis caddy
+    if [ "$DEPLOY_INCLUDE_CPA" = "1" ]; then
+      compose pull cli-proxy-api
+    fi
+    if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ] && [ -f docker-compose.cloudflare-tunnel.yml ]; then
+      compose pull cloudflared
+    fi
+  else
+    compose pull
   fi
 }
 
@@ -564,6 +616,10 @@ cmd_prepare() {
   (
     cd "$release_path"
     bash ops/sync-env-template.sh "$shared_dir/$DEPLOY_ENV_FILE" ".env.production.example"
+    if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+      [ -f docker-compose.local-build.yml ] || fail "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1 but docker-compose.local-build.yml is missing"
+      [ -f vendor/new-api/Dockerfile ] || fail "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1 but vendor/new-api/Dockerfile is missing"
+    fi
     if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ] && [ ! -f docker-compose.cloudflare-tunnel.yml ]; then
       fail "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 but docker-compose.cloudflare-tunnel.yml is missing"
     fi
@@ -632,7 +688,7 @@ promote_worker() {
   set +e
   (
     cd "$current_link"
-    compose pull
+    compose_pull_or_build
     compose_up
     write_promote_state "running" "runtime-check" "$release_id" "$old_target" "$worker_pid"
     verify_new_api

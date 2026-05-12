@@ -22,6 +22,7 @@ set +a
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-${DEPLOY_COMPOSE_PROJECT:-}}"
 DEPLOY_INCLUDE_CPA="${DEPLOY_INCLUDE_CPA:-0}"
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL="${DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL:-0}"
+DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD="${DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD:-0}"
 RUNTIME_EXTERNAL_RETRIES="${RUNTIME_EXTERNAL_RETRIES:-12}"
 RUNTIME_EXTERNAL_RETRY_SECONDS="${RUNTIME_EXTERNAL_RETRY_SECONDS:-5}"
 
@@ -47,19 +48,19 @@ compose() {
     project_args="-p $COMPOSE_PROJECT_NAME"
   fi
 
-  if [ "$DEPLOY_INCLUDE_CPA" = "1" ] && [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ]; then
-    # shellcheck disable=SC2086
-    docker compose $project_args --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.prod.yml" -f "$ROOT_DIR/docker-compose.cpa.yml" -f "$ROOT_DIR/docker-compose.cloudflare-tunnel.yml" "$@"
-  elif [ "$DEPLOY_INCLUDE_CPA" = "1" ]; then
-    # shellcheck disable=SC2086
-    docker compose $project_args --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.prod.yml" -f "$ROOT_DIR/docker-compose.cpa.yml" "$@"
-  elif [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ]; then
-    # shellcheck disable=SC2086
-    docker compose $project_args --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.prod.yml" -f "$ROOT_DIR/docker-compose.cloudflare-tunnel.yml" "$@"
-  else
-    # shellcheck disable=SC2086
-    docker compose $project_args --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.prod.yml" "$@"
+  compose_files="-f $ROOT_DIR/docker-compose.yml -f $ROOT_DIR/docker-compose.prod.yml"
+  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+    compose_files="$compose_files -f $ROOT_DIR/docker-compose.local-build.yml"
   fi
+  if [ "$DEPLOY_INCLUDE_CPA" = "1" ]; then
+    compose_files="$compose_files -f $ROOT_DIR/docker-compose.cpa.yml"
+  fi
+  if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ]; then
+    compose_files="$compose_files -f $ROOT_DIR/docker-compose.cloudflare-tunnel.yml"
+  fi
+
+  # shellcheck disable=SC2086
+  docker compose $project_args --env-file "$ENV_FILE" $compose_files "$@"
 }
 
 cd "$ROOT_DIR"

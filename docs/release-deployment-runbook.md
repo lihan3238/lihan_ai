@@ -55,8 +55,19 @@ DEPLOY_REF=main
 DEPLOY_COMPOSE_PROJECT=lihan_ai
 DEPLOY_INCLUDE_CPA=0
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0
+DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0
 RELEASE_KEEP=5
 ```
+
+Temporary patched New API frontend builds are opt-in:
+
+```env
+DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1
+LOCAL_NEW_API_IMAGE=lihan-ai/new-api:local
+```
+
+This appends `docker-compose.local-build.yml`, builds `new-api` from the release's pinned `vendor/new-api`, and keeps other services on pulled images. Set it back to `0` after the official `calciumion/new-api:latest` image ships the equivalent frontend fix and passes the admin E2E.
+During the temporary patch window, `.gitmodules` points `vendor/new-api` at `lihan3238/new-api` so the pinned fix commit is fetchable by CI and the production release worker.
 
 CPA runtime files should be shared:
 
