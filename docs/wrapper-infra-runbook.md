@@ -111,10 +111,10 @@ The drill restores into a temporary Postgres container, checks key tables, and r
 Run the no-secret local completion gate during routine feature work:
 
 ```bash
-bash ops/dev-gate.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
+bash ops/dev-gate.sh
 ```
 
-The feature directory must include `E2E Coverage Matrix`, `Documentation Impact`, `Usage/Test Guide`, `How To Use And Test`, and E2E skip entries with `Reason:` and `Rerun:`.
+If you keep optional local working notes in ignored `docs/ai-dev/<YYYY-MM-DD>-<topic>/`, pass that path to `ops/dev-gate.sh` to also run `feature-completion-check.sh`. The feature directory must include `E2E Coverage Matrix`, `Documentation Impact`, `Usage/Test Guide`, `How To Use And Test`, and E2E skip entries with `Reason:` and `Rerun:`.
 
 Run the full gate before New API upgrades, channel changes, production deployment, or source customization:
 
@@ -135,7 +135,7 @@ export AI_DEV_FEATURE_DIR="docs/ai-dev/<YYYY-MM-DD>-<topic>"
 bash ops/production-gate.sh
 ```
 
-`AI_DEV_FEATURE_DIR` must point to a directory that passes `ops/feature-completion-check.sh`, including `Approved for implementation: yes` in `tasks.md`.
+`AI_DEV_FEATURE_DIR` is optional and should point to a local ignored directory that passes `ops/feature-completion-check.sh`, including `Approved for implementation: yes` in `tasks.md`.
 
 ## Production Deployment Kit
 

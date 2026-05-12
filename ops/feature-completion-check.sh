@@ -2,7 +2,7 @@
 set -eu
 
 usage() {
-  echo "usage: $0 docs/ai-dev/<YYYY-MM-DD-topic>" >&2
+  echo "usage: $0 local-feature-dir" >&2
 }
 
 if [ "$#" -ne 1 ]; then

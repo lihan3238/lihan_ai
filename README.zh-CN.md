@@ -56,6 +56,18 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 
 ## 生产常用命令
 
+日常运维优先用薄封装入口：
+
+```bash
+ENV_FILE=.env.production bash ops/relayctl.sh status
+ENV_FILE=.env.production bash ops/relayctl.sh maintain
+bash ops/relayctl.sh release-check
+```
+
+这个入口只调用现有脚本，不改变生产安全边界：GitHub Actions 只验证仓库，生产 promote 仍然人工执行。维护者流程见 [docs/zh-CN/maintainer-release-runbook.md](docs/zh-CN/maintainer-release-runbook.md)。
+
+给内测用户先发 [docs/zh-CN/user-quickstart.md](docs/zh-CN/user-quickstart.md)，需要细节时再发 [docs/zh-CN/user-guide.md](docs/zh-CN/user-guide.md)。社区 PR 规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
 ### 初始生产部署
 
 源站已有 Docker、SSH 访问，并准备好 `/opt/lihan_ai_deploy/shared/.env.production` 后，从本地仓库执行：
@@ -171,6 +183,7 @@ bash ops/channel-health-advisor.sh config/ops-profiles/glm-default-health.exampl
 
 配置朋友小范围套餐时看 [docs/zh-CN/new-api-small-circle-launch-runbook.md](docs/zh-CN/new-api-small-circle-launch-runbook.md)。
 第一阶段只做后台配置：station quota / 站内额度文案、New API 订阅计划、manual activation、fair use，以及官方镜像优先的前端策略。
+熟人内测宣发、微信群/QQ群运营、朋友圈/QQ 空间文案、开通私聊模板和故障反馈模板见 [docs/zh-CN/new-api-small-circle-promo-ops.md](docs/zh-CN/new-api-small-circle-promo-ops.md)。
 上游 New API `v1.0.0-rc.5` 已包含后台 dropdown 修复；本机 E2E 通过后，生产默认运行
 `calciumion/new-api:latest`，并保持 `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0`。
 pin 住的 `lihan3238/new-api` 补丁镜像只作为 rollback 路径保留：如果官方 latest 未通过
@@ -229,9 +242,9 @@ bash ops/check-local-ports.sh
 ```bash
 bash -n ops/*.sh tests/*.test.sh
 for test in tests/*.test.sh; do bash "$test"; done
-bash ops/dev-gate.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
+bash ops/dev-gate.sh
 powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts\verify-repo.ps1 -SkipDocker
 git diff --check
 ```
 
-新功能需要在 feature `plan.md` 里更新 `E2E Coverage Matrix`、`Documentation Impact`、`Usage/Test Guide`，并在 `handoff.md` 里更新 `How To Use And Test`、`E2E Results`、`Documentation Updated`。跳过的 E2E 必须写 `Reason:` 和 `Rerun:`。
+新功能可以把私有过程笔记放在已忽略的 `docs/ai-dev/<YYYY-MM-DD>-<topic>/`；需要本地校验笔记时运行 `bash ops/dev-gate.sh docs/ai-dev/<YYYY-MM-DD>-<topic>`。`E2E Coverage Matrix` 要保留在过程笔记或 PR/runbook handoff 里；耐久决策、E2E 证据、用户说明和剩余风险要写到 PR 描述或正式 runbook。跳过的 E2E 必须写 `Reason:` 和 `Rerun:`。

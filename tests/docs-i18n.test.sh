@@ -48,8 +48,12 @@ cpa-runbook.md
 backup-strategy.md
 operations-runbook.md
 ops-quick-reference.md
+maintainer-release-runbook.md
+user-quickstart.md
+user-guide.md
 server-buying-guide.md
 new-api-small-circle-launch-runbook.md
+new-api-small-circle-promo-ops.md
 "
 
 for doc in $docs; do
@@ -65,9 +69,21 @@ done
 
 assert_not_file "docs/kuma-status-runbook.md"
 
-for keyword in ".github/workflows/ci.yml" "GitHub Actions PR CI" "ops/deploy-release.sh prepare" "ops/deploy-release.sh smoke" "ops/deploy-release.sh promote" "ops/cpa-ui.sh open" "ops/cpa-ui.sh close" "ssh -L 8317" "ops/backup-cron.sh" "ops/dev-gate.sh" "E2E Coverage Matrix" "sync-env-template.sh" "default" "vip"; do
+for keyword in ".github/workflows/ci.yml" "GitHub Actions PR CI" "ops/deploy-release.sh prepare" "ops/deploy-release.sh smoke" "ops/deploy-release.sh promote" "ops/cpa-ui.sh open" "ops/cpa-ui.sh close" "ssh -L 8317" "ops/backup-cron.sh" "ops/dev-gate.sh" "ops/relayctl.sh" "E2E Coverage Matrix" "sync-env-template.sh" "default" "vip"; do
   assert_contains "README.md" "$keyword"
   assert_contains "README.zh-CN.md" "$keyword"
+done
+
+for keyword in "ops/relayctl.sh" "release-check" "deploy-prepare" "deploy-promote" "GitHub Actions" "manual"; do
+  assert_contains "docs/maintainer-release-runbook.md" "$keyword"
+  assert_contains "docs/zh-CN/maintainer-release-runbook.md" "$keyword"
+done
+
+for keyword in "https://api.lihan3238.com/v1" "OpenAI-compatible" "API Key" "station quota"; do
+  assert_contains "docs/user-quickstart.md" "$keyword"
+  assert_contains "docs/user-guide.md" "$keyword"
+  assert_contains "docs/zh-CN/user-quickstart.md" "$keyword"
+  assert_contains "docs/zh-CN/user-guide.md" "$keyword"
 done
 
 for keyword in "ops/backup-cron.sh" "ops/backup-postgres.sh" "ops/verify-postgres-backup.sh" "ops/drill-restore-stack.sh" "ops/restore-postgres.sh" "ops/prune-runtime-storage.sh" "BACKUP_KEEP" "BACKUP_MAX_TOTAL_MB" "scp"; do
@@ -140,6 +156,14 @@ for keyword in "Small Circle Launch" "station quota" "not official USD" "ops/che
   assert_contains "docs/zh-CN/new-api-small-circle-launch-runbook.md" "$keyword"
 done
 
+for keyword in "Lihan AI Relay" "HomePageContent" "console_setting.api_info" "console_setting.faq" "https://api.lihan3238.com/v1" "station quota is not official USD balance" "WeChat Moments" "QQ Zone" "Fault report"; do
+  assert_contains "docs/new-api-small-circle-promo-ops.md" "$keyword"
+done
+
+for keyword in "Lihan AI Relay" "HomePageContent" "console_setting.api_info" "console_setting.faq" "https://api.lihan3238.com/v1" "station quota is not official USD balance"; do
+  assert_contains "docs/zh-CN/new-api-small-circle-promo-ops.md" "$keyword"
+done
+
 for keyword in "Layered E2E Policy" "ops/dev-gate.sh" "E2E Coverage Matrix" "Reason:" "Rerun:"; do
   assert_contains "docs/development-workflow.md" "$keyword"
 done
@@ -157,6 +181,7 @@ for file in \
   docs/ops-quick-reference.md docs/zh-CN/ops-quick-reference.md \
   docs/release-deployment-runbook.md docs/zh-CN/release-deployment-runbook.md \
   docs/production-deployment-runbook.md docs/zh-CN/production-deployment-runbook.md \
+  docs/maintainer-release-runbook.md docs/zh-CN/maintainer-release-runbook.md \
   docs/cpa-runbook.md docs/zh-CN/cpa-runbook.md \
   docs/edge-proxy-runbook.md docs/zh-CN/edge-proxy-runbook.md \
   docs/browser-e2e-runbook.md

@@ -48,16 +48,6 @@ jobs:
             echo "::endgroup::"
           done
 
-      - name: AI dev docs
-        run: |
-          set -eu
-          for dir in docs/ai-dev/*; do
-            [ -d "$dir" ] || continue
-            echo "::group::$dir"
-            bash ops/ai-dev-check.sh "$dir"
-            echo "::endgroup::"
-          done
-
       - name: Compose render checks
         run: |
           set -eu

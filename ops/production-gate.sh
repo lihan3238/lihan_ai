@@ -71,6 +71,7 @@ run bash tests/cpa-ui-script.test.sh
 run bash tests/docs-i18n.test.sh
 run bash tests/ci-cd-pipeline.test.sh
 run bash tests/local-new-api-e2e.test.sh
+run bash tests/formal-release.test.sh
 run bash tests/git-branching-policy.test.sh
 run bash tests/e2e-api-billing.test.sh
 run bash tests/wrapper-infra.test.sh

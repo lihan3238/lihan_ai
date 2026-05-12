@@ -18,6 +18,14 @@ assert_contains() {
   grep -q -- "$pattern" "$ROOT_DIR/$file" || fail "$file missing pattern: $pattern"
 }
 
+assert_not_contains() {
+  file="$1"
+  pattern="$2"
+  if grep -q -- "$pattern" "$ROOT_DIR/$file"; then
+    fail "$file contains private or obsolete pattern: $pattern"
+  fi
+}
+
 assert_file "docs/cloudflare-saas-runbook.md"
 assert_file "docs/zh-CN/cloudflare-saas-runbook.md"
 
@@ -30,6 +38,8 @@ for file in docs/cloudflare-saas-runbook.md docs/zh-CN/cloudflare-saas-runbook.m
   assert_contains "$file" "cloudflared"
   assert_contains "$file" "DOMAIN=api.lihan3238.com"
   assert_contains "$file" "DOMAIN=origin.lihan3238.top"
+  assert_not_contains "$file" "srv998135"
+  assert_not_contains "$file" "72.60.124.21"
 done
 
 assert_contains ".env.production.example" "CLOUDFLARE_SAAS_FALLBACK_ORIGIN="
@@ -67,7 +77,7 @@ POSTGRES_PASSWORD=abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567
 POSTGRES_DB=newapi
 REDIS_PASSWORD=abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789
 CLOUDFLARE_SAAS_FALLBACK_ORIGIN=origin.lihan3238.top
-CLOUDFLARE_SAAS_ORIGIN_IP=72.60.124.21
+CLOUDFLARE_SAAS_ORIGIN_IP=203.0.113.10
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0
 EOF
 }

@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 feature_dir="${1:-}"
 
 if [ "$#" -gt 1 ]; then
-  echo "usage: $0 [docs/ai-dev/<YYYY-MM-DD-topic>]" >&2
+  echo "usage: $0 [local-feature-dir]" >&2
   exit 2
 fi
 

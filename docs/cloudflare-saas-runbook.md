@@ -30,7 +30,7 @@ The route should create a proxied DNS record for:
 origin.lihan3238.top -> <tunnel-uuid>.cfargotunnel.com
 ```
 
-Remove any old `origin.lihan3238.top A 72.60.124.21` record after the tunnel route is active. The fallback origin should resolve to Cloudflare, not directly to the Hostinger IP.
+Remove any old `origin.lihan3238.top A <origin-ip>` record after the tunnel route is active. The fallback origin should resolve to Cloudflare, not directly to the origin server IP.
 
 In `SSL/TLS -> Custom Hostnames`, keep Cloudflare for SaaS enabled and keep the fallback origin as:
 
@@ -56,7 +56,7 @@ Host: api
 Value: 172.64.155.231
 ```
 
-Do not point `api.lihan3238.com` at `72.60.124.21` for the Tunnel path.
+Do not point `api.lihan3238.com` at the origin server IP for the Tunnel path.
 
 ## Origin Files
 
@@ -161,18 +161,18 @@ Prepare, smoke, and promote the next release from your local repository:
 The normal release path now reads `DEPLOY_INCLUDE_CPA=1` and `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1` from the remote `.env.production`. The explicit variables below are kept as an emergency override example; daily deploys can use the shorter README commands.
 
 ```bash
-DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
+DEPLOY_HOST=<deploy-user>@<origin-host> \
 DEPLOY_REF=main \
 DEPLOY_INCLUDE_CPA=1 \
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
 bash ops/deploy-release.sh prepare
 
-DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
+DEPLOY_HOST=<deploy-user>@<origin-host> \
 DEPLOY_INCLUDE_CPA=1 \
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
 bash ops/deploy-release.sh smoke
 
-DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
+DEPLOY_HOST=<deploy-user>@<origin-host> \
 DEPLOY_INCLUDE_CPA=1 \
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
 bash ops/deploy-release.sh promote
@@ -244,9 +244,9 @@ Acceptance checks:
 If the Tunnel path fails, keep the Hostinger stack running and temporarily switch the SaaS fallback origin back to a known-good direct-origin path, or restore the previous env backup and promote/rollback the previous release:
 
 ```bash
-DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
+DEPLOY_HOST=<deploy-user>@<origin-host> \
 DEPLOY_INCLUDE_CPA=1 \
 bash ops/deploy-release.sh rollback
 ```
 
-For a manual fallback to the old Caddy path, set `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0`, restore `CLOUDFLARE_SAAS_ORIGIN_IP=72.60.124.21`, and recreate Caddy with the base production compose files. Use this only as a temporary recovery path because it reintroduces origin certificate handling.
+For a manual fallback to the old Caddy path, set `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0`, restore `CLOUDFLARE_SAAS_ORIGIN_IP=<origin-ip>`, and recreate Caddy with the base production compose files. Use this only as a temporary recovery path because it reintroduces origin certificate handling.

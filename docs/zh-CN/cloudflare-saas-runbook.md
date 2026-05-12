@@ -30,7 +30,7 @@ cloudflared tunnel route dns lihan-ai-prod origin.lihan3238.top
 origin.lihan3238.top -> <tunnel-uuid>.cfargotunnel.com
 ```
 
-Tunnel 路由生效后，删除旧的 `origin.lihan3238.top A 72.60.124.21` 记录。fallback origin 应该指向 Cloudflare Tunnel，不再直接指向 Hostinger IP。
+Tunnel 路由生效后，删除旧的 `origin.lihan3238.top A <origin-ip>` 记录。fallback origin 应该指向 Cloudflare Tunnel，不再直接指向源站服务器 IP。
 
 在 `SSL/TLS -> Custom Hostnames` 中保持 Cloudflare for SaaS 开启，并保持 fallback origin：
 
@@ -56,7 +56,7 @@ Host: api
 Value: 172.64.155.231
 ```
 
-Tunnel 路径下不要把 `api.lihan3238.com` 指向 `72.60.124.21`。
+Tunnel 路径下不要把 `api.lihan3238.com` 指向源站服务器 IP。
 
 ## 源站文件
 
@@ -161,18 +161,18 @@ DOMAIN=origin.lihan3238.top
 正常 release 路径现在会从远端 `.env.production` 读取 `DEPLOY_INCLUDE_CPA=1` 和 `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1`。下面保留显式变量作为应急覆盖示例；日常发布可以使用 README 里的短命令。
 
 ```bash
-DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
+DEPLOY_HOST=<deploy-user>@<origin-host> \
 DEPLOY_REF=main \
 DEPLOY_INCLUDE_CPA=1 \
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
 bash ops/deploy-release.sh prepare
 
-DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
+DEPLOY_HOST=<deploy-user>@<origin-host> \
 DEPLOY_INCLUDE_CPA=1 \
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
 bash ops/deploy-release.sh smoke
 
-DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
+DEPLOY_HOST=<deploy-user>@<origin-host> \
 DEPLOY_INCLUDE_CPA=1 \
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=1 \
 bash ops/deploy-release.sh promote
@@ -244,9 +244,9 @@ docker compose -p lihan_ai --env-file .env.production \
 如果 Tunnel 路径失败，保持 Hostinger stack 运行，临时把 SaaS fallback origin 切回已知可用的直连回源路径，或恢复上一份 env 备份并回滚 release：
 
 ```bash
-DEPLOY_HOST=lihan@srv998135.hstgr.cloud \
+DEPLOY_HOST=<deploy-user>@<origin-host> \
 DEPLOY_INCLUDE_CPA=1 \
 bash ops/deploy-release.sh rollback
 ```
 
-如果要手动回到旧 Caddy 路径，设置 `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0`，恢复 `CLOUDFLARE_SAAS_ORIGIN_IP=72.60.124.21`，并用基础生产 compose 重建 Caddy。这个路径只作为临时恢复手段，因为它会重新引入源站证书问题。
+如果要手动回到旧 Caddy 路径，设置 `DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0`，恢复 `CLOUDFLARE_SAAS_ORIGIN_IP=<origin-ip>`，并用基础生产 compose 重建 Caddy。这个路径只作为临时恢复手段，因为它会重新引入源站证书问题。
