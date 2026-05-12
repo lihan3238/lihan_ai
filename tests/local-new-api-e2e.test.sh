@@ -55,7 +55,7 @@ FAKE_NPM
 chmod +x "$fake_bin/npm"
 
 set +e
-unsafe_output="$(PATH="$fake_bin:$PATH" NEW_API_BASE_URL=https://api.example.test "$SCRIPT" 2>&1)"
+unsafe_output="$(PATH="$fake_bin:$PATH" NEW_API_BASE_URL=https://api.example.test sh "$SCRIPT" 2>&1)"
 unsafe_status="$?"
 set -e
 
@@ -71,7 +71,7 @@ DEPLOY_ENV=production
 ENV
 
 set +e
-unsafe_env_output="$(PATH="$fake_bin:$PATH" ENV_FILE="$unsafe_env_file" "$SCRIPT" 2>&1)"
+unsafe_env_output="$(PATH="$fake_bin:$PATH" ENV_FILE="$unsafe_env_file" sh "$SCRIPT" 2>&1)"
 unsafe_env_status="$?"
 set -e
 
