@@ -64,9 +64,18 @@ RELEASE_KEEP=5
 ```env
 DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1
 LOCAL_NEW_API_IMAGE=lihan-ai/new-api:local
+DEPLOY_LOCAL_NEW_API_BUILD_MODE=build
 ```
 
-开启后会追加 `docker-compose.local-build.yml`，从当前 release pin 住的 `vendor/new-api` 构建 `new-api`，其它服务仍使用拉取的镜像。等官方 `calciumion/new-api:latest` 发布等价前端修复，并通过后台 E2E 后，把它改回 `0`。
+`build` 模式会追加 `docker-compose.local-build.yml`，从当前 release pin 住的 `vendor/new-api` 构建 `new-api`，其它服务仍使用拉取的镜像。它只适合内存足够的机器；小生产机不要在服务器上编译 New API 前端，应该在本地工作站或 CI 先构建并推送补丁镜像，然后用 pull 模式：
+
+```env
+DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1
+DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull
+LOCAL_NEW_API_IMAGE=ghcr.io/lihan3238/new-api:f80e8ea6-dropdown
+```
+
+`LOCAL_NEW_API_IMAGE` 必须和 `NEW_API_IMAGE` 不同；不要用 `calciumion/new-api:latest` 作为补丁镜像 tag。该模式下 promote 会强制重建容器，`ops/check-production-runtime.sh` 会检查 `relay-new-api` 实际镜像，如果还在跑官方镜像会直接失败。等官方 `calciumion/new-api:latest` 发布等价前端修复，并通过后台 E2E 后，把它改回 `0`。
 临时补丁期间，`.gitmodules` 会把 `vendor/new-api` 指向 `lihan3238/new-api`，这样 CI 和生产 release worker 都能拉到 pin 住的修复 commit。
 
 CPA 运行时文件应放在 shared：

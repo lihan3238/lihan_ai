@@ -142,6 +142,8 @@ bash ops/check-new-api-admin-frontend.sh
 
 如果官方镜像仍未通过这个后台 E2E，临时在 `/opt/lihan_ai_deploy/shared/.env.production`
 保留 `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1`，让部署从当前 pin 住的 `vendor/new-api` 修复版构建。
+小生产机使用 `DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull` 拉取预构建补丁镜像，不在服务器上编译前端。
+`LOCAL_NEW_API_IMAGE` 使用非官方补丁 tag；runtime check 会拒绝实际容器仍为 `calciumion/new-api:latest` 的发布。
 
 ## 主机压力检查
 

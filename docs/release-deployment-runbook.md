@@ -64,9 +64,18 @@ Temporary patched New API frontend builds are opt-in:
 ```env
 DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1
 LOCAL_NEW_API_IMAGE=lihan-ai/new-api:local
+DEPLOY_LOCAL_NEW_API_BUILD_MODE=build
 ```
 
-This appends `docker-compose.local-build.yml`, builds `new-api` from the release's pinned `vendor/new-api`, and keeps other services on pulled images. Set it back to `0` after the official `calciumion/new-api:latest` image ships the equivalent frontend fix and passes the admin E2E.
+`build` mode appends `docker-compose.local-build.yml`, builds `new-api` from the release's pinned `vendor/new-api`, and keeps other services on pulled images. Use it only on a host with enough memory for the New API frontend build. On small production hosts, build and push the patch image from a workstation or CI, then use pull mode:
+
+```env
+DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1
+DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull
+LOCAL_NEW_API_IMAGE=ghcr.io/lihan3238/new-api:f80e8ea6-dropdown
+```
+
+`LOCAL_NEW_API_IMAGE` must stay different from `NEW_API_IMAGE`; never use `calciumion/new-api:latest` as the local patch tag. Promotion forces container recreation in this mode, and `ops/check-production-runtime.sh` fails if `relay-new-api` is still running the official image. Set it back to `0` after the official `calciumion/new-api:latest` image ships the equivalent frontend fix and passes the admin E2E.
 During the temporary patch window, `.gitmodules` points `vendor/new-api` at `lihan3238/new-api` so the pinned fix commit is fetchable by CI and the production release worker.
 
 CPA runtime files should be shared:

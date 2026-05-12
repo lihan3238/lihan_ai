@@ -23,6 +23,9 @@ COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-${DEPLOY_COMPOSE_PROJECT:-}}"
 DEPLOY_INCLUDE_CPA="${DEPLOY_INCLUDE_CPA:-0}"
 DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL="${DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL:-0}"
 DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD="${DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD:-0}"
+DEPLOY_LOCAL_NEW_API_BUILD_MODE="${DEPLOY_LOCAL_NEW_API_BUILD_MODE:-build}"
+NEW_API_IMAGE="${NEW_API_IMAGE:-calciumion/new-api:latest}"
+LOCAL_NEW_API_IMAGE="${LOCAL_NEW_API_IMAGE:-lihan-ai/new-api:local}"
 RUNTIME_EXTERNAL_RETRIES="${RUNTIME_EXTERNAL_RETRIES:-12}"
 RUNTIME_EXTERNAL_RETRY_SECONDS="${RUNTIME_EXTERNAL_RETRY_SECONDS:-5}"
 
@@ -49,7 +52,7 @@ compose() {
   fi
 
   compose_files="-f $ROOT_DIR/docker-compose.yml -f $ROOT_DIR/docker-compose.prod.yml"
-  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "build" ]; then
     compose_files="$compose_files -f $ROOT_DIR/docker-compose.local-build.yml"
   fi
   if [ "$DEPLOY_INCLUDE_CPA" = "1" ]; then
@@ -60,10 +63,23 @@ compose() {
   fi
 
   # shellcheck disable=SC2086
-  docker compose $project_args --env-file "$ENV_FILE" $compose_files "$@"
+  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "pull" ]; then
+    # shellcheck disable=SC2086
+    NEW_API_IMAGE="$LOCAL_NEW_API_IMAGE" docker compose $project_args --env-file "$ENV_FILE" $compose_files "$@"
+  else
+    # shellcheck disable=SC2086
+    docker compose $project_args --env-file "$ENV_FILE" $compose_files "$@"
+  fi
 }
 
 cd "$ROOT_DIR"
+
+if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+  case "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" in
+    build|pull) ;;
+    *) print_result FAIL "new-api image mode" "DEPLOY_LOCAL_NEW_API_BUILD_MODE must be build or pull" ;;
+  esac
+fi
 
 if compose config >/dev/null 2>&1; then
   print_result PASS "compose config" "production compose is valid"
@@ -98,6 +114,19 @@ if [ "$new_api_health" = "healthy" ] || [ "$new_api_health" = "running" ]; then
   print_result PASS "new-api health" "$new_api_health"
 else
   print_result FAIL "new-api health" "${new_api_health:-not found}"
+fi
+
+if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+  actual_new_api_image="$(docker inspect -f '{{.Config.Image}}' relay-new-api 2>/dev/null || true)"
+  if [ "$LOCAL_NEW_API_IMAGE" = "$NEW_API_IMAGE" ]; then
+    print_result FAIL "new-api image" "LOCAL_NEW_API_IMAGE collides with NEW_API_IMAGE: $LOCAL_NEW_API_IMAGE"
+  elif [ -z "$actual_new_api_image" ]; then
+    print_result FAIL "new-api image" "unable to inspect relay-new-api image"
+  elif [ "$actual_new_api_image" = "$LOCAL_NEW_API_IMAGE" ]; then
+    print_result PASS "new-api image" "$actual_new_api_image"
+  else
+    print_result FAIL "new-api image" "expected $LOCAL_NEW_API_IMAGE, got $actual_new_api_image"
+  fi
 fi
 
 if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ]; then
