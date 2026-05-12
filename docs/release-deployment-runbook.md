@@ -11,6 +11,11 @@ This is the preferred production deployment model. It keeps Git updates, candida
   candidate -> releases/<prepared-release-id>
   current -> releases/<release-id>
   previous -> releases/<previous-release-id>
+  state/
+    promote.state
+    promote.log
+    promote.pid
+    last_healthy -> releases/<last-healthy-release-id>
   shared/
     .env.production
     data/cpa/
@@ -28,6 +33,8 @@ Rules:
 - Compose always uses `docker compose -p "$DEPLOY_COMPOSE_PROJECT"`.
 - Runtime files live under `shared/`, not inside a release checkout.
 - Promotion restarts the Docker Compose stack; this is not a zero-downtime deploy.
+- `promote` runs as a remote managed worker. If the local SSH session drops, the worker keeps running on the server and either finishes the release or rolls back.
+- `state/promote.state` records the current deploy phase; `state/last_healthy` points to the last release that completed runtime checks.
 - PM2 and Paru were considered, but the production control plane remains shell, Git, and Docker based.
 
 ## Env Sync During Prepare
@@ -114,6 +121,20 @@ DEPLOY_HOST=<deploy-user>@<origin-host> DEPLOY_REF=main bash ops/deploy-release.
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh smoke
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
 ```
+
+Check deploy state at any time:
+
+```bash
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh status
+```
+
+If your terminal disconnects during promote, run `status` first. If no worker is running and `promote.state` is stale, run:
+
+```bash
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh recover
+```
+
+`recover` accepts the current release when runtime checks pass. If current is unhealthy, it rolls back to `previous`; if `previous` is unavailable, it falls back to `last_healthy`. This only rolls code and Compose definitions; it does not restore database contents.
 
 Operate on a specific older prepared release only when needed:
 

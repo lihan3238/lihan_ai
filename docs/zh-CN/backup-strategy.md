@@ -123,3 +123,24 @@ ENV_FILE=.env.production bash ops/check-production-runtime.sh
 ## 保留策略
 
 `BACKUP_RETENTION_DAYS` 控制 `ops/backup-postgres.sh` 的本地 dump 保留时间。保留足够近期 dump 支撑回滚和迁移；删除服务器副本前，先把重要 dump 手动下载到本地。
+
+`ops/prune-runtime-storage.sh` 统一执行运行时存储清理。`ops/backup-postgres.sh`、`ops/backup-cron.sh` 和 `ops/export-config-snapshot.sh` 会自动调用它，也可以手动运行：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/prune-runtime-storage.sh all
+```
+
+默认上限：
+
+```env
+BACKUP_RETENTION_DAYS=14
+BACKUP_KEEP=30
+BACKUP_MAX_TOTAL_MB=2048
+BACKUP_CRON_LOG_MAX_MB=10
+BACKUP_CRON_LOG_KEEP=5
+CONFIG_SNAPSHOT_KEEP=30
+CONFIG_SNAPSHOT_MAX_TOTAL_MB=256
+```
+
+dump 清理会先删除最旧的 `.dump`，并同步删除对应的 `.dump.sha256`。Backup cron log 超过 `BACKUP_CRON_LOG_MAX_MB` 时会轮转，并只保留 `BACKUP_CRON_LOG_KEEP` 份旧 log。Config snapshot 按 `CONFIG_SNAPSHOT_KEEP` 和 `CONFIG_SNAPSHOT_MAX_TOTAL_MB` 保留。

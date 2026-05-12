@@ -133,10 +133,12 @@ if [ "$MODE" = "redacted" ]; then
   target="$SNAPSHOT_DIR/config-redacted-$timestamp.json"
   compose_psql_json "$redacted_sql" > "$target"
   chmod 600 "$target" 2>/dev/null || true
+  CONFIG_SNAPSHOT_DIR="$SNAPSHOT_DIR" ENV_FILE="$ENV_FILE" bash "$ROOT_DIR/ops/prune-runtime-storage.sh" snapshots >/dev/null
   echo "$target"
 else
   target="$SNAPSHOT_DIR/config-private-$timestamp.json.gpg"
   compose_psql_json "$private_sql" | gpg --batch --yes --encrypt --recipient "$CONFIG_SNAPSHOT_GPG_RECIPIENT" --output "$target"
   chmod 600 "$target" 2>/dev/null || true
+  CONFIG_SNAPSHOT_DIR="$SNAPSHOT_DIR" ENV_FILE="$ENV_FILE" bash "$ROOT_DIR/ops/prune-runtime-storage.sh" snapshots >/dev/null
   echo "$target"
 fi

@@ -51,6 +51,18 @@ nano /opt/lihan_ai_deploy/shared/data/cpa/config.yaml
 - 不要把 `8317` 暴露到公网。
 - 上游 provider key 只放在 `/opt/lihan_ai_deploy/shared/data/cpa/config.yaml`。
 
+如果启用 `logging-to-file: true`，必须设置正数的 `logs-max-total-size-mb`，例如 `200`；`error-logs-max-files` 也要保持有上限，例如 `10`。
+
+推荐 CPA 文件日志上限：
+
+```yaml
+logging-to-file: true
+logs-max-total-size-mb: 200
+error-logs-max-files: 10
+```
+
+`DEPLOY_INCLUDE_CPA=1` 时，`ops/preflight.sh` 会检查 CPA config；如果启用了文件日志但 `logs-max-total-size-mb` 缺失或为 `0`，部署会失败。`docker-compose.cpa.yml` 同时给 CPA 容器配置 Docker `json-file` 轮转：`max-size=20m`、`max-file=5`。
+
 生成密钥：
 
 ```bash

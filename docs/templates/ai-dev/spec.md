@@ -7,6 +7,9 @@ State the user-visible goal in one or two sentences.
 - Observable outcome 1.
 - Observable outcome 2.
 
+## User Acceptance Path
+Describe the exact path the user or operator will follow to confirm the feature works after implementation. Include UI pages, commands, expected output, and any required test data.
+
 ## Scope
 Describe what is in scope and what is intentionally out of scope.
 

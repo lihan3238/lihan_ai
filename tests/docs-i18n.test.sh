@@ -64,12 +64,12 @@ done
 
 assert_not_file "docs/kuma-status-runbook.md"
 
-for keyword in ".github/workflows/ci.yml" "GitHub Actions PR CI" "ops/deploy-release.sh prepare" "ops/deploy-release.sh smoke" "ops/deploy-release.sh promote" "ops/cpa-ui.sh open" "ops/cpa-ui.sh close" "ssh -L 8317" "ops/backup-cron.sh" "sync-env-template.sh" "default" "vip"; do
+for keyword in ".github/workflows/ci.yml" "GitHub Actions PR CI" "ops/deploy-release.sh prepare" "ops/deploy-release.sh smoke" "ops/deploy-release.sh promote" "ops/cpa-ui.sh open" "ops/cpa-ui.sh close" "ssh -L 8317" "ops/backup-cron.sh" "ops/dev-gate.sh" "E2E Coverage Matrix" "sync-env-template.sh" "default" "vip"; do
   assert_contains "README.md" "$keyword"
   assert_contains "README.zh-CN.md" "$keyword"
 done
 
-for keyword in "ops/backup-cron.sh" "ops/backup-postgres.sh" "ops/verify-postgres-backup.sh" "ops/drill-restore-stack.sh" "ops/restore-postgres.sh" "scp"; do
+for keyword in "ops/backup-cron.sh" "ops/backup-postgres.sh" "ops/verify-postgres-backup.sh" "ops/drill-restore-stack.sh" "ops/restore-postgres.sh" "ops/prune-runtime-storage.sh" "BACKUP_KEEP" "BACKUP_MAX_TOTAL_MB" "scp"; do
   assert_contains "docs/backup-strategy.md" "$keyword"
   assert_contains "docs/zh-CN/backup-strategy.md" "$keyword"
   assert_contains "docs/ops-quick-reference.md" "$keyword"
@@ -84,12 +84,12 @@ for keyword in "手动下载" "ops/deploy-release.sh bootstrap" "SMOKE_BACKUP_PA
   assert_contains "docs/zh-CN/disaster-recovery-runbook.md" "$keyword"
 done
 
-for keyword in "ops/sync-env-template.sh" "ops/check-production-runtime.sh" "ops/backup-cron.sh" "default" "vip" "docker inspect relay-cpa"; do
+for keyword in "ops/sync-env-template.sh" "ops/check-production-runtime.sh" "ops/backup-cron.sh" "ops/prune-runtime-storage.sh" "ops/deploy-release.sh status" "ops/deploy-release.sh recover" "default" "vip" "docker inspect relay-cpa"; do
   assert_contains "docs/operations-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/operations-runbook.md" "$keyword"
 done
 
-for keyword in "/opt/lihan_ai_deploy" "candidate" "SMOKE_BACKUP_PATH" "lihan_ai_runtime" "docker inspect relay-cpa" "disaster-recovery-runbook.md" "sync-env-template.sh"; do
+for keyword in "/opt/lihan_ai_deploy" "candidate" "SMOKE_BACKUP_PATH" "lihan_ai_runtime" "docker inspect relay-cpa" "disaster-recovery-runbook.md" "sync-env-template.sh" "promote.state" "last_healthy" "ops/deploy-release.sh status" "ops/deploy-release.sh recover"; do
   assert_contains "docs/release-deployment-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/release-deployment-runbook.md" "$keyword"
 done
@@ -117,7 +117,7 @@ for keyword in "CONFIRM_FINAL_CUTOVER=yes" "ops/migrate-prod.sh" "SOURCE_SSH" "T
   assert_contains "docs/zh-CN/migration-runbook.md" "$keyword"
 done
 
-for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai_deploy/shared/data/cpa" "docker compose -p lihan_ai" "docker-compose.cloudflare-tunnel.yml" "ops/cpa-ui.sh" "--no-deps"; do
+for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai_deploy/shared/data/cpa" "docker compose -p lihan_ai" "docker-compose.cloudflare-tunnel.yml" "ops/cpa-ui.sh" "--no-deps" "logs-max-total-size-mb" "error-logs-max-files"; do
   assert_contains "docs/cpa-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
 done
@@ -132,6 +132,10 @@ done
 
 for keyword in "NEW_API_BASE_URL" "npm run e2e:web:new-api" "ops/check-local-ports.sh"; do
   assert_contains "docs/browser-e2e-runbook.md" "$keyword"
+done
+
+for keyword in "Layered E2E Policy" "ops/dev-gate.sh" "E2E Coverage Matrix" "Reason:" "Rerun:"; do
+  assert_contains "docs/development-workflow.md" "$keyword"
 done
 
 for keyword in "main = production" "codex/<topic>" "hotfix/<topic>" "GitHub Actions PR CI" "production-gate" "live databases"; do

@@ -122,4 +122,25 @@ Do not run `docker compose down -v` during backup or restore. Named volumes hold
 
 ## Retention
 
-`BACKUP_RETENTION_DAYS` controls local dump retention for `ops/backup-postgres.sh`. Keep enough recent dumps for rollback and migration work, then download important dumps manually before removing server-side copies.
+`ops/prune-runtime-storage.sh` enforces local runtime storage limits. It is called by `ops/backup-postgres.sh`, `ops/backup-cron.sh`, and `ops/export-config-snapshot.sh`; you can also run it manually:
+
+```bash
+cd /opt/lihan_ai_deploy/current
+ENV_FILE=.env.production bash ops/prune-runtime-storage.sh all
+```
+
+Defaults:
+
+```env
+BACKUP_RETENTION_DAYS=14
+BACKUP_KEEP=30
+BACKUP_MAX_TOTAL_MB=2048
+BACKUP_CRON_LOG_MAX_MB=10
+BACKUP_CRON_LOG_KEEP=5
+CONFIG_SNAPSHOT_KEEP=30
+CONFIG_SNAPSHOT_MAX_TOTAL_MB=256
+```
+
+Backup cleanup deletes the oldest `.dump` files first and removes the matching `.dump.sha256`. Config snapshot cleanup keeps the newest redacted/private snapshots by count and total size. Backup cron log cleanup rotates `backup-cron.log` when it exceeds `BACKUP_CRON_LOG_MAX_MB`, then keeps only the newest `BACKUP_CRON_LOG_KEEP` rotated logs.
+
+Keep enough recent dumps for rollback and migration work, then download important dumps manually before removing server-side copies.

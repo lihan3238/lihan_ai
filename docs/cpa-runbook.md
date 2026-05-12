@@ -50,6 +50,18 @@ Minimum production rules:
 - Use `auth-dir: "/root/.cli-proxy-api"` inside the container.
 - Do not expose `8317` publicly.
 - Keep upstream provider keys only in `/opt/lihan_ai_deploy/shared/data/cpa/config.yaml`.
+- If `logging-to-file: true`, set `logs-max-total-size-mb` to a positive value such as `200`.
+- Keep `error-logs-max-files` bounded, for example `10`.
+
+Recommended CPA file log cap:
+
+```yaml
+logging-to-file: true
+logs-max-total-size-mb: 200
+error-logs-max-files: 10
+```
+
+`ops/preflight.sh` fails production deploys with `DEPLOY_INCLUDE_CPA=1` when CPA file logging is enabled without a positive `logs-max-total-size-mb`. The container also has Docker `json-file` rotation in `docker-compose.cpa.yml` with `max-size=20m` and `max-file=5`.
 
 Generate secrets:
 

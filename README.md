@@ -88,10 +88,12 @@ git pull --ff-only origin main
 DEPLOY_HOST=<deploy-user>@<origin-host> DEPLOY_REF=main bash ops/deploy-release.sh prepare
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh smoke
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh status
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
 ```
 
 Use `RELEASE_ID=<release-id>` only when intentionally operating on an older prepared release.
+If SSH disconnects during promote, run `ops/deploy-release.sh status`; if no worker is running and `promote.state` is stale, run `ops/deploy-release.sh recover`.
 
 ### Open And Close CPA UI
 
@@ -173,6 +175,7 @@ docker compose logs -f new-api
 ENV_FILE=.env.production bash ops/check-production-runtime.sh
 ENV_FILE=.env.production bash ops/backup-postgres.sh
 ENV_FILE=.env.production bash ops/backup-cron.sh
+ENV_FILE=.env.production bash ops/prune-runtime-storage.sh all
 bash ops/phase1-smoke-test.sh
 bash ops/relay-diagnostics.sh
 NEW_API_TEST_TOKEN=... NEW_API_TEST_MODEL=glm-5.1 bash ops/e2e-api-billing.sh
@@ -207,6 +210,9 @@ Local verification:
 ```bash
 bash -n ops/*.sh tests/*.test.sh
 for test in tests/*.test.sh; do bash "$test"; done
+bash ops/dev-gate.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
 powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts\verify-repo.ps1 -SkipDocker
 git diff --check
 ```
+
+For new features, update the feature `plan.md` with `E2E Coverage Matrix`, `Documentation Impact`, and `Usage/Test Guide`; update `handoff.md` with `How To Use And Test`, `E2E Results`, and `Documentation Updated`. Skipped E2E entries must include `Reason:` and `Rerun:`.

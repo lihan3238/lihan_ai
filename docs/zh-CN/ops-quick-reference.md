@@ -22,10 +22,18 @@ git pull --ff-only origin main
 DEPLOY_HOST=<deploy-user>@<origin-host> DEPLOY_REF=main bash ops/deploy-release.sh prepare
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh smoke
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh status
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
 ```
 
 `prepare` 会用 `ops/sync-env-template.sh` 补齐生产 env 缺失键，创建备份，并记录远端 `candidate`。除非明确测试旧候选版本，否则不要填 `RELEASE_ID`。
+
+如果 promote 过程中 SSH 断开，先检查状态，再按需恢复：
+
+```bash
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh status
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh recover
+```
 
 ## 备份
 
@@ -33,7 +41,10 @@ DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
 cd /opt/lihan_ai_deploy/current
 ENV_FILE=.env.production bash ops/backup-cron.sh
 tail -n 120 logs/backup-cron.log
+ENV_FILE=.env.production bash ops/prune-runtime-storage.sh all
 ```
+
+默认本地保留上限：`BACKUP_KEEP=30`、`BACKUP_MAX_TOTAL_MB=2048`、`BACKUP_CRON_LOG_MAX_MB=10`、`BACKUP_CRON_LOG_KEEP=5`、`CONFIG_SNAPSHOT_KEEP=30`、`CONFIG_SNAPSHOT_MAX_TOTAL_MB=256`。
 
 Crontab：
 

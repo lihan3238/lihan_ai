@@ -65,6 +65,7 @@ DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh bootstrap
 DEPLOY_HOST=<deploy-user>@<origin-host> DEPLOY_REF=main bash ops/deploy-release.sh prepare
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh smoke
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh promote
+DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh status
 DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
 ```
 
@@ -92,6 +93,7 @@ DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/verify-remote-prod.sh
 ```
 
 只有明确操作某个旧 release 时，才使用 `RELEASE_ID=<release-id>`。
+如果 promote 过程中 SSH 断开，先运行 `ops/deploy-release.sh status`；如果没有 worker 在运行且 `promote.state` 已陈旧，再运行 `ops/deploy-release.sh recover`。
 
 ### 打开和关闭 CPA UI
 
@@ -173,6 +175,7 @@ docker compose logs -f new-api
 ENV_FILE=.env.production bash ops/check-production-runtime.sh
 ENV_FILE=.env.production bash ops/backup-postgres.sh
 ENV_FILE=.env.production bash ops/backup-cron.sh
+ENV_FILE=.env.production bash ops/prune-runtime-storage.sh all
 bash ops/phase1-smoke-test.sh
 bash ops/relay-diagnostics.sh
 NEW_API_TEST_TOKEN=... NEW_API_TEST_MODEL=glm-5.1 bash ops/e2e-api-billing.sh
@@ -207,6 +210,9 @@ bash ops/check-local-ports.sh
 ```bash
 bash -n ops/*.sh tests/*.test.sh
 for test in tests/*.test.sh; do bash "$test"; done
+bash ops/dev-gate.sh docs/ai-dev/<YYYY-MM-DD>-<topic>
 powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts\verify-repo.ps1 -SkipDocker
 git diff --check
 ```
+
+新功能需要在 feature `plan.md` 里更新 `E2E Coverage Matrix`、`Documentation Impact`、`Usage/Test Guide`，并在 `handoff.md` 里更新 `How To Use And Test`、`E2E Results`、`Documentation Updated`。跳过的 E2E 必须写 `Reason:` 和 `Rerun:`。

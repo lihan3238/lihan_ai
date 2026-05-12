@@ -75,6 +75,43 @@ require_url_safe_secret() {
   fi
 }
 
+cpa_yaml_value() {
+  file="$1"
+  key="$2"
+  awk -F: -v key="$key" '
+    $0 !~ /^[[:space:]]*#/ {
+      field = $1
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", field)
+      if (field == key) {
+        value = substr($0, index($0, ":") + 1)
+        sub(/[[:space:]]+#.*$/, "", value)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+        gsub(/^"|"$/, "", value)
+        gsub(/^'\''|'\''$/, "", value)
+        print value
+        exit
+      }
+    }
+  ' "$file"
+}
+
+check_cpa_logging_cap() {
+  cpa_config_path="$(config_value CPA_CONFIG_PATH)"
+  require_env_value CPA_CONFIG_PATH
+  require_file "$cpa_config_path" "CPA_CONFIG_PATH"
+
+  logging_to_file="$(cpa_yaml_value "$cpa_config_path" "logging-to-file")"
+  if [ "$logging_to_file" = "true" ]; then
+    logs_max_total_size_mb="$(cpa_yaml_value "$cpa_config_path" "logs-max-total-size-mb")"
+    case "$logs_max_total_size_mb" in
+      ''|*[!0-9]*|0)
+        echo "CPA logging-to-file requires logs-max-total-size-mb to be a positive integer" >&2
+        exit 1
+        ;;
+    esac
+  fi
+}
+
 session_secret="$(config_value SESSION_SECRET)"
 if [ -z "$session_secret" ]; then
   echo "$ENV_FILE is missing required value: SESSION_SECRET" >&2
@@ -104,6 +141,13 @@ if [ "$deploy_env" = "production" ]; then
   fi
   require_file "docker-compose.prod.yml"
   compose_files="$compose_files -f docker-compose.prod.yml"
+
+  deploy_include_cpa="$(config_value DEPLOY_INCLUDE_CPA)"
+  if [ "$deploy_include_cpa" = "1" ]; then
+    require_file "docker-compose.cpa.yml"
+    check_cpa_logging_cap
+    compose_files="$compose_files -f docker-compose.cpa.yml"
+  fi
 
   deploy_include_tunnel="$(config_value DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL)"
   if [ "$deploy_include_tunnel" = "1" ]; then

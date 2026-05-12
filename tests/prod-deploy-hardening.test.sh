@@ -78,6 +78,37 @@ write_env "$good_env" "abcdef0123456789abcdef0123456789abcdef0123456789abcdef012
 PATH="$fake_bin:$PATH" ENV_FILE="$good_env" "$ROOT_DIR/ops/preflight.sh" >/dev/null
 grep -q -- "-f docker-compose.prod.yml config" "$docker_log" || fail "production preflight did not render docker-compose.prod.yml"
 
+cpa_config="$tmp_dir/cpa-config.yaml"
+cat > "$cpa_config" <<'EOF'
+logging-to-file: true
+logs-max-total-size-mb: 0
+error-logs-max-files: 10
+EOF
+
+cpa_env="$tmp_dir/cpa.env"
+cat "$good_env" > "$cpa_env"
+cat >> "$cpa_env" <<EOF
+DEPLOY_INCLUDE_CPA=1
+CPA_CONFIG_PATH=$cpa_config
+EOF
+
+set +e
+cpa_bad_output="$(PATH="$fake_bin:$PATH" ENV_FILE="$cpa_env" "$ROOT_DIR/ops/preflight.sh" 2>&1)"
+cpa_bad_status="$?"
+set -e
+[ "$cpa_bad_status" -ne 0 ] || fail "preflight should reject CPA file logging without logs-max-total-size-mb"
+printf '%s' "$cpa_bad_output" | grep -q "CPA logging-to-file requires logs-max-total-size-mb" || fail "CPA logging cap output was not clear: $cpa_bad_output"
+
+cat > "$cpa_config" <<'EOF'
+logging-to-file: true
+logs-max-total-size-mb: 200
+error-logs-max-files: 10
+EOF
+
+: > "$docker_log"
+PATH="$fake_bin:$PATH" ENV_FILE="$cpa_env" "$ROOT_DIR/ops/preflight.sh" >/dev/null
+grep -q -- "docker-compose.cpa.yml" "$docker_log" || fail "CPA preflight should render docker-compose.cpa.yml"
+
 : > "$docker_log"
 backup_output="$(PATH="$fake_bin:$PATH" ENV_FILE="$good_env" BACKUP_DIR="$tmp_dir/backups" "$ROOT_DIR/ops/backup-postgres.sh")"
 [ -f "$ROOT_DIR/$backup_output" ] || [ -f "$backup_output" ] || fail "backup script did not create output: $backup_output"
@@ -98,6 +129,7 @@ grep -q -- "--env-file $good_env" "$docker_log" || fail "restore script did not 
 grep -q -- "compose -p lihan_ai" "$docker_log" || fail "restore script did not use DEPLOY_COMPOSE_PROJECT"
 
 grep -q -- "--log-dir /tmp/new-api-logs" "$ROOT_DIR/ops/drill-restore-stack.sh" || fail "restore stack drill should use a temp log dir whose parent exists in the upstream image"
+grep -q -- "command: --log-dir=" "$ROOT_DIR/docker-compose.prod.yml" || fail "production override should disable New API file logs"
 if grep -q -- "--log-dir /app/logs" "$ROOT_DIR/ops/drill-restore-stack.sh"; then
   fail "restore stack drill must not use /app/logs without mounting that parent path"
 fi
