@@ -143,6 +143,8 @@ bash ops/check-new-api-admin-frontend.sh
 
 If the official image still fails the admin E2E, temporarily keep `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1`
 in `/opt/lihan_ai_deploy/shared/.env.production` so deploys build from the pinned `vendor/new-api` fix.
+Small production hosts should use `DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull` with a prebuilt patch image, not server-side frontend build.
+Keep `LOCAL_NEW_API_IMAGE` on a non-official patch tag; runtime check rejects a deploy if the running container is still `calciumion/new-api:latest`.
 
 ## Host Pressure Checks
 

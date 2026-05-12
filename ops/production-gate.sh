@@ -63,6 +63,7 @@ run bash tests/cloudflare-tunnel-compose.test.sh
 run bash tests/prod-deploy-migration.test.sh
 run bash tests/prod-deploy-hardening.test.sh
 run bash tests/release-deploy.test.sh
+run bash tests/local-new-api-build.test.sh
 run bash tests/cpa-compose.test.sh
 run bash tests/cpa-ui-script.test.sh
 run bash tests/docs-i18n.test.sh

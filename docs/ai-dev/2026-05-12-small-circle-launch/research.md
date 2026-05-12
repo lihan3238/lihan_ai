@@ -12,6 +12,6 @@
 
 ## Frontend Patch Status
 
-- Local New API submodule commit `5741c359` fixes `DropdownMenuItem onSelect` compatibility.
+- Local New API submodule commit `f80e8ea6` contains the `5741c359` fix for `DropdownMenuItem onSelect` compatibility plus Docker build-context cleanup.
 - Upstream issue #4692 and PR #4787 are not treated as shipped until the official image includes the equivalent fix.
 - The wrapper should verify the admin Users page with browser E2E before choosing official or temporary custom image.

@@ -112,6 +112,27 @@ check_cpa_logging_cap() {
   fi
 }
 
+check_local_new_api_image() {
+  local_new_api_image="$(config_value LOCAL_NEW_API_IMAGE)"
+  new_api_image="$(config_value NEW_API_IMAGE)"
+  local_new_api_image="${local_new_api_image:-lihan-ai/new-api:local}"
+  new_api_image="${new_api_image:-calciumion/new-api:latest}"
+
+  if [ "$local_new_api_image" = "$new_api_image" ]; then
+    echo "LOCAL_NEW_API_IMAGE must differ from NEW_API_IMAGE when DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1" >&2
+    echo "Use a separate tag such as LOCAL_NEW_API_IMAGE=lihan-ai/new-api:local so pulls cannot overwrite the patched build." >&2
+    exit 1
+  fi
+
+  case "$local_new_api_image" in
+    calciumion/new-api|calciumion/new-api:*|docker.io/calciumion/new-api|docker.io/calciumion/new-api:*)
+      echo "LOCAL_NEW_API_IMAGE must not use the official calciumion/new-api tag when DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1" >&2
+      echo "Use a separate tag such as LOCAL_NEW_API_IMAGE=lihan-ai/new-api:local." >&2
+      exit 1
+      ;;
+  esac
+}
+
 session_secret="$(config_value SESSION_SECRET)"
 if [ -z "$session_secret" ]; then
   echo "$ENV_FILE is missing required value: SESSION_SECRET" >&2
@@ -129,6 +150,7 @@ require_url_safe_secret REDIS_PASSWORD
 
 deploy_env="$(config_value DEPLOY_ENV)"
 compose_files="-f docker-compose.yml"
+compose_new_api_image=""
 if [ "$deploy_env" = "production" ]; then
   require_env_value DOMAIN
   require_env_value ACME_EMAIL
@@ -144,9 +166,24 @@ if [ "$deploy_env" = "production" ]; then
 
   deploy_include_local_new_api_build="$(config_value DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD)"
   if [ "$deploy_include_local_new_api_build" = "1" ]; then
-    require_file "docker-compose.local-build.yml"
-    require_file "vendor/new-api/Dockerfile" "vendor/new-api/Dockerfile"
-    compose_files="$compose_files -f docker-compose.local-build.yml"
+    deploy_local_new_api_build_mode="$(config_value DEPLOY_LOCAL_NEW_API_BUILD_MODE)"
+    deploy_local_new_api_build_mode="${deploy_local_new_api_build_mode:-build}"
+    case "$deploy_local_new_api_build_mode" in
+      build|pull) ;;
+      *)
+        echo "DEPLOY_LOCAL_NEW_API_BUILD_MODE must be build or pull" >&2
+        exit 1
+        ;;
+    esac
+    check_local_new_api_image
+    if [ "$deploy_local_new_api_build_mode" = "build" ]; then
+      require_file "docker-compose.local-build.yml"
+      require_file "vendor/new-api/Dockerfile" "vendor/new-api/Dockerfile"
+      compose_files="$compose_files -f docker-compose.local-build.yml"
+    else
+      compose_new_api_image="$(config_value LOCAL_NEW_API_IMAGE)"
+      compose_new_api_image="${compose_new_api_image:-lihan-ai/new-api:local}"
+    fi
   fi
 
   deploy_include_cpa="$(config_value DEPLOY_INCLUDE_CPA)"
@@ -179,5 +216,9 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 # shellcheck disable=SC2086
-docker compose --env-file "$ENV_FILE" $compose_files config >/dev/null
+if [ -n "$compose_new_api_image" ]; then
+  NEW_API_IMAGE="$compose_new_api_image" docker compose --env-file "$ENV_FILE" $compose_files config >/dev/null
+else
+  docker compose --env-file "$ENV_FILE" $compose_files config >/dev/null
+fi
 echo "preflight passed"

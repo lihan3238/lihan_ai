@@ -59,14 +59,17 @@ use the pinned local build path:
 
 ```env
 DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1
-LOCAL_NEW_API_IMAGE=lihan-ai/new-api:local
+DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull
+LOCAL_NEW_API_IMAGE=ghcr.io/lihan3238/new-api:f80e8ea6-dropdown
 ```
 
-There is one known operational blocker in the new frontend: the Users page row menu can fail to open `Manage Bindings` and `Manage Subscriptions` when `DropdownMenuItem onSelect` is not wired. The temporary local fix is submodule commit `5741c359` (`fix(default): support dropdown menu onSelect`) from `lihan3238/new-api`. Upstream issue #4692 and upstream PR #4787 are not treated as fixed until the official image includes the equivalent patch.
+There is one known operational blocker in the new frontend: the Users page row menu can fail to open `Manage Bindings` and `Manage Subscriptions` when `DropdownMenuItem onSelect` is not wired. The temporary local fix is submodule commit `f80e8ea6` from `lihan3238/new-api`; it contains the `5741c359` dropdown `onSelect` fix plus Docker build-context cleanup. Upstream issue #4692 and upstream PR #4787 are not treated as fixed until the official image includes the equivalent patch.
 
 Temporary custom image rules:
 
 - Use `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1` only while admin E2E proves the official image still fails.
+- Prefer `DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull` on production: build and push the patched image elsewhere, then let production pull it. Use `build` only on hosts with enough memory for the New API frontend build.
+- Keep `LOCAL_NEW_API_IMAGE` on a non-official patch tag such as `ghcr.io/lihan3238/new-api:f80e8ea6-dropdown`; do not set it to `calciumion/new-api:latest`. Runtime checks now fail if the switch is enabled but the running `relay-new-api` container still reports the official image.
 - The temporary image may only contain the dropdown `onSelect` fix.
 - Do not mix package pricing, brand copy, payment code, or billing logic into the custom frontend.
 - After upstream PR #4787 lands and the official image passes the same E2E, set `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0` and return to `calciumion/new-api:latest`.

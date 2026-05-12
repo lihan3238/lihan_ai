@@ -54,6 +54,16 @@ if [ "${DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD+x}" = "x" ] && [ -n "${DEPLOY_INCLUDE
   DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_EXPLICIT=1
 fi
 DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD="${DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD:-}"
+DEPLOY_LOCAL_NEW_API_BUILD_MODE_EXPLICIT=0
+if [ "${DEPLOY_LOCAL_NEW_API_BUILD_MODE+x}" = "x" ] && [ -n "${DEPLOY_LOCAL_NEW_API_BUILD_MODE:-}" ]; then
+  DEPLOY_LOCAL_NEW_API_BUILD_MODE_EXPLICIT=1
+fi
+DEPLOY_LOCAL_NEW_API_BUILD_MODE="${DEPLOY_LOCAL_NEW_API_BUILD_MODE:-}"
+LOCAL_NEW_API_IMAGE_EXPLICIT=0
+if [ "${LOCAL_NEW_API_IMAGE+x}" = "x" ] && [ -n "${LOCAL_NEW_API_IMAGE:-}" ]; then
+  LOCAL_NEW_API_IMAGE_EXPLICIT=1
+fi
+LOCAL_NEW_API_IMAGE="${LOCAL_NEW_API_IMAGE:-}"
 RELEASE_KEEP="${RELEASE_KEEP:-5}"
 RUN_REMOTE_BACKUP="${RUN_REMOTE_BACKUP:-1}"
 ALLOW_NON_MAIN_PROD_DEPLOY="${ALLOW_NON_MAIN_PROD_DEPLOY:-0}"
@@ -147,11 +157,43 @@ resolve_preview_config() {
       DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_SOURCE="built-in default"
     fi
   fi
+
+  if [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE_EXPLICIT" = "1" ]; then
+    DEPLOY_LOCAL_NEW_API_BUILD_MODE_SOURCE="explicit env"
+  else
+    value="$(env_value_from_file "$defaults_file" DEPLOY_LOCAL_NEW_API_BUILD_MODE)"
+    DEPLOY_LOCAL_NEW_API_BUILD_MODE="${value:-build}"
+    if [ -n "$value" ]; then
+      DEPLOY_LOCAL_NEW_API_BUILD_MODE_SOURCE="remote env default"
+    else
+      DEPLOY_LOCAL_NEW_API_BUILD_MODE_SOURCE="built-in default"
+    fi
+  fi
+
+  if [ "$LOCAL_NEW_API_IMAGE_EXPLICIT" = "1" ]; then
+    LOCAL_NEW_API_IMAGE_SOURCE="explicit env"
+  else
+    value="$(env_value_from_file "$defaults_file" LOCAL_NEW_API_IMAGE)"
+    LOCAL_NEW_API_IMAGE="${value:-lihan-ai/new-api:local}"
+    if [ -n "$value" ]; then
+      LOCAL_NEW_API_IMAGE_SOURCE="remote env default"
+    else
+      LOCAL_NEW_API_IMAGE_SOURCE="built-in default"
+    fi
+  fi
+
+  case "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" in
+    build|pull) ;;
+    *) DEPLOY_LOCAL_NEW_API_BUILD_MODE="build" ;;
+  esac
 }
 
 compose_preview() {
+  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "pull" ]; then
+    printf 'NEW_API_IMAGE=%s ' "$LOCAL_NEW_API_IMAGE"
+  fi
   printf 'docker compose -p %s --env-file %s -f docker-compose.yml -f docker-compose.prod.yml' "$DEPLOY_COMPOSE_PROJECT" "$DEPLOY_ENV_FILE"
-  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "build" ]; then
     printf ' -f docker-compose.local-build.yml'
   fi
   if [ "$DEPLOY_INCLUDE_CPA" = "1" ]; then
@@ -165,6 +207,11 @@ compose_preview() {
 compose_up_preview() {
   compose_preview
   printf ' up -d --remove-orphans'
+  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "build" ]; then
+    printf ' --build --force-recreate'
+  elif [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "pull" ]; then
+    printf ' --force-recreate'
+  fi
   if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ]; then
     printf ' --scale caddy=0'
   fi
@@ -180,6 +227,8 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
   echo "DEPLOY_INCLUDE_CPA=$DEPLOY_INCLUDE_CPA ($DEPLOY_INCLUDE_CPA_SOURCE)"
   echo "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL ($DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_SOURCE)"
   echo "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD ($DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_SOURCE)"
+  echo "DEPLOY_LOCAL_NEW_API_BUILD_MODE=$DEPLOY_LOCAL_NEW_API_BUILD_MODE ($DEPLOY_LOCAL_NEW_API_BUILD_MODE_SOURCE)"
+  echo "LOCAL_NEW_API_IMAGE=$LOCAL_NEW_API_IMAGE ($LOCAL_NEW_API_IMAGE_SOURCE)"
   echo "repo: $DEPLOY_ROOT/repo.git"
   echo "releases: $DEPLOY_ROOT/releases"
   echo "shared: $DEPLOY_ROOT/shared"
@@ -198,8 +247,10 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
       echo "link $DEPLOY_ROOT/shared/$DEPLOY_ENV_FILE into release"
       echo "link shared data/logs/backups/snapshots into release"
       echo "bash ops/sync-env-template.sh $DEPLOY_ROOT/shared/$DEPLOY_ENV_FILE .env.production.example"
-      if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+      if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "build" ]; then
         echo "include docker-compose.local-build.yml and build New API from pinned vendor/new-api"
+      elif [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "pull" ]; then
+        echo "use prebuilt New API image $LOCAL_NEW_API_IMAGE without server-side frontend build"
       fi
       echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT ENV_FILE=$DEPLOY_ENV_FILE bash ops/preflight.sh"
       echo "$(compose_preview) config"
@@ -224,13 +275,19 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
         echo "current -> candidate"
         echo "clear candidate after successful promote"
       fi
-      if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+      if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "build" ]; then
         echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_preview) build new-api"
         echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_preview) pull --ignore-buildable"
+      elif [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "pull" ]; then
+        echo "use prebuilt New API image $LOCAL_NEW_API_IMAGE"
+        echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_preview) pull"
       else
         echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_preview) pull"
       fi
       echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT $(compose_up_preview)"
+      if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+        echo "validate local New API image before accepting runtime check"
+      fi
       echo "COMPOSE_PROJECT_NAME=$DEPLOY_COMPOSE_PROJECT ENV_FILE=$DEPLOY_ENV_FILE bash ops/check-production-runtime.sh"
       echo "last_healthy -> release after successful runtime check"
       echo "cleanup old releases after successful promote"
@@ -260,7 +317,7 @@ if [ "$DEPLOY_DRY_RUN" = "1" ]; then
 fi
 
 ssh "$DEPLOY_HOST" \
-  "DEPLOY_ROOT='$DEPLOY_ROOT' DEPLOY_ENV='$DEPLOY_ENV' DEPLOY_ENV_FILE='$DEPLOY_ENV_FILE' DEPLOY_REF='$DEPLOY_REF' DEPLOY_REPO='$DEPLOY_REPO' DEPLOY_COMPOSE_PROJECT='$DEPLOY_COMPOSE_PROJECT' DEPLOY_COMPOSE_PROJECT_EXPLICIT='$DEPLOY_COMPOSE_PROJECT_EXPLICIT' DEPLOY_INCLUDE_CPA='$DEPLOY_INCLUDE_CPA' DEPLOY_INCLUDE_CPA_EXPLICIT='$DEPLOY_INCLUDE_CPA_EXPLICIT' DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL='$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL' DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT='$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT' DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD='$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD' DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_EXPLICIT='$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_EXPLICIT' RELEASE_KEEP='$RELEASE_KEEP' RUN_REMOTE_BACKUP='$RUN_REMOTE_BACKUP' LEGACY_DEPLOY_PATH='$LEGACY_DEPLOY_PATH' RELEASE_ID='$RELEASE_ID' SMOKE_BACKUP_PATH='${SMOKE_BACKUP_PATH:-}' sh -s -- '$command' '$release_arg'" <<'REMOTE'
+  "DEPLOY_ROOT='$DEPLOY_ROOT' DEPLOY_ENV='$DEPLOY_ENV' DEPLOY_ENV_FILE='$DEPLOY_ENV_FILE' DEPLOY_REF='$DEPLOY_REF' DEPLOY_REPO='$DEPLOY_REPO' DEPLOY_COMPOSE_PROJECT='$DEPLOY_COMPOSE_PROJECT' DEPLOY_COMPOSE_PROJECT_EXPLICIT='$DEPLOY_COMPOSE_PROJECT_EXPLICIT' DEPLOY_INCLUDE_CPA='$DEPLOY_INCLUDE_CPA' DEPLOY_INCLUDE_CPA_EXPLICIT='$DEPLOY_INCLUDE_CPA_EXPLICIT' DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL='$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL' DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT='$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL_EXPLICIT' DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD='$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD' DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_EXPLICIT='$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD_EXPLICIT' DEPLOY_LOCAL_NEW_API_BUILD_MODE='$DEPLOY_LOCAL_NEW_API_BUILD_MODE' DEPLOY_LOCAL_NEW_API_BUILD_MODE_EXPLICIT='$DEPLOY_LOCAL_NEW_API_BUILD_MODE_EXPLICIT' LOCAL_NEW_API_IMAGE='$LOCAL_NEW_API_IMAGE' LOCAL_NEW_API_IMAGE_EXPLICIT='$LOCAL_NEW_API_IMAGE_EXPLICIT' RELEASE_KEEP='$RELEASE_KEEP' RUN_REMOTE_BACKUP='$RUN_REMOTE_BACKUP' LEGACY_DEPLOY_PATH='$LEGACY_DEPLOY_PATH' RELEASE_ID='$RELEASE_ID' SMOKE_BACKUP_PATH='${SMOKE_BACKUP_PATH:-}' sh -s -- '$command' '$release_arg'" <<'REMOTE'
 set -eu
 
 command="$1"
@@ -346,6 +403,22 @@ resolve_deploy_config() {
     DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD="${value:-0}"
   fi
   DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD="${DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD:-0}"
+
+  if [ "${DEPLOY_LOCAL_NEW_API_BUILD_MODE_EXPLICIT:-0}" != "1" ]; then
+    value="$(env_value_from_file "$defaults_file" DEPLOY_LOCAL_NEW_API_BUILD_MODE)"
+    DEPLOY_LOCAL_NEW_API_BUILD_MODE="${value:-build}"
+  fi
+  DEPLOY_LOCAL_NEW_API_BUILD_MODE="${DEPLOY_LOCAL_NEW_API_BUILD_MODE:-build}"
+  case "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" in
+    build|pull) ;;
+    *) fail "DEPLOY_LOCAL_NEW_API_BUILD_MODE must be build or pull" ;;
+  esac
+
+  if [ "${LOCAL_NEW_API_IMAGE_EXPLICIT:-0}" != "1" ]; then
+    value="$(env_value_from_file "$defaults_file" LOCAL_NEW_API_IMAGE)"
+    LOCAL_NEW_API_IMAGE="${value:-lihan-ai/new-api:local}"
+  fi
+  LOCAL_NEW_API_IMAGE="${LOCAL_NEW_API_IMAGE:-lihan-ai/new-api:local}"
 }
 
 latest_release_id() {
@@ -406,7 +479,7 @@ copy_legacy_if_missing() {
 
 compose() {
   compose_files="-f docker-compose.yml -f docker-compose.prod.yml"
-  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "build" ]; then
     compose_files="$compose_files -f docker-compose.local-build.yml"
   fi
   if [ "$DEPLOY_INCLUDE_CPA" = "1" ]; then
@@ -417,19 +490,31 @@ compose() {
   fi
 
   # shellcheck disable=SC2086
-  docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" $compose_files "$@"
+  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "pull" ]; then
+    NEW_API_IMAGE="$LOCAL_NEW_API_IMAGE" docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" $compose_files "$@"
+  else
+    docker compose -p "$DEPLOY_COMPOSE_PROJECT" --env-file "$DEPLOY_ENV_FILE" $compose_files "$@"
+  fi
 }
 
 compose_up() {
+  up_args="-d --remove-orphans"
+  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "build" ]; then
+    up_args="$up_args --build --force-recreate"
+  elif [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "pull" ]; then
+    up_args="$up_args --force-recreate"
+  fi
   if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ] && [ -f docker-compose.cloudflare-tunnel.yml ]; then
-    compose up -d --remove-orphans --scale caddy=0
+    # shellcheck disable=SC2086
+    compose up $up_args --scale caddy=0
   else
-    compose up -d --remove-orphans
+    # shellcheck disable=SC2086
+    compose up $up_args
   fi
 }
 
 compose_pull_or_build() {
-  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+  if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "build" ]; then
     compose build new-api
     if compose pull --ignore-buildable; then
       return
@@ -441,6 +526,8 @@ compose_pull_or_build() {
     if [ "$DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL" = "1" ] && [ -f docker-compose.cloudflare-tunnel.yml ]; then
       compose pull cloudflared
     fi
+  elif [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "pull" ]; then
+    compose pull
   else
     compose pull
   fi
@@ -616,7 +703,7 @@ cmd_prepare() {
   (
     cd "$release_path"
     bash ops/sync-env-template.sh "$shared_dir/$DEPLOY_ENV_FILE" ".env.production.example"
-    if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ]; then
+    if [ "$DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD" = "1" ] && [ "$DEPLOY_LOCAL_NEW_API_BUILD_MODE" = "build" ]; then
       [ -f docker-compose.local-build.yml ] || fail "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1 but docker-compose.local-build.yml is missing"
       [ -f vendor/new-api/Dockerfile ] || fail "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1 but vendor/new-api/Dockerfile is missing"
     fi

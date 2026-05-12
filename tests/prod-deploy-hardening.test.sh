@@ -78,6 +78,36 @@ write_env "$good_env" "abcdef0123456789abcdef0123456789abcdef0123456789abcdef012
 PATH="$fake_bin:$PATH" ENV_FILE="$good_env" "$ROOT_DIR/ops/preflight.sh" >/dev/null
 grep -q -- "-f docker-compose.prod.yml config" "$docker_log" || fail "production preflight did not render docker-compose.prod.yml"
 
+local_image_collision_env="$tmp_dir/local-image-collision.env"
+cat "$good_env" > "$local_image_collision_env"
+cat >> "$local_image_collision_env" <<'EOF'
+DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1
+NEW_API_IMAGE=calciumion/new-api:latest
+LOCAL_NEW_API_IMAGE=calciumion/new-api:latest
+EOF
+
+set +e
+local_image_collision_output="$(PATH="$fake_bin:$PATH" ENV_FILE="$local_image_collision_env" "$ROOT_DIR/ops/preflight.sh" 2>&1)"
+local_image_collision_status="$?"
+set -e
+[ "$local_image_collision_status" -ne 0 ] || fail "preflight should reject LOCAL_NEW_API_IMAGE matching NEW_API_IMAGE"
+printf '%s' "$local_image_collision_output" | grep -q "LOCAL_NEW_API_IMAGE must differ from NEW_API_IMAGE" || fail "local image collision output was not clear: $local_image_collision_output"
+
+local_image_pull_env="$tmp_dir/local-image-pull.env"
+cat "$good_env" > "$local_image_pull_env"
+cat >> "$local_image_pull_env" <<'EOF'
+DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1
+DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull
+NEW_API_IMAGE=calciumion/new-api:latest
+LOCAL_NEW_API_IMAGE=ghcr.io/lihan3238/new-api:f80e8ea6-dropdown
+EOF
+
+: > "$docker_log"
+PATH="$fake_bin:$PATH" ENV_FILE="$local_image_pull_env" "$ROOT_DIR/ops/preflight.sh" >/dev/null
+if grep -q -- "docker-compose.local-build.yml" "$docker_log"; then
+  fail "preflight pull mode should not render docker-compose.local-build.yml"
+fi
+
 cpa_config="$tmp_dir/cpa-config.yaml"
 cat > "$cpa_config" <<'EOF'
 logging-to-file: true

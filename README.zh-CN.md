@@ -172,7 +172,9 @@ bash ops/channel-health-advisor.sh config/ops-profiles/glm-default-health.exampl
 配置朋友小范围套餐时看 [docs/zh-CN/new-api-small-circle-launch-runbook.md](docs/zh-CN/new-api-small-circle-launch-runbook.md)。
 第一阶段只做后台配置：station quota / 站内额度文案、New API 订阅计划、manual activation、fair use，以及官方镜像优先的前端策略。
 官方镜像还没带后台 dropdown 修复时，生产可临时设置 `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1`，
-从 pin 住的 `lihan3238/new-api` submodule 构建。
+使用 pin 住的 `lihan3238/new-api` submodule。小生产机设置 `DEPLOY_LOCAL_NEW_API_BUILD_MODE=pull`，
+拉取预构建补丁镜像，不在服务器上编译前端。`LOCAL_NEW_API_IMAGE` 使用非官方补丁 tag；
+runtime check 会拒绝实际仍运行 `calciumion/new-api:latest` 的发布。
 
 开始售卖套餐前，先验证手动开通依赖的新前端后台按钮：
 

@@ -4,7 +4,7 @@
 
 - Read `docs/new-api-small-circle-launch-runbook.md`.
 - Configure station quota, packages, `default` / `vip`, and manual activation in New API.
-- While upstream official image lacks the dropdown fix, keep `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1` in production env so release deploys build from the pinned `lihan3238/new-api` commit `5741c359`.
+- While upstream official image lacks the dropdown fix, keep `DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=1` in production env so release deploys build from the pinned `lihan3238/new-api` commit `f80e8ea6`.
 - Verify admin frontend actions:
 
 ```bash
