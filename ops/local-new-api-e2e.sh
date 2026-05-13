@@ -6,6 +6,7 @@ ENV_FILE="${ENV_FILE:-.env.local-restore}"
 LOCAL_E2E_ADMIN_USERNAME="${LOCAL_E2E_ADMIN_USERNAME:-codex_e2e_admin}"
 LOCAL_E2E_ADMIN_PASSWORD="${LOCAL_E2E_ADMIN_PASSWORD:-CodexLocal123!}"
 POSTGRES_CONTAINER="${LOCAL_E2E_POSTGRES_CONTAINER:-relay-postgres}"
+REDIS_CONTAINER="${LOCAL_E2E_REDIS_CONTAINER:-relay-redis}"
 
 run_npm() {
   if command -v npm >/dev/null 2>&1; then
@@ -85,6 +86,18 @@ if ! docker inspect "$POSTGRES_CONTAINER" >/dev/null 2>&1; then
 fi
 
 cd "$ROOT_DIR"
+
+if ! docker inspect "$REDIS_CONTAINER" >/dev/null 2>&1; then
+  echo "missing local Redis container: $REDIS_CONTAINER" >&2
+  echo "start the local restored stack before running E2E" >&2
+  exit 2
+fi
+
+echo "clearing local New API rate-limit keys in $REDIS_CONTAINER"
+docker exec -e REDISCLI_AUTH="${REDIS_PASSWORD:-}" "$REDIS_CONTAINER" sh -c \
+  'redis-cli --scan --pattern "rateLimit:*" | while IFS= read -r key; do
+    [ -n "$key" ] && redis-cli del "$key" >/dev/null
+  done'
 
 echo "resetting local E2E admin user: $LOCAL_E2E_ADMIN_USERNAME"
 docker exec -i "$POSTGRES_CONTAINER" \
