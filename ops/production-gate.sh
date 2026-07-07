@@ -42,7 +42,6 @@ run bash -n ops/check-production-runtime.sh
 run bash -n ops/sync-env-template.sh
 run bash -n ops/sync-cpa-upstream-assets.sh
 run bash -n ops/cpa-ui.sh
-run bash -n ops/cpa-quota-snapshot.sh
 run bash -n ops/pre-commit.sh
 run bash -n ops/local-new-api-e2e.sh
 run bash -n ops/bootstrap-server.sh
@@ -51,7 +50,6 @@ run bash -n ops/deploy-release.sh
 run bash -n ops/verify-remote-prod.sh
 run bash -n ops/migration-preflight.sh
 run bash -n ops/migrate-prod.sh
-run bash -n scripts/verify-repo.sh
 run bash tests/backup-cron.test.sh
 run bash tests/storage-retention.test.sh
 run bash tests/env-template-sync.test.sh
@@ -70,7 +68,6 @@ run bash tests/release-deploy.test.sh
 run bash tests/local-new-api-build.test.sh
 run bash tests/cpa-compose.test.sh
 run bash tests/cpa-ui-script.test.sh
-run bash tests/cpa-quota-snapshot.test.sh
 run bash tests/docs-i18n.test.sh
 run bash tests/ci-cd-pipeline.test.sh
 run bash tests/local-new-api-e2e.test.sh
@@ -79,7 +76,6 @@ run bash tests/git-branching-policy.test.sh
 run bash tests/e2e-api-billing.test.sh
 run bash tests/wrapper-infra.test.sh
 run bash tests/ops-profile.test.sh
-run bash scripts/verify-repo.sh --skip-docker
 if [ -n "${AI_DEV_FEATURE_DIR:-}" ]; then
   run bash ops/feature-completion-check.sh "$AI_DEV_FEATURE_DIR"
 fi

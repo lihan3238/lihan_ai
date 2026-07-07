@@ -132,7 +132,7 @@ After Spec Kit changes or upgrades:
 
 ```bash
 bash tests/spec-kit-init.test.sh
-bash scripts/verify-repo.sh
+./scripts/verify-repo.ps1
 ```
 
 ## References Checked

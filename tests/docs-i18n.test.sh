@@ -119,7 +119,7 @@ for keyword in "防火墙基线" "排障" "URL-safe" "Caddy"; do
   assert_contains "docs/zh-CN/production-deployment-runbook.md" "$keyword"
 done
 
-for keyword in "api.lihan3238.com" "origin.lihan3238.top" "Cloudflare Tunnel" "cloudflared" "--scale caddy=0" "cpa-quota-static" "config.yml is file" "tunnel.json is file" "chmod 644" "cannot be hand-written"; do
+for keyword in "api.lihan3238.com" "origin.lihan3238.top" "Cloudflare Tunnel" "cloudflared" "--scale caddy=0" "config.yml is file" "tunnel.json is file" "chmod 644" "cannot be hand-written"; do
   assert_contains "docs/cloudflare-saas-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cloudflare-saas-runbook.md" "$keyword"
 done
@@ -134,7 +134,7 @@ for keyword in "CONFIRM_FINAL_CUTOVER=yes" "ops/migrate-prod.sh" "SOURCE_SSH" "T
   assert_contains "docs/zh-CN/migration-runbook.md" "$keyword"
 done
 
-for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai_deploy/shared/data/cpa" "docker compose -p lihan_ai" "docker-compose.cloudflare-tunnel.yml" "ops/cpa-ui.sh" "ops/cpa-quota-snapshot.sh" "cpa-quota/widget.html" "cpa-quota-static" "--no-deps" "logs-max-total-size-mb" "error-logs-max-files"; do
+for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai_deploy/shared/data/cpa" "docker compose -p lihan_ai" "docker-compose.cloudflare-tunnel.yml" "ops/cpa-ui.sh" "--no-deps" "logs-max-total-size-mb" "error-logs-max-files"; do
   assert_contains "docs/cpa-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
 done

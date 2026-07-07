@@ -29,6 +29,7 @@ jobs:
           bash --version | head -n 1
           docker --version
           docker compose version
+          pwsh -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
 
       - name: Whitespace check
         run: git diff --check
@@ -36,7 +37,7 @@ jobs:
       - name: Shell syntax
         run: |
           set -eu
-          find ops scripts tests -type f -name '*.sh' -print0 | xargs -0 -n 1 bash -n
+          find ops tests -type f -name '*.sh' -print0 | xargs -0 -n 1 bash -n
 
       - name: Shell tests
         run: |
@@ -61,4 +62,5 @@ jobs:
           docker compose --env-file .env.production.example -f docker-compose.edge.yml config >/dev/null
 
       - name: Repository verifier
-        run: bash scripts/verify-repo.sh --skip-docker
+        shell: pwsh
+        run: ./scripts/verify-repo.ps1 -SkipDocker

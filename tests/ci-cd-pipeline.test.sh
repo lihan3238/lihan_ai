@@ -34,7 +34,7 @@ assert_contains ".pre-commit-config.yaml" "repo: local"
 assert_contains ".pre-commit-config.yaml" "ops/pre-commit.sh"
 
 assert_contains "ops/pre-commit.sh" "git diff --check"
-assert_contains "ops/pre-commit.sh" "bash -n ops/*.sh scripts/*.sh tests/*.test.sh"
+assert_contains "ops/pre-commit.sh" "bash -n ops/*.sh tests/*.test.sh"
 assert_contains "ops/pre-commit.sh" "tests/github-actions-ci.test.sh"
 assert_contains "ops/pre-commit.sh" "tests/browser-e2e-scaffold.test.sh"
 assert_not_contains "ops/pre-commit.sh" "npm run e2e"
