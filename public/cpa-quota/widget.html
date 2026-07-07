@@ -3,24 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Quota Snapshot</title>
+  <title>Codex Quota</title>
   <style>
     :root {
       color-scheme: light;
-      --bg: #f7f8fb;
+      --bg: #f6f7f9;
       --panel: #ffffff;
-      --soft: #eef3f8;
-      --text: #172033;
-      --muted: #66738a;
-      --line: #d9e0ea;
-      --accent: #0f766e;
-      --blue: #2563eb;
-      --warn: #b45309;
+      --text: #18202f;
+      --muted: #657186;
+      --border: #d9dee8;
+      --ok: #16835f;
+      --warn: #b66a00;
       --bad: #b42318;
-      --ok: #15803d;
+      --bar: #2f6fed;
+      --bar-bg: #e7ebf2;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
@@ -31,7 +32,7 @@
     }
 
     .shell {
-      width: min(100%, 1040px);
+      width: min(100%, 920px);
       margin: 0 auto;
       padding: 16px;
     }
@@ -48,19 +49,19 @@
       margin: 0;
       font-size: 18px;
       line-height: 1.25;
-      font-weight: 750;
+      font-weight: 700;
     }
 
     .meta {
       margin-top: 4px;
       color: var(--muted);
       font-size: 12px;
-      line-height: 1.4;
+      line-height: 1.35;
     }
 
     .pill {
       flex: 0 0 auto;
-      border: 1px solid var(--line);
+      border: 1px solid var(--border);
       border-radius: 999px;
       padding: 5px 9px;
       background: var(--panel);
@@ -70,82 +71,59 @@
       white-space: nowrap;
     }
 
-    .providers {
-      display: grid;
-      gap: 12px;
-    }
-
-    .provider {
-      border: 1px solid var(--line);
+    .account {
+      border: 1px solid var(--border);
       border-radius: 8px;
       background: var(--panel);
-      overflow: hidden;
-    }
-
-    .provider-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--line);
-      background: #fbfcfe;
-    }
-
-    .provider-title {
-      font-size: 14px;
-      font-weight: 750;
-      overflow-wrap: anywhere;
-    }
-
-    .accounts {
-      display: grid;
-      gap: 10px;
       padding: 12px;
-    }
-
-    .account {
-      display: grid;
-      gap: 8px;
+      margin-bottom: 12px;
     }
 
     .account-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      min-height: 22px;
+      gap: 10px;
+      margin-bottom: 10px;
     }
 
     .account-title {
       min-width: 0;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 700;
       overflow-wrap: anywhere;
     }
 
     .status {
       flex: 0 0 auto;
-      font-size: 11px;
-      font-weight: 750;
+      font-size: 12px;
+      font-weight: 700;
       text-transform: uppercase;
     }
 
-    .status.available { color: var(--ok); }
-    .status.limited { color: var(--bad); }
-    .status.unknown { color: var(--warn); }
+    .status.available {
+      color: var(--ok);
+    }
 
-    .windows {
+    .status.limited {
+      color: var(--bad);
+    }
+
+    .status.unknown {
+      color: var(--warn);
+    }
+
+    .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
     }
 
     .window {
-      min-height: 118px;
-      border: 1px solid var(--line);
+      min-height: 128px;
+      border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 9px;
+      padding: 10px;
       background: #fbfcfe;
     }
 
@@ -154,7 +132,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 700;
     }
 
@@ -169,9 +147,9 @@
       width: 100%;
       height: 8px;
       border-radius: 999px;
-      background: var(--soft);
+      background: var(--bar-bg);
       overflow: hidden;
-      margin: 8px 0 9px;
+      margin: 8px 0 10px;
     }
 
     .bar > span {
@@ -179,36 +157,41 @@
       height: 100%;
       width: 0;
       border-radius: inherit;
-      background: linear-gradient(90deg, var(--accent), var(--blue));
+      background: var(--bar);
     }
 
     .details {
       display: grid;
-      gap: 3px;
+      gap: 4px;
       color: var(--muted);
       font-size: 12px;
       line-height: 1.35;
     }
 
     .empty {
-      border: 1px dashed var(--line);
+      border: 1px dashed var(--border);
       border-radius: 8px;
-      padding: 16px;
+      padding: 18px;
       color: var(--muted);
       background: var(--panel);
       font-size: 13px;
     }
 
-    @media (max-width: 520px) {
-      .shell { padding: 12px; }
+    @media (max-width: 480px) {
+      .shell {
+        padding: 12px;
+      }
+
       .topline,
-      .provider-head,
       .account-head {
         align-items: stretch;
         flex-direction: column;
       }
+
       .pill,
-      .status { align-self: flex-start; }
+      .status {
+        align-self: flex-start;
+      }
     }
   </style>
 </head>
@@ -216,28 +199,19 @@
   <main class="shell">
     <div class="topline">
       <div>
-        <h1>Quota snapshot</h1>
+        <h1>Codex quota</h1>
         <div class="meta" id="snapshot-meta">Loading snapshot...</div>
       </div>
-      <div class="pill" id="snapshot-state">static</div>
+      <div class="pill" id="snapshot-state">static snapshot</div>
     </div>
-    <section id="quota-root" class="empty">Loading quota snapshot...</section>
+    <section id="accounts" class="empty">Loading quota snapshot...</section>
   </main>
 
   <script>
-    const snapshotUrls = [
-      new URL('data/quota-snapshot.json', window.location.href),
-      new URL('data/codex-quota.json', window.location.href)
-    ];
-    const rootEl = document.getElementById('quota-root');
+    const snapshotUrl = new URL('data/codex-quota.json', window.location.href);
+    const accountsEl = document.getElementById('accounts');
     const metaEl = document.getElementById('snapshot-meta');
     const stateEl = document.getElementById('snapshot-state');
-
-    function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>"']/g, (char) => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-      }[char]));
-    }
 
     function clampPercent(value) {
       const number = Number(value);
@@ -255,13 +229,20 @@
       if (!value) return 'unknown';
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return String(value);
-      return date.toLocaleString([], { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleString([], {
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     }
 
     function secondsUntil(value, fallback) {
       if (value) {
         const date = new Date(value);
-        if (!Number.isNaN(date.getTime())) return Math.max(0, Math.floor((date.getTime() - Date.now()) / 1000));
+        if (!Number.isNaN(date.getTime())) {
+          return Math.max(0, Math.floor((date.getTime() - Date.now()) / 1000));
+        }
       }
       const seconds = Number(fallback);
       return Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : null;
@@ -285,48 +266,26 @@
       return 'unknown';
     }
 
-    function normalizeSnapshot(data) {
-      if (Array.isArray(data.providers)) return data;
-      const accounts = Array.isArray(data.accounts) ? data.accounts : [];
-      return {
-        ...data,
-        schema_version: data.schema_version || 1,
-        providers: [{ provider: 'codex', title: 'Codex', accounts }]
-      };
-    }
-
-    function windowList(account) {
-      if (Array.isArray(account.windows)) return account.windows;
-      if (account.windows && typeof account.windows === 'object') {
-        return Object.entries(account.windows).map(([key, value]) => ({
-          key,
-          title: key.replace(/_/g, ' '),
-          ...(value || {})
-        }));
-      }
-      return [];
-    }
-
     function detailLine(label, value) {
-      return `<div><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</div>`;
+      return `<div><strong>${label}:</strong> ${value}</div>`;
     }
 
-    function renderWindow(windowData) {
+    function renderWindow(title, quota) {
+      const windowData = quota || {};
       const percent = clampPercent(windowData.used_percent);
       const resetSeconds = secondsUntil(windowData.reset_at, windowData.reset_after_seconds);
       const usedLimit = Number.isFinite(Number(windowData.used)) && Number.isFinite(Number(windowData.limit))
         ? `${windowData.used} / ${windowData.limit}`
-        : windowData.remaining !== undefined ? `${windowData.remaining} remaining` : 'unknown';
+        : 'unknown';
       const width = percent === null ? 0 : percent;
-      const status = windowData.status || (percent === null ? 'unknown' : 'tracked');
 
       return `
         <article class="window">
           <div class="window-title">
-            <span>${escapeHtml(windowData.title || windowData.key || 'Window')}</span>
-            <span class="status ${statusClass(status)}">${escapeHtml(status)}</span>
+            <span>${title}</span>
+            <span class="status ${statusClass(windowData.status)}">${windowData.status || 'tracked'}</span>
           </div>
-          <div class="percent">${escapeHtml(formatPercent(windowData.used_percent))}</div>
+          <div class="percent">${formatPercent(windowData.used_percent)}</div>
           <div class="bar" aria-hidden="true"><span style="width: ${width}%"></span></div>
           <div class="details">
             ${detailLine('Used', usedLimit)}
@@ -337,76 +296,47 @@
       `;
     }
 
-    function renderAccount(account) {
-      const plan = account.plan_type ? ` · ${account.plan_type}` : '';
-      const windows = windowList(account);
-      return `
-        <article class="account">
-          <div class="account-head">
-            <div class="account-title">${escapeHtml(account.label || 'Account')}${escapeHtml(plan)}</div>
-            <div class="status ${statusClass(account.status)}">${escapeHtml(account.status || 'unknown')}</div>
-          </div>
-          <div class="windows">
-            ${windows.length ? windows.map(renderWindow).join('') : '<div class="empty">No quota windows in snapshot.</div>'}
-          </div>
-        </article>
-      `;
-    }
-
     function render(data) {
-      const snapshot = normalizeSnapshot(data);
-      const providers = Array.isArray(snapshot.providers) ? snapshot.providers : [];
-      const accountCount = providers.reduce((sum, provider) => sum + (Array.isArray(provider.accounts) ? provider.accounts.length : 0), 0);
-      const queriedAt = snapshot.queried_at || snapshot.generated_at;
-      const publishedAt = snapshot.generated_at;
-      metaEl.textContent = `Last queried ${formatTime(queriedAt)}`;
-      if (publishedAt && publishedAt !== queriedAt) {
-        metaEl.textContent += ` · Published ${formatTime(publishedAt)}`;
-      }
-      stateEl.textContent = `${providers.length} provider${providers.length === 1 ? '' : 's'} · ${accountCount} account${accountCount === 1 ? '' : 's'}`;
+      const accounts = Array.isArray(data.accounts) ? data.accounts : [];
+      metaEl.textContent = `Updated ${formatTime(data.generated_at)}`;
+      stateEl.textContent = `${accounts.length || 0} account${accounts.length === 1 ? '' : 's'}`;
 
-      if (!providers.length || !accountCount) {
-        rootEl.className = 'empty';
-        rootEl.textContent = 'No quota data in snapshot.';
+      if (accounts.length === 0) {
+        accountsEl.className = 'empty';
+        accountsEl.textContent = 'No quota data in snapshot.';
         return;
       }
 
-      rootEl.className = 'providers';
-      rootEl.innerHTML = providers.map((provider) => {
-        const accounts = Array.isArray(provider.accounts) ? provider.accounts : [];
+      accountsEl.className = '';
+      accountsEl.innerHTML = accounts.map((account) => {
+        const windows = account.windows || {};
+        const plan = account.plan_type ? ` · ${account.plan_type}` : '';
         return `
-          <section class="provider">
-            <div class="provider-head">
-              <div class="provider-title">${escapeHtml(provider.title || provider.provider || 'Provider')}</div>
-              <div class="pill">${accounts.length} account${accounts.length === 1 ? '' : 's'}</div>
+          <article class="account">
+            <div class="account-head">
+              <div class="account-title">${account.label || 'Codex'}${plan}</div>
+              <div class="status ${statusClass(account.status)}">${account.status || 'unknown'}</div>
             </div>
-            <div class="accounts">${accounts.map(renderAccount).join('')}</div>
-          </section>
+            <div class="grid">
+              ${renderWindow('5-hour', windows.five_hour)}
+              ${renderWindow('Weekly', windows.weekly)}
+            </div>
+          </article>
         `;
       }).join('');
     }
 
-    async function loadSnapshot() {
-      let lastError;
-      for (const url of snapshotUrls) {
-        try {
-          const response = await fetch(url, { cache: 'no-store' });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          return response.json();
-        } catch (error) {
-          lastError = error;
-        }
-      }
-      throw lastError || new Error('snapshot unavailable');
-    }
-
-    loadSnapshot()
+    fetch(snapshotUrl, { cache: 'no-store' })
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
       .then(render)
       .catch(() => {
         metaEl.textContent = 'Snapshot unavailable';
         stateEl.textContent = 'offline';
-        rootEl.className = 'empty';
-        rootEl.textContent = 'Quota snapshot has not been published yet.';
+        accountsEl.className = 'empty';
+        accountsEl.textContent = 'Quota snapshot has not been published yet.';
       });
   </script>
 </body>

@@ -8,13 +8,6 @@
 		-Server
 	}
 
-	@quota_data path /data/* /cpa-quota/data/*
-	header @quota_data {
-		Access-Control-Allow-Origin "*"
-		Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
-		Access-Control-Allow-Headers "Content-Type"
-	}
-
 	handle_path /cpa-quota/* {
 		root * /srv/cpa-quota
 		file_server

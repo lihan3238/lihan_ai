@@ -232,81 +232,23 @@ This returns CPA to the read-only config mount used for normal runtime.
 
 Use `ops/cpa-ui.sh ps` to confirm the container state and local port binding. Do not use ad hoc CPA UI commands with `--remove-orphans` or `--scale caddy=0`; those flags belong to full-stack operations, not a single-service CPA UI session.
 
-## Public CPA Quota Snapshot
+## Public Codex Quota Snapshot
 
-The public New API homepage must read only a sanitized static snapshot. Do not point `HomePageContent`, Caddy, Cloudflare Tunnel, or any public browser path at CPA management routes, `8317`, or upstream quota checks.
+The public New API homepage must read only a sanitized static snapshot. Do not point `HomePageContent`, Caddy, Cloudflare Tunnel, or any public browser path at CPA management routes, `8317`, or upstream Codex quota checks.
 
 The repository provides:
 
-- `ops/cpa-quota-snapshot.sh` to convert raw CPA quota JSON into a public allowlisted snapshot.
-- `public/cpa-quota/home.html` as the full New API custom homepage.
-- `public/cpa-quota/widget.html` as the reusable compact quota widget.
+- `ops/cpa-quota-snapshot.sh` to convert a raw CPA/Codex quota JSON response into a public allowlisted snapshot.
+- `public/cpa-quota/widget.html` to render the five-hour and weekly Codex quota windows.
 - `cpa-quota-static`, an internal-only static service from `docker-compose.cpa.yml`; it has no host `ports:` and only joins `relay-internal`.
 
-The primary snapshot file is:
-
-```text
-${CPA_PUBLIC_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/public}/quota-snapshot.json
-```
-
-For backward compatibility, the default publisher also writes:
+The snapshot file is:
 
 ```text
 ${CPA_PUBLIC_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/public}/codex-quota.json
 ```
 
-After you manually refresh quota state in the CPA management UI, publish a new snapshot from the origin server. The snapshot includes `queried_at`; the public homepage renders it as `Last queried` so stale quota data is obvious.
-
-For the normal production flow, run one command on the origin server. The script does not open or close the CPA UI; keep your existing UI session as-is. It reads `remote-management.secret-key` from `${CPA_CONFIG_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/config.yaml}` when available, otherwise it prompts with hidden input. It queries all enabled credentials with known quota endpoints and then publishes one sanitized snapshot:
-
-```bash
-cd /opt/lihan_ai_deploy/current
-
-CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
-  bash ops/cpa-quota-refresh-all.sh
-```
-
-Built-in quota endpoint defaults:
-
-- `codex`, `openai`, `chatgpt`: `https://chatgpt.com/backend-api/wham/usage`
-- `claude`, `anthropic`: `https://api.anthropic.com/api/oauth/usage`
-
-Credentials that are disabled, unavailable, missing `auth_index`, or using an unsupported provider are skipped. If a provider endpoint changes, override it for that run, for example:
-
-```bash
-CPA_QUOTA_URL_CLAUDE="https://api.anthropic.com/api/oauth/usage" \
-CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
-  bash ops/cpa-quota-refresh-all.sh
-```
-
-The simplest direct flow is to let CPA call the upstream quota API through the protected management API, then pipe that result into the sanitizer. This does not change the CPA image and does not expose management routes publicly:
-
-```bash
-cd /opt/lihan_ai_deploy/current
-
-read -s CPA_MGMT_KEY
-AUTH_INDEX="<auth_index from /v0/management/auth-files>"
-QUOTA_URL="https://chatgpt.com/backend-api/wham/usage"
-LABEL="Codex pool"
-
-curl -fsS -X POST http://127.0.0.1:8317/v0/management/api-call \
-  -H "Authorization: Bearer $CPA_MGMT_KEY" \
-  -H "Content-Type: application/json" \
-  -d "$(jq -nc --arg auth "$AUTH_INDEX" --arg url "$QUOTA_URL" '{
-    auth_index: $auth,
-    method: "GET",
-    url: $url,
-    header: {
-      "Authorization": "Bearer $TOKEN$"
-    }
-  }')" \
-| CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
-  bash ops/cpa-quota-snapshot.sh --label "$LABEL"
-```
-
-For another GPT/OpenAI, Claude, Gemini, or other CPA-backed credential, keep the same pattern and change `AUTH_INDEX`, `QUOTA_URL`, request headers, and `LABEL` to match that provider/account. The sanitizer understands CPA `api-call` envelopes such as `{status_code, header, body}` and publishes only the parsed JSON `body`.
-
-If you saved the raw quota JSON to a temporary file:
+After you manually refresh quota state in the CPA management UI, publish a new snapshot from the origin server. If you saved the raw quota JSON to a temporary file:
 
 ```bash
 cd /opt/lihan_ai_deploy/current
@@ -317,16 +259,23 @@ CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
     --label "Codex pool"
 ```
 
-The script writes only allowlisted fields such as provider title, account label, `plan_type`, status, quota window names, usage percentages, limits, remaining counts, and reset times. It supports generic `providers[].accounts[].windows[]` snapshots for GPT/OpenAI, Claude, Codex, Antigravity, Gemini, and similar CPA-backed providers. It does not copy emails, account IDs, API keys, access tokens, refresh tokens, cookies, or raw provider payloads into the public snapshot.
+If you prefer fetching from the internal CPA listener, use the exact quota endpoint and management header your deployed CPA UI uses. Keep the secret in the shell environment or a local secret manager, not in git:
 
-CPA file logs and Docker logs can help audit whether a refresh or upstream API call happened, but they are not a safe public snapshot source. The management UI performs quota checks through protected management routes such as `/v0/management/api-call`; CPA request logging intentionally skips `/v0/management` and `/management` paths, and full request logs can contain sensitive upstream payloads. If you later want one-click sync from `/management.html#/quota`, implement it as a protected CPA publisher/backend hook that writes the same sanitized `quota-snapshot.json`, not by scraping logs or exposing management routes.
+```bash
+cd /opt/lihan_ai_deploy/current
+
+CPA_QUOTA_SOURCE_URL="http://127.0.0.1:8317/quota" \
+CPA_QUOTA_SOURCE_HEADER="<management-header-name>: <secret>" \
+CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
+  bash ops/cpa-quota-snapshot.sh --label "Codex pool"
+```
+
+The script writes only allowlisted fields such as `plan_type`, status, five-hour and weekly usage percentages, limits, and reset times. It does not copy emails, account IDs, API keys, access tokens, refresh tokens, or raw provider payloads into the public snapshot.
 
 For direct-origin Caddy deployments, `Caddyfile` serves:
 
 ```text
-https://<DOMAIN>/cpa-quota/home.html
 https://<DOMAIN>/cpa-quota/widget.html
-https://<DOMAIN>/cpa-quota/data/quota-snapshot.json
 https://<DOMAIN>/cpa-quota/data/codex-quota.json
 ```
 
@@ -343,10 +292,10 @@ ingress:
 
 Then recreate `cloudflared` and the static service through the normal compose overlays or the next release promote.
 
-Set New API `HomePageContent` to the full homepage URL. Do not paste an iframe or Markdown wrapper into `HomePageContent`; New API's Markdown render path can sandbox scripts and break the quota panel.
+Set New API `HomePageContent` to the full widget URL so New API embeds it as an iframe:
 
 ```text
-https://api.lihan3238.com/cpa-quota/home.html
+https://api.lihan3238.com/cpa-quota/widget.html
 ```
 
 Refreshing the public New API homepage then fetches only static files. The next visible quota update happens when you manually refresh CPA quota state and rerun `ops/cpa-quota-snapshot.sh`.
