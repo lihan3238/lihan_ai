@@ -33,6 +33,7 @@ assert_not_contains() {
 assert_executable "ops/cpa-quota-snapshot.sh"
 assert_file "public/cpa-quota/widget.html"
 assert_file "Caddyfile.cpa-quota"
+[ -d "$ROOT_DIR/public/cpa-quota/data" ] || fail "missing CPA quota public data mountpoint"
 
 assert_contains "Caddyfile" "handle_path /cpa-quota/*"
 assert_contains "Caddyfile" "cpa-quota-static:8080"
