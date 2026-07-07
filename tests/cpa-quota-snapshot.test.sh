@@ -14,6 +14,8 @@ assert_file() {
 
 assert_executable() {
   [ -x "$ROOT_DIR/$1" ] || fail "missing executable: $1"
+  mode="$(git -C "$ROOT_DIR" ls-files --stage -- "$1" | awk '{print $1}')"
+  [ "$mode" = "100755" ] || fail "not executable in git index: $1 ($mode)"
 }
 
 assert_contains() {
