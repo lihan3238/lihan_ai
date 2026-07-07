@@ -257,6 +257,28 @@ ${CPA_PUBLIC_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/public}/codex-quota.json
 
 你在 CPA 管理 UI 手动刷新额度后，再从 origin 服务器发布新快照。快照会包含 `queried_at`；公网主页会显示成 `Last queried`，这样可以直接判断额度信息是否过期。
 
+生产环境常规流程是在 origin 服务器上跑一个命令。这个脚本不会打开或关闭 CPA UI；你现有的 UI 会话保持原样。它会优先从 `${CPA_CONFIG_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/config.yaml}` 读取 `remote-management.secret-key`，读不到时才隐藏输入提示。它会查询所有已启用且有已知额度 endpoint 的 credential，然后发布一份去敏快照：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+
+CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
+  bash ops/cpa-quota-refresh-all.sh
+```
+
+内置额度 endpoint 默认值：
+
+- `codex`、`openai`、`chatgpt`：`https://chatgpt.com/backend-api/wham/usage`
+- `claude`、`anthropic`：`https://api.anthropic.com/api/oauth/usage`
+
+脚本会跳过 disabled、unavailable、缺少 `auth_index` 或 provider 暂不支持的 credential。如果某个 provider endpoint 之后变了，可以在单次运行时覆盖，例如：
+
+```bash
+CPA_QUOTA_URL_CLAUDE="https://api.anthropic.com/api/oauth/usage" \
+CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
+  bash ops/cpa-quota-refresh-all.sh
+```
+
 最直接的流程是让 CPA 通过受保护的 management API 调上游额度接口，然后把返回结果直接管道给去敏脚本。这个方式不改 CPA 镜像，也不会把 management routes 暴露到公网：
 
 ```bash

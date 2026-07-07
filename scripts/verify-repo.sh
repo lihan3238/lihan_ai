@@ -152,6 +152,7 @@ ops/sync-env-template.sh
 ops/sync-cpa-upstream-assets.sh
 ops/cpa-ui.sh
 ops/cpa-quota-snapshot.sh
+ops/cpa-quota-refresh-all.sh
 ops/check-new-api-admin-frontend.sh
 ops/local-new-api-e2e.sh
 ops/pre-commit.sh
@@ -178,6 +179,7 @@ tests/local-new-api-build.test.sh
 tests/cpa-compose.test.sh
 tests/cpa-ui-script.test.sh
 tests/cpa-quota-snapshot.test.sh
+tests/cpa-quota-refresh-all.test.sh
 tests/docs-i18n.test.sh
 tests/git-branching-policy.test.sh
 tests/release-deploy.test.sh
@@ -298,8 +300,10 @@ assert_contains "docs/cpa-runbook.md" "ssh -L 8317" "CPA SSH tunnel"
 assert_contains "docs/cpa-runbook.md" "logs-max-total-size-mb" "CPA file log cap"
 assert_contains "docs/cpa-runbook.md" "error-logs-max-files" "CPA error log cap"
 assert_contains "docs/cpa-runbook.md" "ops/cpa-quota-snapshot\\.sh" "CPA quota snapshot command"
+assert_contains "docs/cpa-runbook.md" "ops/cpa-quota-refresh-all\\.sh" "CPA quota refresh-all command"
 assert_contains "docs/cpa-runbook.md" "cpa-quota/widget\\.html" "CPA quota widget URL"
 assert_contains "docs/zh-CN/cpa-runbook.md" "ops/cpa-quota-snapshot\\.sh" "Chinese CPA quota snapshot command"
+assert_contains "docs/zh-CN/cpa-runbook.md" "ops/cpa-quota-refresh-all\\.sh" "Chinese CPA quota refresh-all command"
 assert_contains "docs/zh-CN/cpa-runbook.md" "cpa-quota/widget\\.html" "Chinese CPA quota widget URL"
 assert_contains "docs/new-api-code-map.md" "New API" "upstream feature map"
 assert_contains "docs/new-api-full-research.md" "BillingSession" "billing research"

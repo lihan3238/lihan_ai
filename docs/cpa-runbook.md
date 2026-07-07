@@ -257,6 +257,28 @@ ${CPA_PUBLIC_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/public}/codex-quota.json
 
 After you manually refresh quota state in the CPA management UI, publish a new snapshot from the origin server. The snapshot includes `queried_at`; the public homepage renders it as `Last queried` so stale quota data is obvious.
 
+For the normal production flow, run one command on the origin server. The script does not open or close the CPA UI; keep your existing UI session as-is. It reads `remote-management.secret-key` from `${CPA_CONFIG_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/config.yaml}` when available, otherwise it prompts with hidden input. It queries all enabled credentials with known quota endpoints and then publishes one sanitized snapshot:
+
+```bash
+cd /opt/lihan_ai_deploy/current
+
+CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
+  bash ops/cpa-quota-refresh-all.sh
+```
+
+Built-in quota endpoint defaults:
+
+- `codex`, `openai`, `chatgpt`: `https://chatgpt.com/backend-api/wham/usage`
+- `claude`, `anthropic`: `https://api.anthropic.com/api/oauth/usage`
+
+Credentials that are disabled, unavailable, missing `auth_index`, or using an unsupported provider are skipped. If a provider endpoint changes, override it for that run, for example:
+
+```bash
+CPA_QUOTA_URL_CLAUDE="https://api.anthropic.com/api/oauth/usage" \
+CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
+  bash ops/cpa-quota-refresh-all.sh
+```
+
 The simplest direct flow is to let CPA call the upstream quota API through the protected management API, then pipe that result into the sanitizer. This does not change the CPA image and does not expose management routes publicly:
 
 ```bash
