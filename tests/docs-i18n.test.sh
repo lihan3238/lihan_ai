@@ -134,7 +134,7 @@ for keyword in "CONFIRM_FINAL_CUTOVER=yes" "ops/migrate-prod.sh" "SOURCE_SSH" "T
   assert_contains "docs/zh-CN/migration-runbook.md" "$keyword"
 done
 
-for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai_deploy/shared/data/cpa" "docker compose -p lihan_ai" "docker-compose.cloudflare-tunnel.yml" "ops/cpa-ui.sh" "ops/cpa-quota-snapshot.sh" "cpa-quota/widget.html" "cpa-quota-static" "--no-deps" "logs-max-total-size-mb" "error-logs-max-files"; do
+for keyword in "docker-compose.cpa.yml" "docker-compose.cpa.ui.yml" "ssh -L 8317" "ops/sync-cpa-upstream-assets.sh" "/opt/lihan_ai_deploy/shared/data/cpa" "docker compose -p lihan_ai" "docker-compose.cloudflare-tunnel.yml" "ops/cpa-ui.sh" "ops/cpa-quota-snapshot.sh" "cpa-quota/home.html" "cpa-quota/widget.html" "quota-snapshot.json" "cpa-quota-static" "--no-deps" "logs-max-total-size-mb" "error-logs-max-files"; do
   assert_contains "docs/cpa-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cpa-runbook.md" "$keyword"
 done

@@ -232,17 +232,24 @@ This returns CPA to the read-only config mount used for normal runtime.
 
 Use `ops/cpa-ui.sh ps` to confirm the container state and local port binding. Do not use ad hoc CPA UI commands with `--remove-orphans` or `--scale caddy=0`; those flags belong to full-stack operations, not a single-service CPA UI session.
 
-## Public Codex Quota Snapshot
+## Public CPA Quota Snapshot
 
-The public New API homepage must read only a sanitized static snapshot. Do not point `HomePageContent`, Caddy, Cloudflare Tunnel, or any public browser path at CPA management routes, `8317`, or upstream Codex quota checks.
+The public New API homepage must read only a sanitized static snapshot. Do not point `HomePageContent`, Caddy, Cloudflare Tunnel, or any public browser path at CPA management routes, `8317`, or upstream quota checks.
 
 The repository provides:
 
-- `ops/cpa-quota-snapshot.sh` to convert a raw CPA/Codex quota JSON response into a public allowlisted snapshot.
-- `public/cpa-quota/widget.html` to render the five-hour and weekly Codex quota windows.
+- `ops/cpa-quota-snapshot.sh` to convert raw CPA quota JSON into a public allowlisted snapshot.
+- `public/cpa-quota/home.html` as the full New API custom homepage.
+- `public/cpa-quota/widget.html` as the reusable compact quota widget.
 - `cpa-quota-static`, an internal-only static service from `docker-compose.cpa.yml`; it has no host `ports:` and only joins `relay-internal`.
 
-The snapshot file is:
+The primary snapshot file is:
+
+```text
+${CPA_PUBLIC_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/public}/quota-snapshot.json
+```
+
+For backward compatibility, the default publisher also writes:
 
 ```text
 ${CPA_PUBLIC_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/public}/codex-quota.json
@@ -270,12 +277,16 @@ CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
   bash ops/cpa-quota-snapshot.sh --label "Codex pool"
 ```
 
-The script writes only allowlisted fields such as `plan_type`, status, five-hour and weekly usage percentages, limits, and reset times. It does not copy emails, account IDs, API keys, access tokens, refresh tokens, or raw provider payloads into the public snapshot.
+The script writes only allowlisted fields such as provider title, account label, `plan_type`, status, quota window names, usage percentages, limits, remaining counts, and reset times. It supports generic `providers[].accounts[].windows[]` snapshots for GPT/OpenAI, Claude, Codex, Antigravity, Gemini, and similar CPA-backed providers. It does not copy emails, account IDs, API keys, access tokens, refresh tokens, cookies, or raw provider payloads into the public snapshot.
+
+CPA file logs and Docker logs can help audit whether a refresh or upstream API call happened, but they are not a safe public snapshot source. The management UI performs quota checks through protected management routes such as `/v0/management/api-call`; CPA request logging intentionally skips `/v0/management` and `/management` paths, and full request logs can contain sensitive upstream payloads. If you later want one-click sync from `/management.html#/quota`, implement it as a protected CPA publisher/backend hook that writes the same sanitized `quota-snapshot.json`, not by scraping logs or exposing management routes.
 
 For direct-origin Caddy deployments, `Caddyfile` serves:
 
 ```text
+https://<DOMAIN>/cpa-quota/home.html
 https://<DOMAIN>/cpa-quota/widget.html
+https://<DOMAIN>/cpa-quota/data/quota-snapshot.json
 https://<DOMAIN>/cpa-quota/data/codex-quota.json
 ```
 
@@ -292,10 +303,10 @@ ingress:
 
 Then recreate `cloudflared` and the static service through the normal compose overlays or the next release promote.
 
-Set New API `HomePageContent` to the full widget URL so New API embeds it as an iframe:
+Set New API `HomePageContent` to the full homepage URL. Do not paste an iframe or Markdown wrapper into `HomePageContent`; New API's Markdown render path can sandbox scripts and break the quota panel.
 
 ```text
-https://api.lihan3238.com/cpa-quota/widget.html
+https://api.lihan3238.com/cpa-quota/home.html
 ```
 
 Refreshing the public New API homepage then fetches only static files. The next visible quota update happens when you manually refresh CPA quota state and rerun `ops/cpa-quota-snapshot.sh`.

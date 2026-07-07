@@ -31,6 +31,7 @@ assert_not_contains() {
 }
 
 assert_executable "ops/cpa-quota-snapshot.sh"
+assert_file "public/cpa-quota/home.html"
 assert_file "public/cpa-quota/widget.html"
 assert_file "Caddyfile.cpa-quota"
 [ -d "$ROOT_DIR/public/cpa-quota/data" ] || fail "missing CPA quota public data mountpoint"
@@ -53,7 +54,7 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
 raw="$tmp_dir/raw-quota.json"
-out="$tmp_dir/codex-quota.json"
+out="$tmp_dir/quota-snapshot.json"
 
 cat > "$raw" <<'JSON'
 {
@@ -95,23 +96,32 @@ path = pathlib.Path(sys.argv[1])
 data = json.loads(path.read_text(encoding="utf-8"))
 dumped = json.dumps(data, sort_keys=True)
 
-assert data["schema_version"] == 1
+assert data["schema_version"] == 2
 assert data["generated_at"] == "2026-07-07T00:00:00Z"
 assert data["source"] == "cpa"
-assert len(data["accounts"]) == 1
+assert len(data["providers"]) == 1
 
-account = data["accounts"][0]
+provider = data["providers"][0]
+assert provider["provider"] == "codex"
+assert provider["title"] == "Codex"
+assert len(provider["accounts"]) == 1
+
+account = provider["accounts"][0]
 assert account["label"] == "Codex pool"
 assert account["plan_type"] == "prolite"
 
-five = account["windows"]["five_hour"]
-weekly = account["windows"]["weekly"]
+five = account["windows"][0]
+weekly = account["windows"][1]
+assert five["key"] == "five_hour"
+assert five["title"] == "5-hour limit"
 assert five["used_percent"] == 37.5
 assert five["used"] == 75
 assert five["limit"] == 200
 assert five["remaining"] == 125
 assert five["reset_after_seconds"] == 3600
 assert five["reset_at"].endswith("Z")
+assert weekly["key"] == "weekly"
+assert weekly["title"] == "Weekly limit"
 assert weekly["used_percent"] == 80
 assert weekly["limit_window_seconds"] == 604800
 assert weekly["reset_after_seconds"] == 86400
@@ -125,10 +135,102 @@ public_dir="$tmp_dir/public"
 CPA_PUBLIC_PATH="$public_dir" CPA_QUOTA_NOW=2026-07-07T00:00:00Z \
   bash "$ROOT_DIR/ops/cpa-quota-snapshot.sh" --input "$raw" >/dev/null
 
-[ -f "$public_dir/codex-quota.json" ] || fail "default output should use CPA_PUBLIC_PATH/codex-quota.json"
+[ -f "$public_dir/quota-snapshot.json" ] || fail "default output should use CPA_PUBLIC_PATH/quota-snapshot.json"
+[ -f "$public_dir/codex-quota.json" ] || fail "default output should keep legacy CPA_PUBLIC_PATH/codex-quota.json"
 
+multi="$tmp_dir/multi-quota.json"
+multi_out="$tmp_dir/multi-quota-snapshot.json"
+cat > "$multi" <<'JSON'
+{
+  "providers": [
+    {
+      "provider": "codex",
+      "title": "GPT / Codex",
+      "accounts": [
+        {
+          "label": "Codex Max",
+          "email": "codex-owner@example.com",
+          "access_token": "codex-token-should-not-leak",
+          "plan_type": "max",
+          "windows": [
+            {
+              "key": "five_hour",
+              "title": "5-hour limit",
+              "used_percent": 10,
+              "remaining": 90,
+              "reset_after_seconds": 1800
+            },
+            {
+              "key": "weekly",
+              "title": "Weekly limit",
+              "used_percent": 40,
+              "reset_after_seconds": 86400
+            }
+          ]
+        },
+        {
+          "label": "Codex Team",
+          "plan_type": "team",
+          "windows": [
+            {"key": "monthly", "title": "Monthly limit", "used_percent": 22}
+          ]
+        }
+      ]
+    },
+    {
+      "provider": "claude",
+      "title": "Claude",
+      "accounts": [
+        {
+          "label": "Claude Pro",
+          "refresh_token": "claude-refresh-should-not-leak",
+          "windows": [
+            {"key": "five_hour", "title": "5-hour limit", "used_percent": 55},
+            {"key": "seven_day_opus", "title": "7-day Opus", "used_percent": 12}
+          ]
+        },
+        {
+          "name": "claude-owner@example.com",
+          "windows": [
+            {"key": "weekly", "title": "Weekly limit", "used_percent": 7}
+          ]
+        }
+      ]
+    }
+  ]
+}
+JSON
+
+CPA_QUOTA_NOW=2026-07-07T00:00:00Z \
+  bash "$ROOT_DIR/ops/cpa-quota-snapshot.sh" \
+    --input "$multi" \
+    --output "$multi_out" >/dev/null
+
+python3 - "$multi_out" <<'PY'
+import json
+import pathlib
+import sys
+
+data = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+dumped = json.dumps(data, sort_keys=True)
+assert data["schema_version"] == 2
+assert [provider["provider"] for provider in data["providers"]] == ["codex", "claude"]
+assert len(data["providers"][0]["accounts"]) == 2
+assert len(data["providers"][1]["accounts"]) == 2
+assert data["providers"][0]["accounts"][0]["windows"][0]["key"] == "five_hour"
+assert data["providers"][1]["accounts"][0]["windows"][1]["key"] == "seven_day_opus"
+assert data["providers"][1]["accounts"][1]["label"] == "Claude 2"
+for secret in ("codex-owner@example.com", "codex-token-should-not-leak", "claude-refresh-should-not-leak", "claude-owner@example.com"):
+    assert secret not in dumped
+PY
+
+assert_contains "public/cpa-quota/home.html" "quota-snapshot.json"
+assert_contains "public/cpa-quota/home.html" "Lihan AI"
+assert_contains "public/cpa-quota/home.html" "providers"
+assert_not_contains "public/cpa-quota/home.html" "/v0/management"
+assert_not_contains "public/cpa-quota/home.html" "8317"
+assert_contains "public/cpa-quota/widget.html" "quota-snapshot.json"
 assert_contains "public/cpa-quota/widget.html" "codex-quota.json"
-assert_contains "public/cpa-quota/widget.html" "five_hour"
-assert_contains "public/cpa-quota/widget.html" "weekly"
+assert_contains "public/cpa-quota/widget.html" "providers"
 
 echo "cpa quota snapshot tests passed"

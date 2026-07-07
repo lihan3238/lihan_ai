@@ -3,21 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Quota Snapshot</title>
+  <title>Lihan AI</title>
   <style>
     :root {
       color-scheme: light;
       --bg: #f7f8fb;
       --panel: #ffffff;
-      --soft: #eef3f8;
-      --text: #172033;
-      --muted: #66738a;
-      --line: #d9e0ea;
+      --soft: #edf3f7;
+      --text: #142033;
+      --muted: #63718a;
+      --line: #d7e0ea;
       --accent: #0f766e;
       --blue: #2563eb;
-      --warn: #b45309;
-      --bad: #b42318;
-      --ok: #15803d;
+      --green: #15803d;
+      --amber: #b45309;
+      --red: #b42318;
     }
 
     * { box-sizing: border-box; }
@@ -30,28 +30,156 @@
       letter-spacing: 0;
     }
 
-    .shell {
-      width: min(100%, 1040px);
-      margin: 0 auto;
-      padding: 16px;
+    a { color: inherit; text-decoration: none; }
+
+    .home {
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, #ffffff 0%, #f7f8fb 48%, #eef3f7 100%);
     }
 
-    .topline {
+    .shell {
+      width: min(1160px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .nav {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 12px;
+      gap: 16px;
+      padding: 18px 0 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 18px;
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: #102033;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      padding: 0 12px;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .button.primary {
+      border-color: #102033;
+      background: #102033;
+      color: #ffffff;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1.05fr);
+      gap: 22px;
+      align-items: stretch;
+      padding: 24px 0 18px;
+    }
+
+    .intro {
+      display: grid;
+      align-content: center;
+      gap: 18px;
+      min-height: 440px;
+    }
+
+    .eyebrow {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
     }
 
     h1 {
       margin: 0;
-      font-size: 18px;
-      line-height: 1.25;
-      font-weight: 750;
+      max-width: 720px;
+      font-size: 44px;
+      line-height: 1.06;
+      font-weight: 850;
     }
 
-    .meta {
+    .lead {
+      margin: 0;
+      max-width: 650px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    .endpoint {
+      display: grid;
+      gap: 6px;
+      max-width: 560px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0f172a;
+      color: #dce8f7;
+      padding: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .endpoint strong { color: #93e4d2; }
+
+    .quota-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.86);
+      overflow: hidden;
+      box-shadow: 0 18px 50px rgba(20, 32, 51, 0.08);
+    }
+
+    .quota-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+
+    .quota-title {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.25;
+      font-weight: 800;
+    }
+
+    .quota-meta {
       margin-top: 4px;
       color: var(--muted);
       font-size: 12px;
@@ -70,9 +198,10 @@
       white-space: nowrap;
     }
 
-    .providers {
+    .quota-body {
       display: grid;
       gap: 12px;
+      padding: 14px;
     }
 
     .provider {
@@ -84,17 +213,18 @@
 
     .provider-head {
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
       gap: 10px;
       padding: 10px 12px;
       border-bottom: 1px solid var(--line);
       background: #fbfcfe;
     }
 
-    .provider-title {
-      font-size: 14px;
-      font-weight: 750;
+    .provider-title,
+    .account-title {
+      font-size: 13px;
+      font-weight: 800;
       overflow-wrap: anywhere;
     }
 
@@ -114,67 +244,58 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      min-height: 22px;
-    }
-
-    .account-title {
-      min-width: 0;
-      font-size: 13px;
-      font-weight: 700;
-      overflow-wrap: anywhere;
     }
 
     .status {
       flex: 0 0 auto;
       font-size: 11px;
-      font-weight: 750;
+      font-weight: 800;
       text-transform: uppercase;
     }
 
-    .status.available { color: var(--ok); }
-    .status.limited { color: var(--bad); }
-    .status.unknown { color: var(--warn); }
+    .status.available { color: var(--green); }
+    .status.limited { color: var(--red); }
+    .status.unknown { color: var(--amber); }
 
     .windows {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 8px;
     }
 
     .window {
-      min-height: 118px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 9px;
       background: #fbfcfe;
+      padding: 9px;
+      min-height: 108px;
     }
 
     .window-title {
       display: flex;
-      align-items: center;
       justify-content: space-between;
       gap: 8px;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 750;
     }
 
     .percent {
-      font-size: 20px;
-      line-height: 1.2;
-      font-weight: 800;
       margin-top: 8px;
+      font-size: 20px;
+      line-height: 1.1;
+      font-weight: 850;
     }
 
     .bar {
       width: 100%;
       height: 8px;
+      margin: 8px 0;
       border-radius: 999px;
       background: var(--soft);
       overflow: hidden;
-      margin: 8px 0 9px;
     }
 
-    .bar > span {
+    .bar span {
       display: block;
       height: 100%;
       width: 0;
@@ -184,9 +305,9 @@
 
     .details {
       display: grid;
-      gap: 3px;
+      gap: 2px;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
       line-height: 1.35;
     }
 
@@ -199,29 +320,132 @@
       font-size: 13px;
     }
 
-    @media (max-width: 520px) {
-      .shell { padding: 12px; }
-      .topline,
+    .section {
+      padding: 16px 0 28px;
+    }
+
+    .section-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .info {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 14px;
+      min-height: 112px;
+    }
+
+    .info strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .info p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 920px) {
+      .hero,
+      .section-grid {
+        grid-template-columns: 1fr;
+      }
+      .intro {
+        min-height: auto;
+      }
+      h1 {
+        font-size: 34px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .shell {
+        width: min(100% - 20px, 1160px);
+      }
+      .nav,
+      .quota-head,
       .provider-head,
       .account-head {
         align-items: stretch;
         flex-direction: column;
       }
+      .nav-actions {
+        justify-content: flex-start;
+      }
+      h1 {
+        font-size: 28px;
+      }
       .pill,
-      .status { align-self: flex-start; }
+      .status {
+        align-self: flex-start;
+      }
     }
   </style>
 </head>
 <body>
-  <main class="shell">
-    <div class="topline">
-      <div>
-        <h1>Quota snapshot</h1>
-        <div class="meta" id="snapshot-meta">Loading snapshot...</div>
-      </div>
-      <div class="pill" id="snapshot-state">static</div>
+  <main class="home">
+    <div class="shell">
+      <nav class="nav" aria-label="Primary">
+        <a class="brand" href="/">
+          <span class="mark">LA</span>
+          <span>Lihan AI</span>
+        </a>
+        <div class="nav-actions">
+          <a class="button" href="/pricing">Models</a>
+          <a class="button" href="/dashboard">Console</a>
+          <a class="button primary" href="/login">Sign in</a>
+        </div>
+      </nav>
+
+      <section class="hero">
+        <div class="intro">
+          <div class="eyebrow">AI API Gateway</div>
+          <h1>One endpoint for GPT, Claude, Codex, and code agents.</h1>
+          <p class="lead">A private New API gateway for authorized users. Use one OpenAI-compatible base URL, inspect model availability, and keep quota status visible before long coding sessions.</p>
+          <div class="endpoint" aria-label="API endpoint">
+            <span><strong>base_url</strong> https://api.lihan3238.com/v1</span>
+            <span><strong>auth</strong> Authorization: Bearer sk-...</span>
+            <span><strong>note</strong> keep tokens private and report failed requests with model, time, and request id</span>
+          </div>
+        </div>
+
+        <section class="quota-panel" aria-labelledby="quota-title">
+          <div class="quota-head">
+            <div>
+              <h2 class="quota-title" id="quota-title">Provider quota</h2>
+              <div class="quota-meta" id="snapshot-meta">Loading static snapshot...</div>
+            </div>
+            <div class="pill" id="snapshot-state">static</div>
+          </div>
+          <div class="quota-body" id="quota-root">
+            <div class="empty">Loading quota snapshot...</div>
+          </div>
+        </section>
+      </section>
+
+      <section class="section" aria-label="Usage">
+        <div class="section-grid">
+          <article class="info">
+            <strong>OpenAI-compatible</strong>
+            <p>Point clients to `/v1`, then choose the model name exposed in the console.</p>
+          </article>
+          <article class="info">
+            <strong>Code-agent ready</strong>
+            <p>Works for Codex, Claude Code, and other tools that support OpenAI-compatible endpoints.</p>
+          </article>
+          <article class="info">
+            <strong>Static quota surface</strong>
+            <p>This public page reads sanitized files only. CPA management and provider credentials stay private.</p>
+          </article>
+        </div>
+      </section>
     </div>
-    <section id="quota-root" class="empty">Loading quota snapshot...</section>
   </main>
 
   <script>
@@ -288,11 +512,7 @@
     function normalizeSnapshot(data) {
       if (Array.isArray(data.providers)) return data;
       const accounts = Array.isArray(data.accounts) ? data.accounts : [];
-      return {
-        ...data,
-        schema_version: data.schema_version || 1,
-        providers: [{ provider: 'codex', title: 'Codex', accounts }]
-      };
+      return { ...data, providers: [{ provider: 'codex', title: 'Codex', accounts }] };
     }
 
     function windowList(account) {
@@ -319,7 +539,6 @@
         : windowData.remaining !== undefined ? `${windowData.remaining} remaining` : 'unknown';
       const width = percent === null ? 0 : percent;
       const status = windowData.status || (percent === null ? 'unknown' : 'tracked');
-
       return `
         <article class="window">
           <div class="window-title">
@@ -327,7 +546,7 @@
             <span class="status ${statusClass(status)}">${escapeHtml(status)}</span>
           </div>
           <div class="percent">${escapeHtml(formatPercent(windowData.used_percent))}</div>
-          <div class="bar" aria-hidden="true"><span style="width: ${width}%"></span></div>
+          <div class="bar" aria-hidden="true"><span style="width:${width}%"></span></div>
           <div class="details">
             ${detailLine('Used', usedLimit)}
             ${detailLine('Reset', formatTime(windowData.reset_at))}
@@ -359,14 +578,10 @@
       const accountCount = providers.reduce((sum, provider) => sum + (Array.isArray(provider.accounts) ? provider.accounts.length : 0), 0);
       metaEl.textContent = `Updated ${formatTime(snapshot.generated_at)}`;
       stateEl.textContent = `${providers.length} provider${providers.length === 1 ? '' : 's'} · ${accountCount} account${accountCount === 1 ? '' : 's'}`;
-
       if (!providers.length || !accountCount) {
-        rootEl.className = 'empty';
-        rootEl.textContent = 'No quota data in snapshot.';
+        rootEl.innerHTML = '<div class="empty">No quota data in snapshot.</div>';
         return;
       }
-
-      rootEl.className = 'providers';
       rootEl.innerHTML = providers.map((provider) => {
         const accounts = Array.isArray(provider.accounts) ? provider.accounts : [];
         return `
@@ -395,14 +610,11 @@
       throw lastError || new Error('snapshot unavailable');
     }
 
-    loadSnapshot()
-      .then(render)
-      .catch(() => {
-        metaEl.textContent = 'Snapshot unavailable';
-        stateEl.textContent = 'offline';
-        rootEl.className = 'empty';
-        rootEl.textContent = 'Quota snapshot has not been published yet.';
-      });
+    loadSnapshot().then(render).catch(() => {
+      metaEl.textContent = 'Snapshot unavailable';
+      stateEl.textContent = 'offline';
+      rootEl.innerHTML = '<div class="empty">Quota snapshot has not been published yet.</div>';
+    });
   </script>
 </body>
 </html>

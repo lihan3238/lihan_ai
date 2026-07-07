@@ -232,17 +232,24 @@ ops/cpa-ui.sh close
 
 使用 `ops/cpa-ui.sh ps` 确认容器状态和本机端口绑定。不要在临时 CPA UI 命令里使用 `--remove-orphans` 或 `--scale caddy=0`；这些参数属于全栈操作，不属于单服务 CPA UI 会话。
 
-## 公开 Codex 额度快照
+## 公开 CPA 额度快照
 
-New API 公网主页只能读取去敏后的静态快照。不要把 `HomePageContent`、Caddy、Cloudflare Tunnel 或任何公网浏览器路径指向 CPA management routes、`8317` 或上游 Codex 额度检查。
+New API 公网主页只能读取去敏后的静态快照。不要把 `HomePageContent`、Caddy、Cloudflare Tunnel 或任何公网浏览器路径指向 CPA management routes、`8317` 或上游额度检查。
 
 本仓库提供：
 
-- `ops/cpa-quota-snapshot.sh`：把 CPA/Codex 原始额度 JSON 转成公开 allowlist 快照。
-- `public/cpa-quota/widget.html`：渲染 Codex 五小时和周额度窗口。
+- `ops/cpa-quota-snapshot.sh`：把 CPA 原始额度 JSON 转成公开 allowlist 快照。
+- `public/cpa-quota/home.html`：完整 New API 自定义主页。
+- `public/cpa-quota/widget.html`：可复用的紧凑额度组件。
 - `cpa-quota-static`：`docker-compose.cpa.yml` 里的内网静态服务；它没有宿主机 `ports:`，只加入 `relay-internal`。
 
-快照文件位置：
+主快照文件位置：
+
+```text
+${CPA_PUBLIC_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/public}/quota-snapshot.json
+```
+
+为了向后兼容，默认发布脚本也会写：
 
 ```text
 ${CPA_PUBLIC_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/public}/codex-quota.json
@@ -270,12 +277,16 @@ CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
   bash ops/cpa-quota-snapshot.sh --label "Codex pool"
 ```
 
-脚本只写入 `plan_type`、状态、五小时和周额度百分比、limit、reset time 等 allowlist 字段。它不会把 email、account ID、API key、access token、refresh token 或原始 provider payload 复制进公开快照。
+脚本只写入 provider title、account label、`plan_type`、状态、额度窗口名、使用百分比、limit、remaining count 和 reset time 等 allowlist 字段。它支持 GPT/OpenAI、Claude、Codex、Antigravity、Gemini 等 CPA-backed providers 的通用 `providers[].accounts[].windows[]` 快照。它不会把 email、account ID、API key、access token、refresh token、cookie 或原始 provider payload 复制进公开快照。
+
+CPA 文件日志和 Docker logs 可以帮助审计是否发生过刷新或上游 API call，但它们不是安全的公开快照来源。管理 UI 的额度检查会通过 `/v0/management/api-call` 等受保护 management routes 执行；CPA request logging 明确跳过 `/v0/management` 和 `/management` 路径，而完整 request log 又可能包含敏感上游 payload。以后如果要做 `/management.html#/quota` 一键同步，应做成受保护的 CPA publisher/backend hook，写同一份去敏 `quota-snapshot.json`，不要抓日志，也不要暴露 management routes。
 
 直连源站 Caddy 部署会提供：
 
 ```text
+https://<DOMAIN>/cpa-quota/home.html
 https://<DOMAIN>/cpa-quota/widget.html
+https://<DOMAIN>/cpa-quota/data/quota-snapshot.json
 https://<DOMAIN>/cpa-quota/data/codex-quota.json
 ```
 
@@ -292,10 +303,10 @@ ingress:
 
 然后通过正常 compose overlay 或下一次 release promote 重建 `cloudflared` 和静态服务。
 
-New API 的 `HomePageContent` 填完整 widget URL，这样 New API 会把它作为 iframe 嵌入：
+New API 的 `HomePageContent` 填完整 homepage URL。不要把 iframe 或 Markdown wrapper 粘进 `HomePageContent`；New API 的 Markdown render path 可能 sandbox scripts，导致额度面板失效。
 
 ```text
-https://api.lihan3238.com/cpa-quota/widget.html
+https://api.lihan3238.com/cpa-quota/home.html
 ```
 
 之后公网用户刷新 New API 首页时，只会读取静态文件。只有你手动刷新 CPA 额度状态并重新运行 `ops/cpa-quota-snapshot.sh` 后，主页显示的额度才会更新。
