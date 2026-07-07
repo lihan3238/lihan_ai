@@ -53,7 +53,7 @@ with snapshot as (
     'channels', coalesce((select json_agg(row_to_json(t)) from (
       select id, name, type, status, \"group\", models, model_mapping, test_model, base_url,
         priority, weight, auto_ban, used_quota, balance,
-        case when key is null or key = '' then null else 'sha256:' || encode(sha256(key::bytea), 'hex') end as key_fingerprint,
+        case when key is null or key = '' then null else 'sha256:' || encode(sha256(convert_to(key, 'UTF8')), 'hex') end as key_fingerprint,
         length(coalesce(key,'')) as key_length
       from channels order by id
     ) t), '[]'::json),
@@ -68,7 +68,7 @@ with snapshot as (
     'tokens', coalesce((select json_agg(row_to_json(t)) from (
       select id, user_id, status, name, expired_time, remain_quota, unlimited_quota, model_limits_enabled, model_limits,
         used_quota, \"group\", cross_group_retry,
-        case when key is null or key = '' then null else 'sha256:' || encode(sha256(key::bytea), 'hex') end as key_fingerprint,
+        case when key is null or key = '' then null else 'sha256:' || encode(sha256(convert_to(key, 'UTF8')), 'hex') end as key_fingerprint,
         length(coalesce(key,'')) as key_length
       from tokens where deleted_at is null order by id
     ) t), '[]'::json),
@@ -76,7 +76,7 @@ with snapshot as (
       select key as option_key,
         true as value_redacted,
         length(coalesce(value,'')) as value_length,
-        case when value is null or value = '' then null else 'sha256:' || encode(sha256(value::bytea), 'hex') end as value_fingerprint
+        case when value is null or value = '' then null else 'sha256:' || encode(sha256(convert_to(value, 'UTF8')), 'hex') end as value_fingerprint
       from options order by key
     ) t), '[]'::json),
     'subscription_plans', coalesce((select json_agg(row_to_json(t)) from (
