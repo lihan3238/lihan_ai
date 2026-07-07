@@ -18,6 +18,7 @@ Environment:
   CPA_QUOTA_SOURCE_URL     Optional URL to fetch raw quota JSON from.
   CPA_QUOTA_SOURCE_HEADER  Optional single curl header for the source URL.
   CPA_QUOTA_NOW            Override generated_at, used by tests.
+  CPA_QUOTA_QUERIED_AT     Override queried_at, used when publishing saved raw JSON.
 USAGE
 }
 
@@ -126,8 +127,9 @@ if [ -n "$legacy_output" ]; then
 fi
 
 generated_at="${CPA_QUOTA_NOW:-}"
+queried_at="${CPA_QUOTA_QUERIED_AT:-$generated_at}"
 
-python3 - "$input" "$tmp_output" "$label" "$generated_at" "$tmp_legacy" <<'PY'
+python3 - "$input" "$tmp_output" "$label" "$generated_at" "$queried_at" "$tmp_legacy" <<'PY'
 import json
 import math
 import pathlib
@@ -139,7 +141,8 @@ input_path = pathlib.Path(sys.argv[1])
 output_path = pathlib.Path(sys.argv[2])
 base_label = sys.argv[3] or "Codex"
 generated_at = sys.argv[4] or datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-legacy_path = pathlib.Path(sys.argv[5]) if len(sys.argv) > 5 and sys.argv[5] else None
+queried_at = sys.argv[5] or generated_at
+legacy_path = pathlib.Path(sys.argv[6]) if len(sys.argv) > 6 and sys.argv[6] else None
 
 PROVIDER_TITLES = {
     "codex": "Codex",
@@ -251,6 +254,30 @@ def iso_time(value):
             return text
         return text
     return None
+
+
+def unwrap_api_call_payload(payload):
+    if not isinstance(payload, dict):
+        return payload
+    if "body" not in payload or ("status_code" not in payload and "statusCode" not in payload):
+        return payload
+
+    status_code = as_int(first_path(payload, ["status_code", "statusCode"]))
+    if status_code is not None and not 200 <= status_code <= 299:
+        raise SystemExit(f"CPA api-call returned upstream HTTP {status_code}")
+
+    body = payload.get("body")
+    if isinstance(body, str):
+        text = body.strip()
+        if not text:
+            raise SystemExit("CPA api-call body is empty")
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise SystemExit(f"CPA api-call body is not JSON: {exc.msg}") from exc
+    if isinstance(body, (dict, list)):
+        return body
+    raise SystemExit("CPA api-call body must be a JSON string or object")
 
 
 def normalize_window(raw):
@@ -481,12 +508,13 @@ def build_snapshot(raw_payload):
     return {
         "schema_version": 2,
         "generated_at": generated_at,
+        "queried_at": queried_at,
         "source": "cpa",
         "providers": providers,
     }
 
 
-raw_payload = parse_json(input_path)
+raw_payload = unwrap_api_call_payload(parse_json(input_path))
 snapshot = build_snapshot(raw_payload)
 
 with output_path.open("w", encoding="utf-8") as handle:
@@ -513,6 +541,7 @@ if legacy_path:
     legacy = {
         "schema_version": 1,
         "generated_at": generated_at,
+        "queried_at": queried_at,
         "source": "cpa",
         "accounts": codex_accounts,
     }

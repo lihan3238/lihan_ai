@@ -365,7 +365,12 @@
       const snapshot = normalizeSnapshot(data);
       const providers = Array.isArray(snapshot.providers) ? snapshot.providers : [];
       const accountCount = providers.reduce((sum, provider) => sum + (Array.isArray(provider.accounts) ? provider.accounts.length : 0), 0);
-      metaEl.textContent = `Updated ${formatTime(snapshot.generated_at)}`;
+      const queriedAt = snapshot.queried_at || snapshot.generated_at;
+      const publishedAt = snapshot.generated_at;
+      metaEl.textContent = `Last queried ${formatTime(queriedAt)}`;
+      if (publishedAt && publishedAt !== queriedAt) {
+        metaEl.textContent += ` · Published ${formatTime(publishedAt)}`;
+      }
       stateEl.textContent = `${providers.length} provider${providers.length === 1 ? '' : 's'} · ${accountCount} account${accountCount === 1 ? '' : 's'}`;
 
       if (!providers.length || !accountCount) {

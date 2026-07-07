@@ -101,6 +101,7 @@ dumped = json.dumps(data, sort_keys=True)
 
 assert data["schema_version"] == 2
 assert data["generated_at"] == "2026-07-07T00:00:00Z"
+assert data["queried_at"] == "2026-07-07T00:00:00Z"
 assert data["source"] == "cpa"
 assert len(data["providers"]) == 1
 
@@ -140,6 +141,46 @@ CPA_PUBLIC_PATH="$public_dir" CPA_QUOTA_NOW=2026-07-07T00:00:00Z \
 
 [ -f "$public_dir/quota-snapshot.json" ] || fail "default output should use CPA_PUBLIC_PATH/quota-snapshot.json"
 [ -f "$public_dir/codex-quota.json" ] || fail "default output should keep legacy CPA_PUBLIC_PATH/codex-quota.json"
+
+api_call="$tmp_dir/api-call-quota.json"
+api_call_out="$tmp_dir/api-call-quota-snapshot.json"
+cat > "$api_call" <<'JSON'
+{
+  "status_code": 200,
+  "header": {
+    "Set-Cookie": ["session=secret-should-not-leak"]
+  },
+  "body": "{\"provider\":\"openai\",\"plan_type\":\"plus\",\"quota\":{\"five_hour\":{\"used_percent\":12,\"remaining\":88,\"reset_after_seconds\":900},\"weekly_limit\":{\"used_percent\":34,\"remaining\":66,\"resets_in_seconds\":7200}}}",
+  "access_token": "api-call-token-should-not-leak"
+}
+JSON
+
+CPA_QUOTA_NOW=2026-07-07T00:05:00Z \
+  bash "$ROOT_DIR/ops/cpa-quota-snapshot.sh" \
+    --input "$api_call" \
+    --output "$api_call_out" \
+    --label "GPT pool" >/dev/null
+
+python3 - "$api_call_out" <<'PY'
+import json
+import pathlib
+import sys
+
+data = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+dumped = json.dumps(data, sort_keys=True)
+assert data["queried_at"] == "2026-07-07T00:05:00Z"
+assert data["providers"][0]["provider"] == "openai"
+assert data["providers"][0]["title"] == "GPT / OpenAI"
+account = data["providers"][0]["accounts"][0]
+assert account["label"] == "GPT pool"
+assert account["plan_type"] == "plus"
+assert account["windows"][0]["key"] == "five_hour"
+assert account["windows"][0]["used_percent"] == 12
+assert account["windows"][1]["key"] == "weekly"
+assert account["windows"][1]["used_percent"] == 34
+for secret in ("session=secret-should-not-leak", "api-call-token-should-not-leak"):
+    assert secret not in dumped
+PY
 
 multi="$tmp_dir/multi-quota.json"
 multi_out="$tmp_dir/multi-quota-snapshot.json"
@@ -231,6 +272,8 @@ assert_contains "public/cpa-quota/home.html" "quota-snapshot.json"
 assert_contains "public/cpa-quota/home.html" "Lihan AI"
 assert_contains "public/cpa-quota/home.html" "providers"
 assert_contains "public/cpa-quota/home.html" "quota-only"
+assert_contains "public/cpa-quota/home.html" "Last queried"
+assert_contains "public/cpa-quota/home.html" "queried_at"
 assert_not_contains "public/cpa-quota/home.html" "nav-actions"
 assert_not_contains "public/cpa-quota/home.html" "Sign in"
 assert_not_contains "public/cpa-quota/home.html" "One endpoint"
@@ -240,5 +283,7 @@ assert_not_contains "public/cpa-quota/home.html" "8317"
 assert_contains "public/cpa-quota/widget.html" "quota-snapshot.json"
 assert_contains "public/cpa-quota/widget.html" "codex-quota.json"
 assert_contains "public/cpa-quota/widget.html" "providers"
+assert_contains "public/cpa-quota/widget.html" "Last queried"
+assert_contains "public/cpa-quota/widget.html" "queried_at"
 
 echo "cpa quota snapshot tests passed"

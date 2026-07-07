@@ -255,7 +255,36 @@ For backward compatibility, the default publisher also writes:
 ${CPA_PUBLIC_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/public}/codex-quota.json
 ```
 
-After you manually refresh quota state in the CPA management UI, publish a new snapshot from the origin server. If you saved the raw quota JSON to a temporary file:
+After you manually refresh quota state in the CPA management UI, publish a new snapshot from the origin server. The snapshot includes `queried_at`; the public homepage renders it as `Last queried` so stale quota data is obvious.
+
+The simplest direct flow is to let CPA call the upstream quota API through the protected management API, then pipe that result into the sanitizer. This does not change the CPA image and does not expose management routes publicly:
+
+```bash
+cd /opt/lihan_ai_deploy/current
+
+read -s CPA_MGMT_KEY
+AUTH_INDEX="<auth_index from /v0/management/auth-files>"
+QUOTA_URL="https://chatgpt.com/backend-api/wham/usage"
+LABEL="Codex pool"
+
+curl -fsS -X POST http://127.0.0.1:8317/v0/management/api-call \
+  -H "Authorization: Bearer $CPA_MGMT_KEY" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -nc --arg auth "$AUTH_INDEX" --arg url "$QUOTA_URL" '{
+    auth_index: $auth,
+    method: "GET",
+    url: $url,
+    header: {
+      "Authorization": "Bearer $TOKEN$"
+    }
+  }')" \
+| CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
+  bash ops/cpa-quota-snapshot.sh --label "$LABEL"
+```
+
+For another GPT/OpenAI, Claude, Gemini, or other CPA-backed credential, keep the same pattern and change `AUTH_INDEX`, `QUOTA_URL`, request headers, and `LABEL` to match that provider/account. The sanitizer understands CPA `api-call` envelopes such as `{status_code, header, body}` and publishes only the parsed JSON `body`.
+
+If you saved the raw quota JSON to a temporary file:
 
 ```bash
 cd /opt/lihan_ai_deploy/current
@@ -264,17 +293,6 @@ CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
   bash ops/cpa-quota-snapshot.sh \
     --input /tmp/cpa-codex-quota.json \
     --label "Codex pool"
-```
-
-If you prefer fetching from the internal CPA listener, use the exact quota endpoint and management header your deployed CPA UI uses. Keep the secret in the shell environment or a local secret manager, not in git:
-
-```bash
-cd /opt/lihan_ai_deploy/current
-
-CPA_QUOTA_SOURCE_URL="http://127.0.0.1:8317/quota" \
-CPA_QUOTA_SOURCE_HEADER="<management-header-name>: <secret>" \
-CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
-  bash ops/cpa-quota-snapshot.sh --label "Codex pool"
 ```
 
 The script writes only allowlisted fields such as provider title, account label, `plan_type`, status, quota window names, usage percentages, limits, remaining counts, and reset times. It supports generic `providers[].accounts[].windows[]` snapshots for GPT/OpenAI, Claude, Codex, Antigravity, Gemini, and similar CPA-backed providers. It does not copy emails, account IDs, API keys, access tokens, refresh tokens, cookies, or raw provider payloads into the public snapshot.

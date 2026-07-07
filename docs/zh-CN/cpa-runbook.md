@@ -255,7 +255,36 @@ ${CPA_PUBLIC_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/public}/quota-snapshot.j
 ${CPA_PUBLIC_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/public}/codex-quota.json
 ```
 
-你在 CPA 管理 UI 手动刷新额度后，再从 origin 服务器发布新快照。如果已经把原始额度 JSON 存成临时文件：
+你在 CPA 管理 UI 手动刷新额度后，再从 origin 服务器发布新快照。快照会包含 `queried_at`；公网主页会显示成 `Last queried`，这样可以直接判断额度信息是否过期。
+
+最直接的流程是让 CPA 通过受保护的 management API 调上游额度接口，然后把返回结果直接管道给去敏脚本。这个方式不改 CPA 镜像，也不会把 management routes 暴露到公网：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+
+read -s CPA_MGMT_KEY
+AUTH_INDEX="<auth_index from /v0/management/auth-files>"
+QUOTA_URL="https://chatgpt.com/backend-api/wham/usage"
+LABEL="Codex pool"
+
+curl -fsS -X POST http://127.0.0.1:8317/v0/management/api-call \
+  -H "Authorization: Bearer $CPA_MGMT_KEY" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -nc --arg auth "$AUTH_INDEX" --arg url "$QUOTA_URL" '{
+    auth_index: $auth,
+    method: "GET",
+    url: $url,
+    header: {
+      "Authorization": "Bearer $TOKEN$"
+    }
+  }')" \
+| CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
+  bash ops/cpa-quota-snapshot.sh --label "$LABEL"
+```
+
+换成其他 GPT/OpenAI、Claude、Gemini 或其他 CPA-backed credential 时，模式不变，只调整 `AUTH_INDEX`、`QUOTA_URL`、请求 headers 和 `LABEL`。去敏脚本能识别 CPA `api-call` 的 `{status_code, header, body}` 外壳，只会解析并发布其中的 JSON `body`。
+
+如果已经把原始额度 JSON 存成临时文件：
 
 ```bash
 cd /opt/lihan_ai_deploy/current
@@ -264,17 +293,6 @@ CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
   bash ops/cpa-quota-snapshot.sh \
     --input /tmp/cpa-codex-quota.json \
     --label "Codex pool"
-```
-
-如果要从 CPA 内网监听直接抓取，使用你当前部署的 CPA UI 实际调用的额度 endpoint 和 management header。secret 只放在 shell 环境或本地 secret manager，不要进 git：
-
-```bash
-cd /opt/lihan_ai_deploy/current
-
-CPA_QUOTA_SOURCE_URL="http://127.0.0.1:8317/quota" \
-CPA_QUOTA_SOURCE_HEADER="<management-header-name>: <secret>" \
-CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
-  bash ops/cpa-quota-snapshot.sh --label "Codex pool"
 ```
 
 脚本只写入 provider title、account label、`plan_type`、状态、额度窗口名、使用百分比、limit、remaining count 和 reset time 等 allowlist 字段。它支持 GPT/OpenAI、Claude、Codex、Antigravity、Gemini 等 CPA-backed providers 的通用 `providers[].accounts[].windows[]` 快照。它不会把 email、account ID、API key、access token、refresh token、cookie 或原始 provider payload 复制进公开快照。
