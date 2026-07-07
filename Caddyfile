@@ -12,5 +12,12 @@
 		-Server
 	}
 
-	reverse_proxy new-api:3000
+	handle_path /cpa-quota/* {
+		header Cache-Control "public, max-age=30"
+		reverse_proxy cpa-quota-static:8080
+	}
+
+	handle {
+		reverse_proxy new-api:3000
+	}
 }

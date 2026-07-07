@@ -87,12 +87,14 @@ tunnel: <tunnel-uuid>
 credentials-file: /etc/cloudflared/tunnel.json
 
 ingress:
+  - path: /cpa-quota/*
+    service: http://cpa-quota-static:8080
   - hostname: origin.lihan3238.top
     service: http://new-api:3000
   - service: http://new-api:3000
 ```
 
-最后一条 catch-all ingress 是有意保留的。Cloudflare for SaaS 可能用 `origin.lihan3238.top` 做 fallback 路由，同时把 `Host: api.lihan3238.com` 保留下来；未匹配 hostname 的请求也应该进入 New API。
+除非你发布 CPA 额度 widget，否则 `/cpa-quota/*` 规则是可选的。启用时必须放在 New API catch-all 前面，因为 Cloudflare for SaaS 可能用 `origin.lihan3238.top` 做 fallback 路由，同时把 `Host: api.lihan3238.com` 保留下来。最后一条 catch-all ingress 是有意保留的，未匹配 hostname 的请求也应该进入 New API。
 
 锁定权限：
 
