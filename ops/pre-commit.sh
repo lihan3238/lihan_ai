@@ -11,7 +11,7 @@ run() {
 cd "$ROOT_DIR"
 
 run git diff --check
-run bash -n ops/*.sh tests/*.test.sh
+run bash -n ops/*.sh scripts/*.sh tests/*.test.sh
 run bash tests/github-actions-ci.test.sh
 run bash tests/ci-cd-pipeline.test.sh
 run bash tests/browser-e2e-scaffold.test.sh

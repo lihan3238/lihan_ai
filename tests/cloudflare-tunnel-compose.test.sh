@@ -44,9 +44,13 @@ assert_contains "ops/check-production-runtime.sh" "external_status_ok"
 assert_contains "docs/cloudflare-saas-runbook.md" "Cloudflare Tunnel"
 assert_contains "docs/cloudflare-saas-runbook.md" "cloudflared"
 assert_contains "docs/cloudflare-saas-runbook.md" "--scale caddy=0"
+assert_contains "docs/cloudflare-saas-runbook.md" "cpa-quota-static"
+assert_contains "docs/cloudflare-saas-runbook.md" "/cpa-quota/*"
 assert_contains "docs/zh-CN/cloudflare-saas-runbook.md" "Cloudflare Tunnel"
 assert_contains "docs/zh-CN/cloudflare-saas-runbook.md" "cloudflared"
 assert_contains "docs/zh-CN/cloudflare-saas-runbook.md" "--scale caddy=0"
+assert_contains "docs/zh-CN/cloudflare-saas-runbook.md" "cpa-quota-static"
+assert_contains "docs/zh-CN/cloudflare-saas-runbook.md" "/cpa-quota/*"
 
 if command -v docker >/dev/null 2>&1; then
   cd "$ROOT_DIR"

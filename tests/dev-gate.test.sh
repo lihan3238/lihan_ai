@@ -38,28 +38,6 @@ exit 0
 BASH
 chmod +x "$fake_bin/bash"
 
-cat > "$fake_bin/powershell" <<'POWERSHELL'
-#!/usr/bin/env sh
-printf 'powershell %s\n' "$*" >> "$DEV_GATE_TEST_LOG"
-case "$*" in
-  *"verify-repo.ps1 -SkipDocker"*) exit 0 ;;
-esac
-echo "unexpected powershell args: $*" >&2
-exit 93
-POWERSHELL
-chmod +x "$fake_bin/powershell"
-
-cat > "$fake_bin/pwsh" <<'PWSH'
-#!/usr/bin/env sh
-printf 'pwsh %s\n' "$*" >> "$DEV_GATE_TEST_LOG"
-case "$*" in
-  *"verify-repo.ps1 -SkipDocker"*) exit 0 ;;
-esac
-echo "unexpected pwsh args: $*" >&2
-exit 93
-PWSH
-chmod +x "$fake_bin/pwsh"
-
 cat > "$fake_bin/docker" <<'DOCKER'
 #!/usr/bin/env sh
 printf 'docker %s\n' "$*" >> "$DEV_GATE_TEST_LOG"
@@ -87,9 +65,9 @@ chmod +x "$fake_bin/git"
 : > "$log_file"
 PATH="$fake_bin:$PATH" DEV_GATE_TEST_LOG="$log_file" "$SCRIPT" "$feature_dir"
 
-grep -Eq "bash -n .*ops/.*\\.sh.*tests/.*\\.test\\.sh" "$log_file" || fail "dev gate did not run shell syntax check"
+grep -Eq "bash -n .*ops/.*\\.sh.*scripts/.*\\.sh.*tests/.*\\.test\\.sh" "$log_file" || fail "dev gate did not run shell syntax check"
 grep -q "bash tests/.*\\.test\\.sh" "$log_file" || fail "dev gate did not run shell tests"
-grep -q "powershell .*verify-repo.ps1 -SkipDocker" "$log_file" || fail "dev gate did not run repo verifier"
+grep -q "bash scripts/verify-repo.sh --skip-docker" "$log_file" || fail "dev gate did not run shell repo verifier"
 grep -q "git diff --check" "$log_file" || fail "dev gate did not run whitespace check"
 grep -q "docker compose --env-file .env.production.example" "$log_file" || fail "dev gate did not render production compose"
 grep -q "bash ops/feature-completion-check.sh $feature_dir" "$log_file" || fail "dev gate did not run feature completion check"
@@ -97,13 +75,15 @@ grep -q "bash ops/feature-completion-check.sh $feature_dir" "$log_file" || fail 
 if grep -Eq 'NEW_API_TEST_TOKEN|CONFIG_SNAPSHOT_GPG_RECIPIENT|^bash ops/production-gate\.sh($| )|^bash ops/deploy-release\.sh($| )|\.env.production([^.]|$)' "$log_file"; then
   fail "dev gate invoked secret/live-production path: $(cat "$log_file")"
 fi
+if grep -Eq 'powershell|pwsh|verify-repo\.ps1' "$log_file"; then
+  fail "dev gate should not invoke PowerShell verifier: $(cat "$log_file")"
+fi
 
 : > "$log_file"
-rm -f "$fake_bin/powershell"
 PATH="$fake_bin:$PATH" DEV_GATE_TEST_LOG="$log_file" "$SCRIPT"
 if grep -q "^bash ops/feature-completion-check.sh" "$log_file"; then
   fail "dev gate should only run feature completion check when feature dir is provided"
 fi
-grep -q "pwsh .*verify-repo.ps1 -SkipDocker" "$log_file" || fail "dev gate did not fall back to pwsh"
+grep -q "bash scripts/verify-repo.sh --skip-docker" "$log_file" || fail "dev gate did not run shell repo verifier without feature dir"
 
 echo "dev gate tests passed"

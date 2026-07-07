@@ -451,7 +451,7 @@ release_id_from_input() {
 }
 
 ensure_dirs() {
-  mkdir -p "$DEPLOY_ROOT" "$releases_dir" "$shared_dir/data/cpa" "$shared_dir/cloudflared" "$shared_dir/logs" "$shared_dir/backups/postgres" "$shared_dir/snapshots" "$state_dir"
+  mkdir -p "$DEPLOY_ROOT" "$releases_dir" "$shared_dir/data/cpa/public" "$shared_dir/cloudflared" "$shared_dir/logs" "$shared_dir/backups/postgres" "$shared_dir/snapshots" "$state_dir"
 }
 
 ensure_repo() {

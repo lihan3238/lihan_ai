@@ -16,7 +16,7 @@ This repository uses a simple GitHub Flow style policy: `main = production`. Pro
 
 ## GitHub Actions PR CI
 
-Pull requests targeting `main` run the root GitHub Actions CI workflow. This is a fast, no-secret gate for repository hygiene: shell syntax, shell tests, Compose config rendering, whitespace checks, and `scripts/verify-repo.ps1 -SkipDocker`.
+Pull requests targeting `main` run the root GitHub Actions CI workflow. This is a fast, no-secret gate for repository hygiene: shell syntax, shell tests, Compose config rendering, whitespace checks, and `bash scripts/verify-repo.sh --skip-docker`.
 
 Default CI must not connect to production, read `.env.production`, require `NEW_API_TEST_TOKEN`, run `ops/production-gate.sh`, or perform backup/restore operations against a live database. Keep live billing E2E, production backups, restore drills, and release promotion checks in the local production gate and release deployment flow.
 
