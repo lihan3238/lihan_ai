@@ -203,7 +203,6 @@ done <<'EOF'
 docs
 docs/zh-CN
 ops
-public
 vendor/new-api
 vendor/cli-proxy-api
 .specify
