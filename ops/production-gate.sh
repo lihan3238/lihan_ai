@@ -42,7 +42,6 @@ run bash -n ops/check-production-runtime.sh
 run bash -n ops/sync-env-template.sh
 run bash -n ops/sync-cpa-upstream-assets.sh
 run bash -n ops/cpa-ui.sh
-run bash -n ops/cpa-quota-snapshot.sh
 run bash -n ops/pre-commit.sh
 run bash -n ops/local-new-api-e2e.sh
 run bash -n ops/bootstrap-server.sh
@@ -70,7 +69,6 @@ run bash tests/release-deploy.test.sh
 run bash tests/local-new-api-build.test.sh
 run bash tests/cpa-compose.test.sh
 run bash tests/cpa-ui-script.test.sh
-run bash tests/cpa-quota-snapshot.test.sh
 run bash tests/docs-i18n.test.sh
 run bash tests/ci-cd-pipeline.test.sh
 run bash tests/local-new-api-e2e.test.sh

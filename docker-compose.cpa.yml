@@ -16,20 +16,3 @@ services:
       options:
         max-size: "20m"
         max-file: "5"
-
-  cpa-quota-static:
-    image: caddy:2-alpine
-    container_name: relay-cpa-quota-static
-    restart: unless-stopped
-    command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
-    volumes:
-      - ./Caddyfile.cpa-quota:/etc/caddy/Caddyfile:ro
-      - ./public/cpa-quota:/srv/cpa-quota:ro
-      - ${CPA_PUBLIC_PATH:-/opt/lihan_ai/data/cpa/public}:/srv/cpa-quota/data:ro
-    networks:
-      - relay-internal
-    logging:
-      driver: json-file
-      options:
-        max-size: "20m"
-        max-file: "5"

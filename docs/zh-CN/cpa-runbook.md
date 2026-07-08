@@ -83,7 +83,6 @@ chmod 600 /opt/lihan_ai_deploy/shared/data/cpa/config.yaml
 ```env
 CPA_CONFIG_PATH=/opt/lihan_ai_deploy/shared/data/cpa/config.yaml
 CPA_AUTH_PATH=/opt/lihan_ai_deploy/shared/data/cpa
-CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public
 CPA_LOG_PATH=/opt/lihan_ai_deploy/shared/logs/cpa
 ```
 
@@ -231,74 +230,6 @@ ops/cpa-ui.sh close
 这样 CPA 会回到正常运行时使用的只读 config mount。
 
 使用 `ops/cpa-ui.sh ps` 确认容器状态和本机端口绑定。不要在临时 CPA UI 命令里使用 `--remove-orphans` 或 `--scale caddy=0`；这些参数属于全栈操作，不属于单服务 CPA UI 会话。
-
-## 公开 Codex 额度快照
-
-New API 公网主页只能读取去敏后的静态快照。不要把 `HomePageContent`、Caddy、Cloudflare Tunnel 或任何公网浏览器路径指向 CPA management routes、`8317` 或上游 Codex 额度检查。
-
-本仓库提供：
-
-- `ops/cpa-quota-snapshot.sh`：把 CPA/Codex 原始额度 JSON 转成公开 allowlist 快照。
-- `public/cpa-quota/widget.html`：渲染 Codex 五小时和周额度窗口。
-- `cpa-quota-static`：`docker-compose.cpa.yml` 里的内网静态服务；它没有宿主机 `ports:`，只加入 `relay-internal`。
-
-快照文件位置：
-
-```text
-${CPA_PUBLIC_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/public}/codex-quota.json
-```
-
-你在 CPA 管理 UI 手动刷新额度后，再从 origin 服务器发布新快照。如果已经把原始额度 JSON 存成临时文件：
-
-```bash
-cd /opt/lihan_ai_deploy/current
-
-CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
-  bash ops/cpa-quota-snapshot.sh \
-    --input /tmp/cpa-codex-quota.json \
-    --label "Codex pool"
-```
-
-如果要从 CPA 内网监听直接抓取，使用你当前部署的 CPA UI 实际调用的额度 endpoint 和 management header。secret 只放在 shell 环境或本地 secret manager，不要进 git：
-
-```bash
-cd /opt/lihan_ai_deploy/current
-
-CPA_QUOTA_SOURCE_URL="http://127.0.0.1:8317/quota" \
-CPA_QUOTA_SOURCE_HEADER="<management-header-name>: <secret>" \
-CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
-  bash ops/cpa-quota-snapshot.sh --label "Codex pool"
-```
-
-脚本只写入 `plan_type`、状态、五小时和周额度百分比、limit、reset time 等 allowlist 字段。它不会把 email、account ID、API key、access token、refresh token 或原始 provider payload 复制进公开快照。
-
-直连源站 Caddy 部署会提供：
-
-```text
-https://<DOMAIN>/cpa-quota/widget.html
-https://<DOMAIN>/cpa-quota/data/codex-quota.json
-```
-
-Cloudflare Tunnel 部署继续保持 `caddy=0`，但要在 `/opt/lihan_ai_deploy/shared/cloudflared/config.yml` 里把这个 path 放到 New API catch-all 前面，并指向内网静态服务：
-
-```yaml
-ingress:
-  - path: /cpa-quota/*
-    service: http://cpa-quota-static:8080
-  - hostname: origin.lihan3238.top
-    service: http://new-api:3000
-  - service: http://new-api:3000
-```
-
-然后通过正常 compose overlay 或下一次 release promote 重建 `cloudflared` 和静态服务。
-
-New API 的 `HomePageContent` 填完整 widget URL，这样 New API 会把它作为 iframe 嵌入：
-
-```text
-https://api.lihan3238.com/cpa-quota/widget.html
-```
-
-之后公网用户刷新 New API 首页时，只会读取静态文件。只有你手动刷新 CPA 额度状态并重新运行 `ops/cpa-quota-snapshot.sh` 后，主页显示的额度才会更新。
 
 ## 从 New API 验证
 

@@ -71,7 +71,6 @@ docker-compose.cloudflare-tunnel.yml
 .env.production.example
 .gitmodules
 Caddyfile
-Caddyfile.cpa-quota
 Caddyfile.edge.example
 .gitignore
 AGENTS.md
@@ -151,7 +150,6 @@ ops/check-production-runtime.sh
 ops/sync-env-template.sh
 ops/sync-cpa-upstream-assets.sh
 ops/cpa-ui.sh
-ops/cpa-quota-snapshot.sh
 ops/check-new-api-admin-frontend.sh
 ops/local-new-api-e2e.sh
 ops/pre-commit.sh
@@ -177,7 +175,6 @@ tests/prod-deploy-hardening.test.sh
 tests/local-new-api-build.test.sh
 tests/cpa-compose.test.sh
 tests/cpa-ui-script.test.sh
-tests/cpa-quota-snapshot.test.sh
 tests/docs-i18n.test.sh
 tests/git-branching-policy.test.sh
 tests/release-deploy.test.sh
@@ -197,7 +194,6 @@ e2e/new-api-admin-users.spec.ts
 vendor/new-api/README.md
 vendor/cli-proxy-api/docker-compose.yml
 vendor/cli-proxy-api/config.example.yaml
-public/cpa-quota/widget.html
 EOF
 
 while IFS= read -r path; do
@@ -208,7 +204,6 @@ docs
 docs/zh-CN
 ops
 public
-public/cpa-quota
 vendor/new-api
 vendor/cli-proxy-api
 .specify
@@ -235,6 +230,10 @@ tests/ops-dashboard.test.sh
 e2e/kuma-status.spec.ts
 config/ops-profiles/glm-standard.example.json
 config/ops-profiles/glm-standard-health.example.json
+Caddyfile.cpa-quota
+ops/cpa-quota-snapshot.sh
+tests/cpa-quota-snapshot.test.sh
+public/cpa-quota/widget.html
 EOF
 
 assert_contains ".gitmodules" "lihan3238/new-api" "New API submodule"
@@ -249,15 +248,15 @@ assert_contains "docker-compose.prod.yml" "max-size" "production log rotation"
 assert_contains "docker-compose.prod.yml" "command:[[:space:]]*--log-dir=" "production disables duplicate New API file logs"
 assert_contains "docker-compose.edge.yml" "relay-edge-caddy" "edge Caddy service"
 assert_contains "docker-compose.cpa.yml" "relay-cpa" "CPA internal service"
-assert_contains "docker-compose.cpa.yml" "cpa-quota-static" "CPA quota static service"
-assert_contains "docker-compose.cpa.yml" "CPA_PUBLIC_PATH" "CPA public quota snapshot path"
+assert_not_contains "docker-compose.cpa.yml" "cpa-quota-static" "removed CPA quota static service"
+assert_not_contains "docker-compose.cpa.yml" "CPA_PUBLIC_PATH" "removed CPA public quota snapshot path"
 assert_contains "docker-compose.cpa.yml" "max-size:[[:space:]]*\"20m\"" "CPA Docker log max-size"
 assert_contains "docker-compose.cpa.yml" "max-file:[[:space:]]*\"5\"" "CPA Docker log max-file"
 assert_contains "docker-compose.cpa.ui.yml" "127.0.0.1" "CPA UI localhost bind"
 assert_contains "docker-compose.cloudflare-tunnel.yml" "relay-cloudflared" "Cloudflare Tunnel service"
 assert_contains "docker-compose.cloudflare-tunnel.yml" "cloudflare/cloudflared" "official cloudflared image"
-assert_contains "Caddyfile" "handle_path /cpa-quota/\\*" "public CPA quota route"
-assert_contains "Caddyfile.cpa-quota" "handle_path /cpa-quota/\\*" "CPA quota static route"
+assert_not_contains "Caddyfile" "cpa-quota-static" "removed public CPA quota upstream"
+assert_not_contains "Caddyfile" "/cpa-quota" "removed public CPA quota route"
 assert_contains "Caddyfile.edge.example" "ORIGIN_UPSTREAM" "edge origin upstream"
 
 assert_contains ".env.example" "CHANGE_ME" "placeholder secrets"
@@ -270,7 +269,7 @@ assert_contains ".env.production.example" "DEPLOY_ENV=production" "production en
 assert_contains ".env.production.example" "DEPLOY_ROOT=/opt/lihan_ai_deploy" "release deploy root"
 assert_contains ".env.production.example" "DEPLOY_COMPOSE_PROJECT=lihan_ai" "fixed release compose project"
 assert_contains ".env.production.example" "DEPLOY_INCLUDE_CPA=0" "optional CPA toggle"
-assert_contains ".env.production.example" "CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public" "CPA public quota snapshot path"
+assert_not_contains ".env.production.example" "CPA_PUBLIC_PATH" "removed CPA public quota snapshot path"
 assert_contains ".env.production.example" "DEPLOY_INCLUDE_CLOUDFLARE_TUNNEL=0" "optional tunnel toggle"
 assert_contains ".env.production.example" "DEPLOY_INCLUDE_LOCAL_NEW_API_BUILD=0" "optional local build toggle"
 assert_not_contains ".env.production.example" "RESTIC_" "removed restic variables"
@@ -292,15 +291,18 @@ assert_contains "docs/development-workflow.md" "scripts/verify-repo\\.sh --skip-
 assert_not_contains "docs/development-workflow.md" "verify-repo\\.ps1" "old PowerShell verifier docs"
 assert_contains "docs/cloudflare-saas-runbook.md" "api.lihan3238.com" "Cloudflare SaaS public hostname"
 assert_contains "docs/cloudflare-saas-runbook.md" "origin.lihan3238.top" "Cloudflare SaaS fallback origin"
-assert_contains "docs/cloudflare-saas-runbook.md" "cpa-quota-static" "Cloudflare Tunnel CPA quota static route"
+assert_not_contains "docs/cloudflare-saas-runbook.md" "cpa-quota-static" "removed Cloudflare Tunnel CPA quota static route"
+assert_not_contains "docs/cloudflare-saas-runbook.md" "/cpa-quota" "removed Cloudflare Tunnel CPA quota path"
 assert_contains "docs/edge-proxy-runbook.md" "ORIGIN_UPSTREAM" "edge upstream variable"
 assert_contains "docs/cpa-runbook.md" "ssh -L 8317" "CPA SSH tunnel"
 assert_contains "docs/cpa-runbook.md" "logs-max-total-size-mb" "CPA file log cap"
 assert_contains "docs/cpa-runbook.md" "error-logs-max-files" "CPA error log cap"
-assert_contains "docs/cpa-runbook.md" "ops/cpa-quota-snapshot\\.sh" "CPA quota snapshot command"
-assert_contains "docs/cpa-runbook.md" "cpa-quota/widget\\.html" "CPA quota widget URL"
-assert_contains "docs/zh-CN/cpa-runbook.md" "ops/cpa-quota-snapshot\\.sh" "Chinese CPA quota snapshot command"
-assert_contains "docs/zh-CN/cpa-runbook.md" "cpa-quota/widget\\.html" "Chinese CPA quota widget URL"
+assert_not_contains "docs/cpa-runbook.md" "ops/cpa-quota-snapshot\\.sh" "removed CPA quota snapshot command"
+assert_not_contains "docs/cpa-runbook.md" "cpa-quota/widget\\.html" "removed CPA quota widget URL"
+assert_not_contains "docs/cpa-runbook.md" "cpa-quota-static" "removed CPA quota static docs"
+assert_not_contains "docs/zh-CN/cpa-runbook.md" "ops/cpa-quota-snapshot\\.sh" "removed Chinese CPA quota snapshot command"
+assert_not_contains "docs/zh-CN/cpa-runbook.md" "cpa-quota/widget\\.html" "removed Chinese CPA quota widget URL"
+assert_not_contains "docs/zh-CN/cpa-runbook.md" "cpa-quota-static" "removed Chinese CPA quota static docs"
 assert_contains "docs/new-api-code-map.md" "New API" "upstream feature map"
 assert_contains "docs/new-api-full-research.md" "BillingSession" "billing research"
 assert_contains "docs/browser-e2e-runbook.md" "NEW_API_BASE_URL" "browser E2E New API URL"
@@ -309,8 +311,10 @@ assert_contains "docs/zh-CN/git-branching-runbook.md" "main = production" "Chine
 
 assert_contains "ops/dev-gate.sh" "scripts/verify-repo\\.sh --skip-docker" "dev gate shell verifier"
 assert_not_contains "ops/dev-gate.sh" "powershell|pwsh|verify-repo\\.ps1" "dev gate PowerShell verifier"
-assert_contains "ops/production-gate.sh" "tests/cpa-quota-snapshot.test.sh" "CPA quota snapshot gate test"
-assert_contains "ops/deploy-release.sh" "shared_dir/data/cpa/public" "release shared CPA public dir"
+assert_not_contains "ops/production-gate.sh" "tests/cpa-quota-snapshot.test.sh" "removed CPA quota snapshot gate test"
+assert_not_contains "ops/production-gate.sh" "ops/cpa-quota-snapshot.sh" "removed CPA quota snapshot shell check"
+assert_not_contains "ops/deploy-release.sh" "shared_dir/data/cpa/public" "removed release shared CPA public quota dir"
+assert_contains "ops/deploy-release.sh" "shared_dir/data/cpa" "release shared CPA data dir"
 assert_contains "ops/deploy-release.sh" "docker compose -p" "fixed release compose project"
 assert_contains "ops/verify-remote-prod.sh" "/opt/lihan_ai_deploy/current" "remote verifier release path"
 assert_contains "ops/check-production-runtime.sh" "relay-cloudflared" "runtime Cloudflare Tunnel check"

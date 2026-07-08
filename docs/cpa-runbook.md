@@ -83,7 +83,6 @@ Then set these values in `.env.production`:
 ```env
 CPA_CONFIG_PATH=/opt/lihan_ai_deploy/shared/data/cpa/config.yaml
 CPA_AUTH_PATH=/opt/lihan_ai_deploy/shared/data/cpa
-CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public
 CPA_LOG_PATH=/opt/lihan_ai_deploy/shared/logs/cpa
 ```
 
@@ -231,74 +230,6 @@ ops/cpa-ui.sh close
 This returns CPA to the read-only config mount used for normal runtime.
 
 Use `ops/cpa-ui.sh ps` to confirm the container state and local port binding. Do not use ad hoc CPA UI commands with `--remove-orphans` or `--scale caddy=0`; those flags belong to full-stack operations, not a single-service CPA UI session.
-
-## Public Codex Quota Snapshot
-
-The public New API homepage must read only a sanitized static snapshot. Do not point `HomePageContent`, Caddy, Cloudflare Tunnel, or any public browser path at CPA management routes, `8317`, or upstream Codex quota checks.
-
-The repository provides:
-
-- `ops/cpa-quota-snapshot.sh` to convert a raw CPA/Codex quota JSON response into a public allowlisted snapshot.
-- `public/cpa-quota/widget.html` to render the five-hour and weekly Codex quota windows.
-- `cpa-quota-static`, an internal-only static service from `docker-compose.cpa.yml`; it has no host `ports:` and only joins `relay-internal`.
-
-The snapshot file is:
-
-```text
-${CPA_PUBLIC_PATH:-/opt/lihan_ai_deploy/shared/data/cpa/public}/codex-quota.json
-```
-
-After you manually refresh quota state in the CPA management UI, publish a new snapshot from the origin server. If you saved the raw quota JSON to a temporary file:
-
-```bash
-cd /opt/lihan_ai_deploy/current
-
-CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
-  bash ops/cpa-quota-snapshot.sh \
-    --input /tmp/cpa-codex-quota.json \
-    --label "Codex pool"
-```
-
-If you prefer fetching from the internal CPA listener, use the exact quota endpoint and management header your deployed CPA UI uses. Keep the secret in the shell environment or a local secret manager, not in git:
-
-```bash
-cd /opt/lihan_ai_deploy/current
-
-CPA_QUOTA_SOURCE_URL="http://127.0.0.1:8317/quota" \
-CPA_QUOTA_SOURCE_HEADER="<management-header-name>: <secret>" \
-CPA_PUBLIC_PATH=/opt/lihan_ai_deploy/shared/data/cpa/public \
-  bash ops/cpa-quota-snapshot.sh --label "Codex pool"
-```
-
-The script writes only allowlisted fields such as `plan_type`, status, five-hour and weekly usage percentages, limits, and reset times. It does not copy emails, account IDs, API keys, access tokens, refresh tokens, or raw provider payloads into the public snapshot.
-
-For direct-origin Caddy deployments, `Caddyfile` serves:
-
-```text
-https://<DOMAIN>/cpa-quota/widget.html
-https://<DOMAIN>/cpa-quota/data/codex-quota.json
-```
-
-For Cloudflare Tunnel deployments, keep `caddy=0` and route only this path to the internal static service before the New API catch-all in `/opt/lihan_ai_deploy/shared/cloudflared/config.yml`:
-
-```yaml
-ingress:
-  - path: /cpa-quota/*
-    service: http://cpa-quota-static:8080
-  - hostname: origin.lihan3238.top
-    service: http://new-api:3000
-  - service: http://new-api:3000
-```
-
-Then recreate `cloudflared` and the static service through the normal compose overlays or the next release promote.
-
-Set New API `HomePageContent` to the full widget URL so New API embeds it as an iframe:
-
-```text
-https://api.lihan3238.com/cpa-quota/widget.html
-```
-
-Refreshing the public New API homepage then fetches only static files. The next visible quota update happens when you manually refresh CPA quota state and rerun `ops/cpa-quota-snapshot.sh`.
 
 ## Verify From New API
 

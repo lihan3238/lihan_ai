@@ -87,14 +87,12 @@ tunnel: <tunnel-uuid>
 credentials-file: /etc/cloudflared/tunnel.json
 
 ingress:
-  - path: /cpa-quota/*
-    service: http://cpa-quota-static:8080
   - hostname: origin.lihan3238.top
     service: http://new-api:3000
   - service: http://new-api:3000
 ```
 
-The `/cpa-quota/*` rule is optional unless you publish the CPA quota widget. Keep it before the New API catch-all because Cloudflare for SaaS may preserve `Host: api.lihan3238.com` while using `origin.lihan3238.top` as the fallback route. The final catch-all ingress is intentional so unmatched hostnames still reach New API.
+The final catch-all ingress is intentional so unmatched hostnames still reach New API.
 
 Lock permissions:
 
