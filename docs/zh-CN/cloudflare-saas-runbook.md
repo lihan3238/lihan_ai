@@ -58,6 +58,30 @@ Value: 172.64.155.231
 
 Tunnel 路径下不要把 `api.lihan3238.com` 指向源站服务器 IP。
 
+如果要让另一个 `lihan3238.com` 子域名走同样的优选路径，按主机名逐个配置，不要用泛化 catch-all：
+
+1. 在 Spaceship 的 `lihan3238.com` DNS 中添加 A 记录，默认复用
+   `api.lihan3238.com` 当前的优选 Cloudflare IP：
+   ```text
+   Type: A
+   Host: <host>
+   Value: 172.64.155.231
+   ```
+   如果同一个 host 已有 CNAME，先删除 CNAME。
+2. 在 Cloudflare `lihan3238.top` zone 的 Custom Hostnames 中添加
+   `<host>.lihan3238.com`。fallback origin 仍保持
+   `origin.lihan3238.top`。
+3. 把 Cloudflare 给出的 TXT 验证记录加回 Spaceship 的
+   `lihan3238.com` DNS，等待 hostname 和 certificate 都 Active。
+4. 如果这个主机名应该服务 New API，再给 `cloudflared` 增加显式
+   ingress 规则；如果它是 Worker 或 blog 主机名，保持 Worker route，
+   不要加到 New API ingress。
+
+`origin.lihan3238.top` 本身不会独占或捕获所有 `*.lihan3238.com` 流量。
+它只是 Cloudflare for SaaS 的 fallback origin。一个主机名只有在
+Cloudflare 把该 Custom Hostname 路由到 fallback origin，且 `cloudflared`
+里有对应的显式 hostname 规则时，才会进入 New API。
+
 ## 源站文件
 
 在 Hostinger 源站创建共享 runtime 目录：
@@ -87,12 +111,15 @@ tunnel: <tunnel-uuid>
 credentials-file: /etc/cloudflared/tunnel.json
 
 ingress:
+  - hostname: api.lihan3238.com
+    service: http://new-api:3000
   - hostname: origin.lihan3238.top
     service: http://new-api:3000
-  - service: http://new-api:3000
+  - service: http_status:404
 ```
 
-最后一条 catch-all ingress 是有意保留的，未匹配 hostname 的请求也应该进入 New API。
+最后一条 catch-all ingress 有意使用 `http_status:404`，不要写成 New API。
+这样即使 DNS、Worker route 或 Custom Hostname 配错，Worker/blog 这类无关主机名也不会静默落到 API 服务。需要服务 New API 的主机名必须在上面逐个显式添加。
 
 锁定权限：
 
@@ -193,6 +220,20 @@ docker compose -p lihan_ai --env-file .env.production \
   up -d --remove-orphans --scale caddy=0
 ```
 
+如果只修改 `/opt/lihan_ai_deploy/shared/cloudflared/config.yml`，只重建 tunnel
+容器即可，这会重新挂载单文件 bind mount：
+
+```bash
+cd /opt/lihan_ai_deploy/current
+
+docker compose -p lihan_ai --env-file .env.production \
+  -f docker-compose.yml \
+  -f docker-compose.prod.yml \
+  -f docker-compose.cpa.yml \
+  -f docker-compose.cloudflare-tunnel.yml \
+  up -d --no-deps --force-recreate cloudflared
+```
+
 进入 New API 后台，把公开站点地址、Base URL 或同类配置改成：
 
 ```text
@@ -209,6 +250,10 @@ Cloudflare 公网验证：
 
 ```bash
 curl -i https://api.lihan3238.com/api/status
+curl -i https://origin.lihan3238.top/api/status
+docker exec relay-cloudflared cloudflared tunnel --config /etc/cloudflared/config.yml ingress rule https://api.lihan3238.com/
+docker exec relay-cloudflared cloudflared tunnel --config /etc/cloudflared/config.yml ingress rule https://origin.lihan3238.top/
+docker exec relay-cloudflared cloudflared tunnel --config /etc/cloudflared/config.yml ingress rule https://blog.lihan3238.com/
 ```
 
 仓库运行时检查：
@@ -234,6 +279,9 @@ docker compose -p lihan_ai --env-file .env.production \
 - `relay-cloudflared` 正在运行。
 - `relay-caddy` 不存在，或没有发布 `80/443`。
 - `https://api.lihan3238.com` 能打开 New API UI。
+- `origin.lihan3238.top` 只作为 fallback-origin 健康/调试主机名命中 New API 规则。
+- Worker/blog 主机名不命中 New API ingress；用 `cloudflared ingress rule`
+  测试时应该落到最终 `http_status:404`。
 - 登录和后台页面正常。
 - `/api/status` 返回 `success: true`。
 - 测试 token 可以请求 `/v1/models`。

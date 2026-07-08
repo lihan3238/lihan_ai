@@ -38,6 +38,10 @@ for file in docs/cloudflare-saas-runbook.md docs/zh-CN/cloudflare-saas-runbook.m
   assert_contains "$file" "cloudflared"
   assert_contains "$file" "DOMAIN=api.lihan3238.com"
   assert_contains "$file" "DOMAIN=origin.lihan3238.top"
+  assert_contains "$file" "172.64.155.231"
+  assert_contains "$file" "blog.lihan3238.com"
+  assert_contains "$file" "http_status:404"
+  assert_contains "$file" "--no-deps --force-recreate cloudflared"
   assert_not_contains "$file" "srv998135"
   assert_not_contains "$file" "72.60.124.21"
 done

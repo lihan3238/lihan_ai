@@ -58,6 +58,30 @@ Value: 172.64.155.231
 
 Do not point `api.lihan3238.com` at the origin server IP for the Tunnel path.
 
+To optimize another `lihan3238.com` subdomain through the same path, repeat this
+per hostname instead of creating a wildcard rule:
+
+1. Add a Spaceship DNS `A` record for the host, reusing the current preferred
+   Cloudflare IP from `api.lihan3238.com`:
+   ```text
+   Type: A
+   Host: <host>
+   Value: 172.64.155.231
+   ```
+   Remove any CNAME for the same host first.
+2. Add `<host>.lihan3238.com` as a Cloudflare Custom Hostname in the
+   `lihan3238.top` zone. Keep fallback origin as `origin.lihan3238.top`.
+3. Add Cloudflare-provided TXT validation records in Spaceship DNS for
+   `lihan3238.com`, then wait until the hostname and certificate are active.
+4. If the hostname should serve New API, add an explicit `cloudflared` ingress
+   rule for that hostname. If it is a Worker or blog hostname, keep it on the
+   Worker route and do not add it to New API ingress.
+
+`origin.lihan3238.top` does not capture all `*.lihan3238.com` traffic by
+itself. It is only the Cloudflare for SaaS fallback origin. A hostname reaches
+New API only when Cloudflare routes that custom hostname to the fallback origin
+and `cloudflared` has an explicit matching ingress rule for that hostname.
+
 ## Origin Files
 
 On the Hostinger origin, store Tunnel files in shared runtime storage:
@@ -87,12 +111,17 @@ tunnel: <tunnel-uuid>
 credentials-file: /etc/cloudflared/tunnel.json
 
 ingress:
+  - hostname: api.lihan3238.com
+    service: http://new-api:3000
   - hostname: origin.lihan3238.top
     service: http://new-api:3000
-  - service: http://new-api:3000
+  - service: http_status:404
 ```
 
-The final catch-all ingress is intentional so unmatched hostnames still reach New API.
+The final catch-all ingress is intentionally `http_status:404`, not New API.
+This keeps unrelated custom hostnames such as Worker-backed blog hostnames from
+silently falling into the API service if a DNS, Worker route, or Custom Hostname
+setting is wrong. Add New API hostnames explicitly above the fallback rule.
 
 Lock permissions:
 
@@ -193,6 +222,20 @@ docker compose -p lihan_ai --env-file .env.production \
   up -d --remove-orphans --scale caddy=0
 ```
 
+When changing only `/opt/lihan_ai_deploy/shared/cloudflared/config.yml`, recreate
+only the tunnel container so the single-file bind mount is remounted:
+
+```bash
+cd /opt/lihan_ai_deploy/current
+
+docker compose -p lihan_ai --env-file .env.production \
+  -f docker-compose.yml \
+  -f docker-compose.prod.yml \
+  -f docker-compose.cpa.yml \
+  -f docker-compose.cloudflare-tunnel.yml \
+  up -d --no-deps --force-recreate cloudflared
+```
+
 In New API admin, update the public site URL, base URL, or equivalent setting to:
 
 ```text
@@ -209,6 +252,10 @@ Public check through Cloudflare:
 
 ```bash
 curl -i https://api.lihan3238.com/api/status
+curl -i https://origin.lihan3238.top/api/status
+docker exec relay-cloudflared cloudflared tunnel --config /etc/cloudflared/config.yml ingress rule https://api.lihan3238.com/
+docker exec relay-cloudflared cloudflared tunnel --config /etc/cloudflared/config.yml ingress rule https://origin.lihan3238.top/
+docker exec relay-cloudflared cloudflared tunnel --config /etc/cloudflared/config.yml ingress rule https://blog.lihan3238.com/
 ```
 
 Repository runtime check:
@@ -234,6 +281,10 @@ Acceptance checks:
 - `relay-cloudflared` is running.
 - `relay-caddy` is absent or has no published `80/443`.
 - `https://api.lihan3238.com` opens the New API UI.
+- `origin.lihan3238.top` matches a New API ingress rule only because it is the
+  fallback-origin health/debug hostname.
+- Worker/blog hostnames do not match a New API ingress rule; they should hit the
+  final `http_status:404` rule if tested through `cloudflared ingress rule`.
 - Login and admin pages work.
 - `/api/status` returns `success: true`.
 - A test token can call `/v1/models`.

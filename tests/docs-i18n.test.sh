@@ -119,7 +119,7 @@ for keyword in "防火墙基线" "排障" "URL-safe" "Caddy"; do
   assert_contains "docs/zh-CN/production-deployment-runbook.md" "$keyword"
 done
 
-for keyword in "api.lihan3238.com" "origin.lihan3238.top" "Cloudflare Tunnel" "cloudflared" "--scale caddy=0" "config.yml is file" "tunnel.json is file" "chmod 644" "cannot be hand-written"; do
+for keyword in "api.lihan3238.com" "origin.lihan3238.top" "Cloudflare Tunnel" "cloudflared" "--scale caddy=0" "config.yml is file" "tunnel.json is file" "chmod 644" "cannot be hand-written" "172.64.155.231" "blog.lihan3238.com" "http_status:404" "--no-deps --force-recreate cloudflared"; do
   assert_contains "docs/cloudflare-saas-runbook.md" "$keyword"
   assert_contains "docs/zh-CN/cloudflare-saas-runbook.md" "$keyword"
 done
