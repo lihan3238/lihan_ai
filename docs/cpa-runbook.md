@@ -190,7 +190,7 @@ docker logs --tail=80 relay-cpa
 
 ## Management UI
 
-The management UI is disabled from the public internet. When you need it, start the localhost-only UI override:
+The management UI is disabled from the public internet. When you need it, start the WireGuard-only UI override:
 
 ```bash
 cd /opt/lihan_ai_deploy/current
@@ -200,23 +200,17 @@ ops/cpa-ui.sh open
 
 `ops/cpa-ui.sh open` appends `docker-compose.cpa.ui.yml`, keeps the active Cloudflare Tunnel overlay when enabled, and uses `--force-recreate --no-deps` so the local CPA UI operation refreshes only CPA and does not recreate `new-api`, `cloudflared`, or `caddy`. The base CPA compose file mounts `config.yaml` read-only. The UI override intentionally remounts `/CLIProxyAPI/config.yaml` writable so the management UI can save changes. Use this override only while you are actively managing CPA config.
 
-From your local machine:
-
-```bash
-ssh -L 8317:127.0.0.1:8317 <deploy-user>@<origin-host>
-```
-
-Open:
+Open from a trusted `10.22.*` WireGuard peer:
 
 ```text
-http://127.0.0.1:8317/management.html
+http://10.22.0.40:8317/management.html
 ```
 
 Security model:
 
 - Provider firewall should not allow inbound `8317`.
-- The Compose UI override binds `8317` to host `127.0.0.1` only.
-- SSH forwards your local browser to the server loopback listener.
+- The Compose UI override binds `8317` to host `10.22.0.40` only.
+- Access is through the private WireGuard address, not the public origin address.
 - `remote-management.secret-key` is still required by CPA management routes.
 
 When finished, remove the UI port by restarting without the UI override:

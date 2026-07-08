@@ -40,7 +40,7 @@ ENV_FILE=.env.production bash ops/check-production-runtime.sh
 sudo ss -lntp | grep -E ':80|:443|:8317|:5432|:6379'
 ```
 
-直连源站模式下，只有 `80` 和 `443` 应该被公网访问。Tunnel 模式下，源站不需要公开这两个端口。CPA `8317` 只有临时启用 UI override 时才应出现在 `127.0.0.1`。
+直连源站模式下，只有 `80` 和 `443` 应该被公网访问。Tunnel 模式下，源站不需要公开这两个端口。CPA `8317` 只有临时启用 UI override 时才应出现在私有 WireGuard 地址 `10.22.0.40`。
 
 ## 从本地远程部署
 

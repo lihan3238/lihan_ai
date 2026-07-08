@@ -190,7 +190,7 @@ docker logs --tail=80 relay-cpa
 
 ## 管理 UI
 
-管理 UI 不公开到互联网。需要临时使用时，启动只绑定本机的 UI override：
+管理 UI 不公开到互联网。需要临时使用时，启动只绑定 WireGuard 地址的 UI override：
 
 ```bash
 cd /opt/lihan_ai_deploy/current
@@ -200,23 +200,17 @@ ops/cpa-ui.sh open
 
 `ops/cpa-ui.sh open` 会追加 `docker-compose.cpa.ui.yml`，在启用 Cloudflare Tunnel 时保留 active Tunnel overlay，并使用 `--force-recreate --no-deps`，这样 CPA UI 局部操作只刷新 CPA，不会重建 `new-api`、`cloudflared` 或 `caddy`。基础 CPA compose 会把 `config.yaml` 只读挂载。UI override 会刻意把 `/CLIProxyAPI/config.yaml` 重新挂载为可写，这样管理 UI 才能保存配置。只有正在管理 CPA 配置时才使用这个 override。
 
-从本机建立 SSH 隧道：
-
-```bash
-ssh -L 8317:127.0.0.1:8317 <deploy-user>@<origin-host>
-```
-
-浏览器打开：
+从可信的 `10.22.*` WireGuard peer 打开：
 
 ```text
-http://127.0.0.1:8317/management.html
+http://10.22.0.40:8317/management.html
 ```
 
 安全模型：
 
 - provider firewall 不开放入站 `8317`。
-- Compose UI override 只把 `8317` 绑定到宿主机 `127.0.0.1`。
-- SSH 把你本机浏览器转发到服务器 loopback listener。
+- Compose UI override 只把 `8317` 绑定到宿主机 `10.22.0.40`。
+- 访问走私有 WireGuard 地址，不走公网源站地址。
 - CPA management routes 仍然需要 `remote-management.secret-key`。
 
 用完后，不带 UI override 重启 CPA，移除本机端口发布：

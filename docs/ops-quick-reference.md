@@ -98,10 +98,10 @@ ops/cpa-ui.sh open
 ops/cpa-ui.sh ps
 ```
 
-On your local machine:
+Open from a trusted `10.22.*` WireGuard peer:
 
-```bash
-ssh -L 8317:127.0.0.1:8317 <deploy-user>@<origin-host>
+```text
+http://10.22.0.40:8317/management.html
 ```
 
 Close after use:

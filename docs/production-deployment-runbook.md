@@ -40,7 +40,7 @@ Quick listener check:
 sudo ss -lntp | grep -E ':80|:443|:8317|:5432|:6379'
 ```
 
-Only `80` and `443` should be publicly reachable in direct-origin mode. In Tunnel mode, neither port needs to be reachable on the origin. CPA `8317` should appear only on `127.0.0.1` when the UI override is intentionally enabled.
+Only `80` and `443` should be publicly reachable in direct-origin mode. In Tunnel mode, neither port needs to be reachable on the origin. CPA `8317` should appear only on the private WireGuard address `10.22.0.40` when the UI override is intentionally enabled.
 
 ## Remote Deploy From Local
 

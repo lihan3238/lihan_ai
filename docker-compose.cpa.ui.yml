@@ -3,4 +3,4 @@ services:
     volumes:
       - ${CPA_CONFIG_PATH:-/opt/lihan_ai/data/cpa/config.yaml}:/CLIProxyAPI/config.yaml
     ports:
-      - "127.0.0.1:${CPA_UI_PORT:-8317}:8317"
+      - "10.22.0.40:${CPA_UI_PORT:-8317}:8317"
