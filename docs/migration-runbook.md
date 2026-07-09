@@ -16,7 +16,7 @@ new host through your private channel.
 
 ```bash
 cp .env.production.example .env.production
-docker network create lihan-ai-private || true
+docker network create lihan_ai_relay-internal || true
 ENV_FILE=.env.production WITH_CPA=1 ops/compose.sh up -d postgres redis
 CONFIRM_RESTORE=yes ENV_FILE=.env.production \
   ops/restore-postgres.sh /path/to/newapi.sql

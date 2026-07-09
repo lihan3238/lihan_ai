@@ -13,7 +13,7 @@ services:
     ports:
       - "${CPA_BIND_IP:-10.22.0.40}:${CPA_UI_PORT:-8317}:8317"
     networks:
-      - lihan-ai-private
+      - relay-internal
     logging:
       driver: json-file
       options:
@@ -21,5 +21,5 @@ services:
         max-file: "5"
 
 networks:
-  lihan-ai-private:
-    name: ${LIHAN_AI_NETWORK:-lihan-ai-private}
+  relay-internal:
+    name: ${LIHAN_AI_NETWORK:-lihan_ai_relay-internal}

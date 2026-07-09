@@ -13,7 +13,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - lihan-ai-private
+      - relay-internal
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -28,7 +28,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - lihan-ai-private
+      - relay-internal
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a '${REDIS_PASSWORD}' ping | grep PONG"]
       interval: 10s
@@ -57,7 +57,7 @@ services:
       - ./data/new-api:/data
       - ./logs/new-api:/app/logs
     networks:
-      - lihan-ai-private
+      - relay-internal
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/api/status | grep -o '\"success\":\\s*true' || exit 1"]
       interval: 30s
@@ -70,5 +70,5 @@ volumes:
   redis_data:
 
 networks:
-  lihan-ai-private:
-    name: ${LIHAN_AI_NETWORK:-lihan-ai-private}
+  relay-internal:
+    name: ${LIHAN_AI_NETWORK:-lihan_ai_relay-internal}
