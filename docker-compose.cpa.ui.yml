@@ -1,6 +1,4 @@
 services:
   cli-proxy-api:
     volumes:
-      - ${CPA_CONFIG_PATH:-/opt/lihan_ai/data/cpa/config.yaml}:/CLIProxyAPI/config.yaml
-    ports:
-      - "10.22.0.40:${CPA_UI_PORT:-8317}:8317"
+      - ${CPA_CONFIG_PATH:-./data/cpa/config.yaml}:/CLIProxyAPI/config.yaml

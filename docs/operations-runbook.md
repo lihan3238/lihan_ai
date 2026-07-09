@@ -1,204 +1,35 @@
 # Operations Runbook
 
-## Current Operating Model
+This repo is a thin production wrapper around upstream images.
 
-The production surface is intentionally small:
-
-- New API
-- PostgreSQL
-- Redis
-- Caddy in direct-origin mode, or Cloudflare Tunnel in tunnel mode
-- Optional internal CPA
-- Local PostgreSQL backup, verification, restore, restore drills, and migration scripts
-
-This repository does not run a separate monitoring stack. Use New API's built-in admin views for application-level visibility and wrapper scripts for manual acceptance checks.
-
-## Daily Quick Check
-
-On the production server:
+## Core commands
 
 ```bash
-cd /opt/lihan_ai_deploy/current
-docker compose -p lihan_ai --env-file .env.production \
-  -f docker-compose.yml \
-  -f docker-compose.prod.yml \
-  -f docker-compose.cpa.yml \
-  -f docker-compose.cloudflare-tunnel.yml \
-  ps
-
-COMPOSE_PROJECT_NAME=lihan_ai ENV_FILE=.env.production bash ops/check-production-runtime.sh
-curl -i https://api.lihan3238.com/api/status
+ENV_FILE=.env.production WITH_CPA=1 ops/compose.sh up -d
+ENV_FILE=.env.production ops/check-runtime.sh
+ENV_FILE=.env.production ops/backup-postgres.sh
+ENV_FILE=.env.production ops/backup-config.sh
 ```
 
-When CPA is disabled or Cloudflare Tunnel is disabled, omit the matching compose overlay.
+## Komodo stacks
 
-## Env Template Sync
+- `lihan_ai`: `docker-compose.yml`, `docker-compose.prod.yml`,
+  `docker-compose.cpa.yml`, and optionally `docker-compose.cpa.ui.yml`.
+- `hostinger-cloudflared`: `docker-compose.cloudflare-tunnel.yml`.
 
-Production env lives at:
+Keep PostgreSQL and Redis on manual updates. Use service-scoped updates for
+`new-api` and `cli-proxy-api`.
 
-```text
-/opt/lihan_ai_deploy/shared/.env.production
-```
+## CPA UI
 
-Release `prepare` automatically calls `ops/sync-env-template.sh` before preflight. You can also run it manually from a release checkout:
+Open writable CPA config only when editing:
 
 ```bash
-cd /opt/lihan_ai_deploy/current
-bash ops/sync-env-template.sh /opt/lihan_ai_deploy/shared/.env.production .env.production.example
+ENV_FILE=.env.production ops/cpa-ui.sh open
 ```
 
-Rules:
-
-- A `.bak.<UTC>` backup is created first.
-- Missing keys from `.env.production.example` are appended with default values.
-- Existing values are never overwritten.
-- Deprecated keys are reported but not removed.
-- `ops/preflight.sh` still blocks `CHANGE_ME` placeholders.
-
-## Backups
-
-Manual backup:
+Close it after editing to restore read-only config mount:
 
 ```bash
-cd /opt/lihan_ai_deploy/current
-ENV_FILE=.env.production bash ops/backup-postgres.sh
+ENV_FILE=.env.production ops/cpa-ui.sh close
 ```
-
-Scheduled backup:
-
-```bash
-cd /opt/lihan_ai_deploy/current
-ENV_FILE=.env.production bash ops/backup-cron.sh
-```
-
-Suggested crontab:
-
-```cron
-15 3 * * * cd /opt/lihan_ai_deploy/current && ENV_FILE=.env.production bash ops/backup-cron.sh
-```
-
-Manual download:
-
-```bash
-scp <deploy-user>@<origin-host>:/opt/lihan_ai_deploy/shared/backups/postgres/<dump>.dump .
-scp <deploy-user>@<origin-host>:/opt/lihan_ai_deploy/shared/backups/postgres/<dump>.dump.sha256 .
-```
-
-Restore drill:
-
-```bash
-cd /opt/lihan_ai_deploy/current
-ENV_FILE=.env.production bash ops/drill-restore-stack.sh backups/postgres/<dump>.dump
-```
-
-## Runtime Storage Limits
-
-Docker service logs use `json-file` rotation with `max-size=20m` and `max-file=5` in production overlays, including CPA. Production New API disables duplicate host file logs with `--log-dir=`; use Docker logs for troubleshooting:
-
-```bash
-docker compose -p lihan_ai --env-file .env.production \
-  -f docker-compose.yml \
-  -f docker-compose.prod.yml \
-  logs --tail=200 new-api
-```
-
-Local backup dumps, backup cron logs, and config snapshots are pruned by:
-
-```bash
-cd /opt/lihan_ai_deploy/current
-ENV_FILE=.env.production bash ops/prune-runtime-storage.sh all
-```
-
-The defaults are `BACKUP_KEEP=30`, `BACKUP_MAX_TOTAL_MB=2048`, `BACKUP_CRON_LOG_MAX_MB=10`, `BACKUP_CRON_LOG_KEEP=5`, `CONFIG_SNAPSHOT_KEEP=30`, and `CONFIG_SNAPSHOT_MAX_TOTAL_MB=256`.
-
-## Deploy Status And Recovery
-
-Release promotion is a remote managed worker. The local SSH command may disconnect, but the worker records progress in `promote.state` and continues on the server.
-
-```bash
-DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh status
-DEPLOY_HOST=<deploy-user>@<origin-host> bash ops/deploy-release.sh recover
-```
-
-Use `status` before retrying a promote. Use `recover` only when `status` shows a stale `promote.state` and no running worker. Recovery accepts a healthy current release or rolls back to `previous` / `last_healthy`. It does not restore database contents.
-
-## New API Groups
-
-Keep only:
-
-- `default`: normal friends/users.
-- `vip`: manually granted higher-priority or discounted users.
-
-The old `standard` group is not part of the current operating model. This repository does not rewrite production database rows. Use the New API admin console to move users, tokens, channel abilities, model permissions, and pricing from `standard` to `default`; grant `vip` only where intended.
-
-Read-only validation:
-
-```bash
-bash ops/validate-ops-profile.sh config/ops-profiles/glm-default.example.json
-bash ops/channel-health-advisor.sh config/ops-profiles/glm-default-health.example.json
-```
-
-## CPA
-
-CPA stays internal. Do not expose port `8317` publicly.
-
-Temporary UI session:
-
-```bash
-cd /opt/lihan_ai_deploy/current
-ops/cpa-ui.sh open
-ops/cpa-ui.sh ps
-```
-
-Open from a trusted `10.22.*` WireGuard peer:
-
-```text
-http://10.22.0.40:8317/management.html
-```
-
-Close after use:
-
-```bash
-ops/cpa-ui.sh close
-```
-
-New API channels should point to the Docker internal CPA address, not to the public domain.
-
-## Deploy Acceptance
-
-After every production promote:
-
-```bash
-cd /opt/lihan_ai_deploy/current
-readlink -f /opt/lihan_ai_deploy/current
-COMPOSE_PROJECT_NAME=lihan_ai ENV_FILE=.env.production bash ops/check-production-runtime.sh
-curl -i https://api.lihan3238.com/api/status
-ENV_FILE=.env.production bash ops/backup-cron.sh
-```
-
-Then verify in New API:
-
-- Home page opens on the public domain.
-- Admin login works.
-- `/api/status` returns success.
-- A test token can call `/v1/models`.
-- CPA channels still use the internal Docker address if CPA is enabled.
-
-## Cleanup Safety
-
-Before archiving old directories such as `/opt/lihan_ai` or `/opt/lihan_ai_runtime`:
-
-- `readlink -f /opt/lihan_ai_deploy/current` points at the intended release.
-- Runtime checks pass.
-- Backup and restore drill pass.
-- `docker inspect relay-cpa` shows no mount source under the old runtime directory.
-- No crontab references old paths.
-
-Archive first, delete later:
-
-```bash
-sudo mv /opt/lihan_ai /opt/lihan_ai.legacy-$(date +%Y%m%d)
-sudo mv /opt/lihan_ai_runtime /opt/lihan_ai_runtime.legacy-$(date +%Y%m%d)
-```
-
-Never delete `/opt/containerd`, and never run `docker compose down -v` as cleanup.

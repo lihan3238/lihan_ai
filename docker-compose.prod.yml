@@ -5,15 +5,11 @@ x-logging: &default-logging
     max-file: "5"
 
 services:
-  new-api:
-    command: --log-dir=
-    logging: *default-logging
-
   postgres:
     logging: *default-logging
 
   redis:
     logging: *default-logging
 
-  caddy:
+  new-api:
     logging: *default-logging

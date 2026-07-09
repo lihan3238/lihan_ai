@@ -1,43 +1,34 @@
-#!/usr/bin/env sh
-set -eu
+#!/usr/bin/env bash
+set -euo pipefail
 
-if [ "$#" -ne 1 ]; then
-  echo "usage: $0 path/to/backup.dump" >&2
-  exit 1
+if [[ $# -ne 1 ]]; then
+  echo "usage: ENV_FILE=.env.production ops/restore-postgres.sh /path/to/backup.sql" >&2
+  exit 2
 fi
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-ENV_FILE="${ENV_FILE:-.env}"
-backup="$1"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_FILE="${ENV_FILE:-.env.production}"
+DUMP_FILE="$1"
 
-case "$ENV_FILE" in
-  /*) ;;
-  *) ENV_FILE="$ROOT_DIR/$ENV_FILE" ;;
-esac
-
-if [ ! -f "$ENV_FILE" ]; then
-  echo "missing $ENV_FILE" >&2
-  exit 1
+if [[ "$ENV_FILE" != /* ]]; then
+  ENV_FILE="$ROOT_DIR/$ENV_FILE"
 fi
 
-if [ ! -f "$backup" ]; then
-  echo "backup not found: $backup" >&2
-  exit 1
+if [[ ! -f "$DUMP_FILE" ]]; then
+  echo "backup file not found: $DUMP_FILE" >&2
+  exit 2
 fi
 
 set -a
+# shellcheck disable=SC1090
 . "$ENV_FILE"
 set +a
 
-COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-${DEPLOY_COMPOSE_PROJECT:-}}"
+echo "This will restore $DUMP_FILE into database $POSTGRES_DB on relay-postgres."
+echo "Set CONFIRM_RESTORE=yes to continue." >&2
+if [[ "${CONFIRM_RESTORE:-no}" != "yes" ]]; then
+  exit 3
+fi
 
-compose() {
-  if [ -n "${COMPOSE_PROJECT_NAME:-}" ]; then
-    docker compose -p "$COMPOSE_PROJECT_NAME" --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.prod.yml" "$@"
-  else
-    docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.prod.yml" "$@"
-  fi
-}
-
-compose exec -T postgres pg_restore --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB" < "$backup"
-echo "restore completed from $backup"
+docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" relay-postgres \
+  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" < "$DUMP_FILE"

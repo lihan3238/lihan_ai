@@ -1,6 +1,0 @@
-services:
-  new-api:
-    image: ${LOCAL_NEW_API_IMAGE:-lihan-ai/new-api:local}
-    build:
-      context: ./vendor/new-api
-      dockerfile: Dockerfile

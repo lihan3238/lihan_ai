@@ -5,14 +5,21 @@ services:
     restart: unless-stopped
     environment:
       DEPLOY: ${CPA_DEPLOY:-}
+      TZ: ${TZ:-Asia/Shanghai}
     volumes:
-      - ${CPA_CONFIG_PATH:-/opt/lihan_ai/data/cpa/config.yaml}:/CLIProxyAPI/config.yaml:ro
-      - ${CPA_AUTH_PATH:-/opt/lihan_ai/data/cpa}:/root/.cli-proxy-api
-      - ${CPA_LOG_PATH:-/opt/lihan_ai/logs/cpa}:/CLIProxyAPI/logs
+      - ${CPA_CONFIG_PATH:-./data/cpa/config.yaml}:/CLIProxyAPI/config.yaml:ro
+      - ${CPA_AUTH_PATH:-./data/cpa}:/root/.cli-proxy-api
+      - ${CPA_LOG_PATH:-./logs/cpa}:/CLIProxyAPI/logs
+    ports:
+      - "${CPA_BIND_IP:-10.22.0.40}:${CPA_UI_PORT:-8317}:8317"
     networks:
-      - relay-internal
+      - lihan-ai-private
     logging:
       driver: json-file
       options:
         max-size: "20m"
         max-file: "5"
+
+networks:
+  lihan-ai-private:
+    name: ${LIHAN_AI_NETWORK:-lihan-ai-private}

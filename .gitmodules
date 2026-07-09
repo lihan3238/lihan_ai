@@ -1,7 +1,0 @@
-[submodule "vendor/new-api"]
-	path = vendor/new-api
-	url = https://github.com/lihan3238/new-api.git
-[submodule "vendor/cli-proxy-api"]
-	path = vendor/cli-proxy-api
-	url = https://github.com/router-for-me/CLIProxyAPI.git
-	branch = main
