@@ -16,6 +16,13 @@ assert_not_path() {
   [ ! -e "$ROOT_DIR/$1" ] || fail "removed path still exists: $1"
 }
 
+assert_not_nonempty_path() {
+  [ ! -e "$ROOT_DIR/$1" ] && return 0
+  [ -d "$ROOT_DIR/$1" ] || fail "removed path still exists: $1"
+  [ -z "$(find "$ROOT_DIR/$1" -mindepth 1 -print -quit)" ] ||
+    fail "removed path still has contents: $1"
+}
+
 assert_contains() {
   grep -Eq -- "$2" "$ROOT_DIR/$1" || fail "$1 missing: $3"
 }
@@ -31,10 +38,12 @@ for path in \
   assert_file "$path"
 done
 
-for path in vendor .specify .agents e2e tests package.json playwright.config.ts \
+for path in vendor .specify e2e tests package.json playwright.config.ts \
   Caddyfile Caddyfile.edge.example docker-compose.local-build.yml docker-compose.edge.yml; do
   assert_not_path "$path"
 done
+
+assert_not_nonempty_path .agents
 
 assert_contains docker-compose.yml 'calciumion/new-api' "official New API image"
 assert_contains docker-compose.cpa.yml 'eceasy/cli-proxy-api' "official CLIProxyAPI image"
