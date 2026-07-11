@@ -8,7 +8,7 @@ This repo is a thin production wrapper around upstream images.
 ENV_FILE=.env.production WITH_CPA=1 ops/compose.sh up -d
 ENV_FILE=.env.production ops/check-runtime.sh
 ENV_FILE=.env.production ops/backup-postgres.sh
-ENV_FILE=.env.production ops/backup-config.sh
+ENV_FILE=.env.production ops/backup-secrets.sh
 ```
 
 ## Komodo stacks

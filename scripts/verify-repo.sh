@@ -32,13 +32,14 @@ for path in \
   docker-compose.yml docker-compose.prod.yml docker-compose.cpa.yml \
   docker-compose.cpa.ui.yml docker-compose.cloudflare-tunnel.yml \
   ops/compose.sh ops/check-runtime.sh ops/backup-postgres.sh \
-  ops/restore-postgres.sh ops/backup-config.sh ops/cpa-ui.sh \
+  ops/restore-postgres.sh ops/backup-config.sh ops/backup-secrets.sh ops/cpa-ui.sh \
+  tests/test-backups.sh \
   docs/operations-runbook.md docs/backup-strategy.md \
   docs/migration-runbook.md docs/komodo-runbook.md; do
   assert_file "$path"
 done
 
-for path in vendor .specify e2e tests package.json playwright.config.ts \
+for path in vendor .specify e2e package.json playwright.config.ts \
   Caddyfile Caddyfile.edge.example docker-compose.local-build.yml docker-compose.edge.yml; do
   assert_not_path "$path"
 done
@@ -48,6 +49,18 @@ assert_not_nonempty_path .agents
 assert_contains docker-compose.yml 'calciumion/new-api' "official New API image"
 assert_contains docker-compose.cpa.yml 'eceasy/cli-proxy-api' "official CLIProxyAPI image"
 assert_contains docker-compose.cloudflare-tunnel.yml 'cloudflare/cloudflared' "official cloudflared image"
+assert_contains ops/backup-postgres.sh 'pg_dump -Fc' "PostgreSQL custom-format backup"
+assert_contains ops/restore-postgres.sh 'PGDMP' "PostgreSQL format dispatch"
+assert_contains ops/restore-postgres.sh 'pg_restore --clean --if-exists --no-owner' "custom-format restore"
+assert_contains ops/backup-secrets.sh 'age -R' "encrypted secret artifact"
+
+bash -n \
+  "$ROOT_DIR/ops/backup-postgres.sh" \
+  "$ROOT_DIR/ops/restore-postgres.sh" \
+  "$ROOT_DIR/ops/backup-config.sh" \
+  "$ROOT_DIR/ops/backup-secrets.sh" \
+  "$ROOT_DIR/tests/test-backups.sh"
+bash "$ROOT_DIR/tests/test-backups.sh"
 
 docker compose --env-file "$ROOT_DIR/.env.production.example" \
   -f "$ROOT_DIR/docker-compose.yml" \
