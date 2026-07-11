@@ -24,6 +24,7 @@ node_modules/
 .cache/
 playwright-report/
 test-results/
+.worktrees/
 reference_file/
 tmp/
 temp/
