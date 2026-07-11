@@ -8,11 +8,11 @@ service under Komodo.
 
 ## Runtime
 
-- `new-api`: `calciumion/new-api:latest`
-- `cli-proxy-api`: `eceasy/cli-proxy-api:latest`
+- `new-api`: upstream `calciumion/new-api`, pinned by tag and digest in the env examples
+- `cli-proxy-api`: upstream `eceasy/cli-proxy-api`, pinned by tag and digest in the env examples
 - `postgres`: `postgres:15-alpine`
 - `redis`: `redis:7-alpine`
-- `cloudflared`: `cloudflare/cloudflared:latest`, imported as a separate
+- `cloudflared`: upstream `cloudflare/cloudflared`, pinned by tag and digest and imported as a separate
   ingress stack when needed
 
 No Caddy, vendored upstream source, local New API build, Playwright test

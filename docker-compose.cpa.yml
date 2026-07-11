@@ -1,6 +1,6 @@
 services:
   cli-proxy-api:
-    image: ${CLI_PROXY_IMAGE:-eceasy/cli-proxy-api:latest}
+    image: ${CLI_PROXY_IMAGE:-eceasy/cli-proxy-api:v7.2.67@sha256:00279b1ef92aa1edf2acb4d414e50502d8ba3a25f91cee0ec86615f272d4f505}
     container_name: relay-cpa
     restart: unless-stopped
     environment:
