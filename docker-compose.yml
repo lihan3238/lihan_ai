@@ -36,7 +36,7 @@ services:
       retries: 5
 
   new-api:
-    image: ${NEW_API_IMAGE:-calciumion/new-api:v1.0.0-rc.21@sha256:428018a37c0b26c163a3367c18401161707cd0e08d0f26a3dde9ff0caa05e34c}
+    image: ${NEW_API_IMAGE:-calciumion/new-api:latest}
     container_name: relay-new-api
     restart: unless-stopped
     command: --log-dir /app/logs

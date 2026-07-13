@@ -29,7 +29,7 @@ assert_contains() {
 
 for path in \
   README.md README.zh-CN.md AGENTS.md .env.example .env.production.example .gitignore \
-  renovate.json5 .github/workflows/validate.yml \
+  .github/workflows/validate.yml \
   docker-compose.yml docker-compose.prod.yml docker-compose.cpa.yml \
   docker-compose.cpa.ui.yml docker-compose.cloudflare-tunnel.yml \
   ops/compose.sh ops/check-runtime.sh ops/backup-postgres.sh \
@@ -50,18 +50,14 @@ assert_not_nonempty_path .agents
 assert_contains docker-compose.yml 'calciumion/new-api' "official New API image"
 assert_contains docker-compose.cpa.yml 'eceasy/cli-proxy-api' "official CLIProxyAPI image"
 assert_contains docker-compose.cloudflare-tunnel.yml 'cloudflare/cloudflared' "official cloudflared image"
-for file in docker-compose.yml docker-compose.cpa.yml docker-compose.cloudflare-tunnel.yml .env.example .env.production.example; do
-  if grep -Eq '(calciumion/new-api|eceasy/cli-proxy-api|cloudflare/cloudflared):latest' "$ROOT_DIR/$file"; then
-    fail "$file contains a mutable application latest tag"
-  fi
-done
-for variable in NEW_API_IMAGE CLI_PROXY_IMAGE CLOUDFLARED_IMAGE POSTGRES_IMAGE REDIS_IMAGE; do
+# Application images (new-api, cli-proxy-api, cloudflared) track upstream tags and are
+# deployed with health-check rollback by the Komodo reconcile. Only stateful database
+# images stay digest-pinned for reproducibility.
+for variable in POSTGRES_IMAGE REDIS_IMAGE; do
   assert_contains .env.example "^${variable}=.*@sha256:[0-9a-f]{64}$" "$variable traceable digest"
   assert_contains .env.production.example "^${variable}=.*@sha256:[0-9a-f]{64}$" "$variable production digest"
 done
 assert_contains .github/workflows/validate.yml 'scripts/verify-repo\.sh' "repository verifier in CI"
-assert_contains renovate.json5 'config:recommended' "recommended Renovate preset"
-assert_contains renovate.json5 'manual stateful' "manual stateful update group"
 assert_contains ops/backup-postgres.sh 'pg_dump -Fc' "PostgreSQL custom-format backup"
 assert_contains ops/restore-postgres.sh 'PGDMP' "PostgreSQL format dispatch"
 assert_contains ops/restore-postgres.sh 'pg_restore --clean --if-exists --no-owner' "custom-format restore"

@@ -20,11 +20,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
-      - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: "24.13.0"
-
       - name: Install age
         run: |
           sudo apt-get update
@@ -35,9 +30,6 @@ jobs:
 
       - name: Verify repository
         run: scripts/verify-repo.sh
-
-      - name: Validate Renovate policy
-        run: npx --yes --package renovate@43.259.2 renovate-config-validator renovate.json5
 
       - name: Check patch whitespace
         run: git diff --check
