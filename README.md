@@ -45,6 +45,10 @@ Start the core stack plus CPA:
 ENV_FILE=.env.production WITH_CPA=1 ops/compose.sh up -d
 ```
 
+CPA request-body auditing is a host-local policy and never stores the real
+config in Git. See `docs/operations-runbook.md` for the required settings and
+the 10 GiB hot-retention limit.
+
 Import cloudflared separately in Komodo with:
 
 ```bash

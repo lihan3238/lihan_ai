@@ -62,8 +62,13 @@ assert_contains ops/backup-postgres.sh 'pg_dump -Fc' "PostgreSQL custom-format b
 assert_contains ops/restore-postgres.sh 'PGDMP' "PostgreSQL format dispatch"
 assert_contains ops/restore-postgres.sh 'pg_restore --clean --if-exists --no-owner' "custom-format restore"
 assert_contains ops/backup-secrets.sh 'age -R' "encrypted secret artifact"
+assert_contains ops/check-runtime.sh 'request-log:.*true' "CPA request audit runtime check"
+assert_contains ops/check-runtime.sh 'logs-max-total-size-mb:.*10240' "CPA request log size check"
+assert_contains docs/operations-runbook.md '^request-log: true$' "CPA request audit policy"
+assert_contains docs/operations-runbook.md '^logs-max-total-size-mb: 10240$' "CPA request log limit policy"
 
 bash -n \
+  "$ROOT_DIR/ops/check-runtime.sh" \
   "$ROOT_DIR/ops/backup-postgres.sh" \
   "$ROOT_DIR/ops/restore-postgres.sh" \
   "$ROOT_DIR/ops/backup-config.sh" \

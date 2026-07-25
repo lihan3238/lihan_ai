@@ -25,6 +25,15 @@ if docker inspect relay-cpa >/dev/null 2>&1; then
   docker inspect relay-cpa \
     --format '{{.Name}} state={{.State.Status}} image={{.Config.Image}}'
   curl -fsS --max-time 5 "http://${CPA_BIND_IP:-127.0.0.1}:${CPA_UI_PORT:-8317}/management.html" >/dev/null
+  docker exec relay-cpa sh -ec '
+    config=/CLIProxyAPI/config.yaml
+    grep -Eq "^debug:[[:space:]]*false([[:space:]]*(#.*)?)?$" "$config"
+    grep -Eq "^commercial-mode:[[:space:]]*false([[:space:]]*(#.*)?)?$" "$config"
+    grep -Eq "^request-log:[[:space:]]*true([[:space:]]*(#.*)?)?$" "$config"
+    grep -Eq "^logging-to-file:[[:space:]]*false([[:space:]]*(#.*)?)?$" "$config"
+    grep -Eq "^logs-max-total-size-mb:[[:space:]]*10240([[:space:]]*(#.*)?)?$" "$config"
+  '
+  echo "CPA request audit config ok"
 fi
 
 if docker inspect relay-cloudflared >/dev/null 2>&1; then

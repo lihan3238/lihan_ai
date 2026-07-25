@@ -41,6 +41,9 @@ cp .env.production.example .env.production
 ENV_FILE=.env.production WITH_CPA=1 ops/compose.sh up -d
 ```
 
+CPA 请求正文审计属于宿主机本地策略，真实配置不会提交到 Git。所需开关和
+10 GiB 热日志上限见 `docs/operations-runbook.md`。
+
 Cloudflared 建议在 Komodo 里作为单独 Stack 导入：
 
 ```bash
