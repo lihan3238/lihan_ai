@@ -1,4 +1,0 @@
-services:
-  cli-proxy-api:
-    volumes:
-      - ${CPA_CONFIG_PATH:-./data/cpa/config.yaml}:/CLIProxyAPI/config.yaml

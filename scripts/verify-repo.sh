@@ -31,12 +31,12 @@ for path in \
   README.md README.zh-CN.md AGENTS.md .env.example .env.production.example .gitignore \
   .github/workflows/validate.yml \
   docker-compose.yml docker-compose.prod.yml docker-compose.cpa.yml \
-  docker-compose.cpa.ui.yml docker-compose.cloudflare-tunnel.yml \
+  docker-compose.cloudflare-tunnel.yml \
   ops/compose.sh ops/check-runtime.sh ops/backup-postgres.sh \
-  ops/restore-postgres.sh ops/backup-config.sh ops/backup-secrets.sh ops/cpa-ui.sh \
+  ops/restore-postgres.sh ops/backup-config.sh ops/backup-secrets.sh \
   tests/test-backups.sh \
   docs/operations-runbook.md docs/backup-strategy.md \
-  docs/migration-runbook.md docs/komodo-runbook.md; do
+  docs/migration-runbook.md; do
   assert_file "$path"
 done
 
@@ -50,9 +50,10 @@ assert_not_nonempty_path .agents
 assert_contains docker-compose.yml 'calciumion/new-api' "official New API image"
 assert_contains docker-compose.cpa.yml 'eceasy/cli-proxy-api' "official CLIProxyAPI image"
 assert_contains docker-compose.cloudflare-tunnel.yml 'cloudflare/cloudflared' "official cloudflared image"
-# Application images (new-api, cli-proxy-api, cloudflared) track upstream tags and are
-# deployed with health-check rollback by the Komodo reconcile. Only stateful database
-# images stay digest-pinned for reproducibility.
+assert_contains docker-compose.cpa.yml '127\.0\.0\.1:\$\{CPA_UI_PORT:-8317\}:8317' "loopback-only CPA binding"
+assert_contains ops/check-runtime.sh 'CPA management port is not loopback-only' "runtime CPA bind check"
+# Application images track upstream tags. Only stateful database images stay
+# digest-pinned here for reproducibility.
 for variable in POSTGRES_IMAGE REDIS_IMAGE; do
   assert_contains .env.example "^${variable}=.*@sha256:[0-9a-f]{64}$" "$variable traceable digest"
   assert_contains .env.production.example "^${variable}=.*@sha256:[0-9a-f]{64}$" "$variable production digest"
@@ -68,6 +69,7 @@ assert_contains docs/operations-runbook.md '^request-log: true$' "CPA request au
 assert_contains docs/operations-runbook.md '^logs-max-total-size-mb: 10240$' "CPA request log limit policy"
 
 bash -n \
+  "$ROOT_DIR/ops/compose.sh" \
   "$ROOT_DIR/ops/check-runtime.sh" \
   "$ROOT_DIR/ops/backup-postgres.sh" \
   "$ROOT_DIR/ops/restore-postgres.sh" \

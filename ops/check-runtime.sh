@@ -22,9 +22,14 @@ docker exec relay-new-api sh -lc \
   "wget -q -O - http://localhost:3000/api/status | grep -o '\"success\":\\s*true'"
 
 if docker inspect relay-cpa >/dev/null 2>&1; then
+  cpa_ui_port="${CPA_UI_PORT:-8317}"
   docker inspect relay-cpa \
     --format '{{.Name}} state={{.State.Status}} image={{.Config.Image}}'
-  curl -fsS --max-time 5 "http://${CPA_BIND_IP:-127.0.0.1}:${CPA_UI_PORT:-8317}/management.html" >/dev/null
+  [[ "$(docker port relay-cpa 8317/tcp)" == "127.0.0.1:${cpa_ui_port}" ]] || {
+    echo "CPA management port is not loopback-only" >&2
+    exit 1
+  }
+  curl -fsS --max-time 5 "http://127.0.0.1:${cpa_ui_port}/management.html" >/dev/null
   docker exec relay-cpa sh -ec '
     config=/CLIProxyAPI/config.yaml
     grep -Eq "^debug:[[:space:]]*false([[:space:]]*(#.*)?)?$" "$config"
