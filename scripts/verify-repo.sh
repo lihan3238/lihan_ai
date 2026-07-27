@@ -52,12 +52,11 @@ assert_contains docker-compose.cpa.yml 'eceasy/cli-proxy-api' "official CLIProxy
 assert_contains docker-compose.cloudflare-tunnel.yml 'cloudflare/cloudflared' "official cloudflared image"
 assert_contains docker-compose.cpa.yml '127\.0\.0\.1:\$\{CPA_UI_PORT:-8317\}:8317' "loopback-only CPA binding"
 assert_contains ops/check-runtime.sh 'CPA management port is not loopback-only' "runtime CPA bind check"
-# Application images track upstream tags. Only stateful database images stay
-# digest-pinned here for reproducibility.
-for variable in POSTGRES_IMAGE REDIS_IMAGE; do
-  assert_contains .env.example "^${variable}=.*@sha256:[0-9a-f]{64}$" "$variable traceable digest"
-  assert_contains .env.production.example "^${variable}=.*@sha256:[0-9a-f]{64}$" "$variable production digest"
-done
+# Stateful images follow patch releases within their current major versions.
+assert_contains .env.example '^POSTGRES_IMAGE=postgres:15-alpine$' "PostgreSQL major-version track"
+assert_contains .env.example '^REDIS_IMAGE=redis:7-alpine$' "Redis major-version track"
+assert_contains .env.production.example '^POSTGRES_IMAGE=postgres:15-alpine$' "production PostgreSQL major-version track"
+assert_contains .env.production.example '^REDIS_IMAGE=redis:7-alpine$' "production Redis major-version track"
 assert_contains .github/workflows/validate.yml 'scripts/verify-repo\.sh' "repository verifier in CI"
 assert_contains ops/backup-postgres.sh 'pg_dump -Fc' "PostgreSQL custom-format backup"
 assert_contains ops/restore-postgres.sh 'PGDMP' "PostgreSQL format dispatch"
